@@ -1,18 +1,18 @@
-import { renderDashboardFeature } from "../features/dashboard/dashboard-view.js";
-import { renderNutritionFeature } from "../features/nutrition/nutrition-view.js";
-import { renderPlanningFeature } from "../features/planning/planning-view.js";
-import { renderRecoveryFeature } from "../features/recovery/recovery-view.js";
-import { renderTrainingFeature } from "../features/training/training-view.js";
-import { renderWellbeingFeature } from "../features/wellbeing/wellbeing-view.js";
+import { renderDashboardFeature } from "../features/dashboard-view.js";
+import { renderNutritionFeature } from "../features/nutrition-view.js";
+import { renderPlanningFeature } from "../features/planning-view.js";
+import { renderRecoveryFeature } from "../features/recovery-view.js";
+import { renderTrainingFeature } from "../features/training-view.js";
+import { renderWellbeingFeature } from "../features/wellbeing-view.js";
 import { getWeeklyPreparationPack, getWeeklyReviewSummary } from "../domain/weekly.js";
 
 const APP_TABS = [
   { id: "home", label: "Hoy", eyebrow: "Centro de mando" },
-  { id: "planning", label: "Semana", eyebrow: "Planificacion" },
-  { id: "nutrition", label: "Nutricion", eyebrow: "Comidas y recetas" },
+  { id: "planning", label: "Semana", eyebrow: "Planificación" },
+  { id: "nutrition", label: "Nutrición", eyebrow: "Comidas y recetas" },
   { id: "training", label: "Entreno", eyebrow: "Sesiones y progresion" },
   { id: "wellbeing", label: "Salud", eyebrow: "Ciclo y bienestar" },
-  { id: "recovery", label: "Revision", eyebrow: "Sueno y recalibracion" }
+  { id: "recovery", label: "Revisión", eyebrow: "Sueño y recalibración" }
 ];
 
 function currentTabMeta(activeTab) {
@@ -71,7 +71,7 @@ function renderSurface(viewModel) {
 
   return `
     <section class="surface-stack">
-      ${renderDashboardFeature(state)}
+      ${renderDashboardFeature(state, { homeCapture: viewModel.homeCapture || "meal" })}
       ${renderPrototypeStatus(viewModel)}
     </section>
   `;
@@ -106,10 +106,10 @@ function renderPrototypeStatus(viewModel) {
     <details class="panel support-panel support-panel-collapsed">
       <summary class="support-summary-toggle">
         <div>
-          <p class="eyebrow">Vault y backup</p>
-          <h3>Seguridad, exportacion e importacion</h3>
+          <p class="eyebrow">Seguridad local</p>
+          <h3>Backups y control del vault</h3>
         </div>
-        <span class="muted">Abrir</span>
+        <span class="muted">Ver</span>
       </summary>
       <div class="stack support-panel-body">
         <section class="support-summary">
@@ -133,7 +133,7 @@ function renderPrototypeStatus(viewModel) {
           </label>
         </div>
         <p class="muted">
-          Este bloque queda recogido para que la seguridad siga estando presente, pero sin ocupar toda la experiencia de entrada.
+          La seguridad sigue aquí cuando la necesitas, pero ya no invade la experiencia diaria.
         </p>
       </div>
     </details>
@@ -165,7 +165,7 @@ export function renderApp(container, viewModel) {
         <section class="panel auth-panel">
           <p class="eyebrow">Nuevo vault local</p>
           <h1>Crear acceso seguro</h1>
-          <p class="muted">Esta nueva base guarda la informacion sensible cifrada en el dispositivo.</p>
+          <p class="muted">Esta nueva base guarda la información sensible cifrada en el dispositivo.</p>
           <form id="setup-form" class="stack">
             <label>
               <span>Passphrase</span>
@@ -198,6 +198,7 @@ export function renderApp(container, viewModel) {
             </label>
             <button class="primary" type="submit">Desbloquear</button>
           </form>
+          <p class="shell-note">Tus datos siguen cifrados en este dispositivo hasta que abras el vault.</p>
           ${status ? `<p class="status">${status}</p>` : ""}
         </section>
       </main>
@@ -217,7 +218,7 @@ export function renderApp(container, viewModel) {
   } else if (activeTab === "planning") {
     shellNote = `Semana preparada ${preparationPack.readinessScore}/100.`;
   } else if (activeTab === "recovery") {
-    shellNote = `Revision semanal ${reviewSummary.completion}% completada.`;
+    shellNote = `Revisión semanal ${reviewSummary.completion}% completada.`;
   }
 
   container.innerHTML = `
@@ -225,7 +226,7 @@ export function renderApp(container, viewModel) {
       <header class="topbar shell-topbar">
         <div class="shell-brand">
           <p class="eyebrow">Segundo Cerebro local</p>
-          <h1>${displayName}</h1>
+          <p class="shell-title">${displayName}</p>
           <p class="shell-note">${tab.label} - ${shellNote}</p>
         </div>
         <div class="topbar-actions">
