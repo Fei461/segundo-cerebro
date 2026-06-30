@@ -1,12 +1,33 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
   <defs>
-    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop offset="0%" stop-color="#f7f0e8"/>
-      <stop offset="100%" stop-color="#d9c2a0"/>
+    <linearGradient id="bg" x1="12%" y1="8%" x2="88%" y2="92%">
+      <stop offset="0%" stop-color="#bfecea"/>
+      <stop offset="55%" stop-color="#7fd4d4"/>
+      <stop offset="100%" stop-color="#58b6bf"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f7fffe" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#d9f2f1" stop-opacity="0.88"/>
+    </linearGradient>
+    <linearGradient id="ink" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3f7384"/>
+      <stop offset="100%" stop-color="#275766"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff1c7"/>
+      <stop offset="100%" stop-color="#f4ce7e"/>
     </linearGradient>
   </defs>
   <rect width="180" height="180" rx="40" fill="url(#bg)"/>
-  <circle cx="90" cy="66" r="28" fill="#9a6338"/>
-  <path d="M65 66c10-12 17-18 25-18 9 0 17 6 25 18-9 11-16 16-25 16-8 0-15-5-25-16z" fill="#fff7ef"/>
-  <path d="M47 120c0-18 13-31 30-31h26c17 0 30 13 30 31v16H47z" fill="#9a6338"/>
+  <rect x="30" y="30" width="120" height="120" rx="34" fill="url(#card)" opacity="0.94"/>
+  <path d="M53 70c0-7 5-12 12-12h11c6 0 11 3 14 8 3-5 8-8 14-8h11c7 0 12 5 12 12v42c0 7-5 12-12 12H65c-7 0-12-5-12-12z" fill="url(#ink)"/>
+  <path d="M90 66v50" stroke="#dff8f7" stroke-width="5" stroke-linecap="round"/>
+  <path d="M65 74h13" stroke="#dff8f7" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M102 74h13" stroke="#dff8f7" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M65 86h13" stroke="#dff8f7" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M102 86h13" stroke="#dff8f7" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M65 98h13" stroke="#dff8f7" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M102 98h13" stroke="#dff8f7" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M124 49l3 6 6 1-5 4 1 6-5-3-5 3 1-6-4-4 6-1z" fill="url(#gold)"/>
+  <circle cx="50" cy="48" r="2" fill="#fff8e1"/>
 </svg>
