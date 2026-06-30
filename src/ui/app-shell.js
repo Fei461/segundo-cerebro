@@ -78,6 +78,10 @@ function renderImportCta() {
   `;
 }
 
+function renderResetVaultButton(label = "Restablecer este contexto") {
+  return `<button id="reset-vault-button" class="ghost compact" type="button">${label}</button>`;
+}
+
 function renderSurface(viewModel) {
   const activeTab = viewModel.currentTab || "home";
   const { state } = viewModel;
@@ -122,7 +126,7 @@ function renderMaintenanceFooter(activeTab) {
 }
 
 export function renderApp(container, viewModel) {
-  const { mode, state, status, hasVault, lockMinutes } = viewModel;
+  const { mode, state, status, hasVault, lockMinutes, vaultHealth } = viewModel;
   const displayName = state?.profile?.displayName?.trim() || "Segundo Cerebro";
   const activeTab = viewModel.currentTab || "home";
   document.body.dataset.tab = mode === "ready" ? activeTab : mode;
@@ -146,23 +150,24 @@ export function renderApp(container, viewModel) {
         <section class="panel auth-panel">
           <p class="eyebrow">Nuevo vault local</p>
           <h1>Crear acceso seguro</h1>
-          <p class="muted">Esta base guarda tu informaci\u00f3n sensible cifrada en este contexto del dispositivo.</p>
+          <p class="muted">Esta base guarda tu información sensible cifrada solo en este navegador o acceso directo.</p>
           <p class="shell-note">${renderContextHint(viewModel)}</p>
           <form id="setup-form" class="stack">
             <label>
-              <span>Passphrase</span>
-              <input name="passphrase" type="password" minlength="8" required placeholder="M\u00ednimo 8 caracteres">
+              <span>Clave local</span>
+              <input name="passphrase" type="password" minlength="8" required placeholder="Mínimo 8 caracteres">
             </label>
             <label>
-              <span>Confirmar passphrase</span>
-              <input name="passphraseConfirm" type="password" minlength="8" required placeholder="Repite la passphrase">
+              <span>Confirmar clave local</span>
+              <input name="passphraseConfirm" type="password" minlength="8" required placeholder="Repite la clave">
             </label>
             <button class="primary" type="submit">Crear vault</button>
           </form>
           <div class="button-row button-row-start">
             ${renderImportCta()}
+            ${vaultHealth === "incomplete" ? renderResetVaultButton("Limpiar contexto roto") : ""}
           </div>
-          <p class="muted">Si tu vault vive en el acceso directo del iPhone, exporta all\u00ed un backup cifrado e imp\u00f3rtalo aqu\u00ed.</p>
+          <p class="muted">Si tu vault vive en el acceso directo del iPhone, exporta allí un backup cifrado e impórtalo aquí.</p>
           ${status ? `<p class="status">${status}</p>` : ""}
         </section>
       </main>
@@ -180,13 +185,14 @@ export function renderApp(container, viewModel) {
           <p class="shell-note">${renderContextHint(viewModel)}</p>
           <form id="unlock-form" class="stack">
             <label>
-              <span>Passphrase</span>
+              <span>Clave local</span>
               <input name="passphrase" type="password" required placeholder="Tu clave local">
             </label>
             <button class="primary" type="submit">Desbloquear</button>
           </form>
           <div class="button-row button-row-start">
             ${renderImportCta()}
+            ${renderResetVaultButton()}
           </div>
           <p class="shell-note">Tus datos siguen cifrados en este dispositivo hasta que abras el vault o importes un backup.</p>
           ${status ? `<p class="status">${status}</p>` : ""}
