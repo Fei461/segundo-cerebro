@@ -1,4 +1,4 @@
-﻿import { renderDashboardFeature } from "../features/dashboard-view.js";
+import { renderDashboardFeature } from "../features/dashboard-view.js";
 import { renderNutritionFeature } from "../features/nutrition-view.js";
 import { renderPlanningFeature } from "../features/planning-view.js";
 import { renderRecoveryFeature } from "../features/recovery-view.js";
@@ -7,42 +7,21 @@ import { renderWellbeingFeature } from "../features/wellbeing-view.js";
 import { getWeeklyPreparationPack, getWeeklyReviewSummary } from "../domain/weekly.js";
 
 const APP_TABS = [
-  { id: "home", label: "Hoy", mobileLabel: "Hoy", eyebrow: "Centro de mando" },
-  { id: "planning", label: "Semana", mobileLabel: "Semana", eyebrow: "Planificaci\u00f3n" },
-  { id: "nutrition", label: "Nutrici\u00f3n", mobileLabel: "Comida", eyebrow: "Comidas y recetas" },
-  { id: "training", label: "Entreno", mobileLabel: "Entreno", eyebrow: "Sesiones y progresi\u00f3n" },
-  { id: "wellbeing", label: "Salud", mobileLabel: "Salud", eyebrow: "Ciclo y bienestar" },
-  { id: "recovery", label: "Revisi\u00f3n", mobileLabel: "Sue\u00f1o", eyebrow: "Sue\u00f1o y recalibraci\u00f3n" }
+  { id: "home", label: "Hoy", mobileLabel: "Hoy", eyebrow: "Centro de mando", icon: "◌" },
+  { id: "planning", label: "Semana", mobileLabel: "Semana", eyebrow: "Planificación", icon: "▦" },
+  { id: "nutrition", label: "Nutrición", mobileLabel: "Comida", eyebrow: "Comidas y recetas", icon: "◒" },
+  { id: "training", label: "Entreno", mobileLabel: "Entreno", eyebrow: "Sesiones y progresión", icon: "△" },
+  { id: "wellbeing", label: "Salud", mobileLabel: "Salud", eyebrow: "Ciclo y bienestar", icon: "✿" },
+  { id: "recovery", label: "Sueño", mobileLabel: "Sueño", eyebrow: "Sueño y ajuste", icon: "☾" }
 ];
 
 function currentTabMeta(activeTab) {
   return APP_TABS.find(tab => tab.id === activeTab) || APP_TABS[0];
 }
 
-function renderTabBar(activeTab) {
-  return `
-    <nav class="tab-strip" aria-label="Secciones">
-      ${APP_TABS.map(
-        tab => `
-          <button
-            class="tab-chip${tab.id === activeTab ? " is-active" : ""}"
-            type="button"
-            data-action="open-tab"
-            data-tab="${tab.id}"
-            aria-pressed="${tab.id === activeTab ? "true" : "false"}"
-            aria-current="${tab.id === activeTab ? "page" : "false"}"
-          >
-            ${tab.label}
-          </button>
-        `
-      ).join("")}
-    </nav>
-  `;
-}
-
 function renderBottomNav(activeTab) {
   return `
-    <nav class="bottom-nav" aria-label="Navegaci\u00f3n principal">
+    <nav class="bottom-nav" aria-label="Navegación principal">
       ${APP_TABS.map(
         tab => `
           <button
@@ -53,6 +32,7 @@ function renderBottomNav(activeTab) {
             aria-pressed="${tab.id === activeTab ? "true" : "false"}"
             aria-current="${tab.id === activeTab ? "page" : "false"}"
           >
+            <span class="bottom-nav-icon" aria-hidden="true">${tab.icon}</span>
             <span>${tab.mobileLabel || tab.label}</span>
           </button>
         `
@@ -64,9 +44,9 @@ function renderBottomNav(activeTab) {
 function renderContextHint(viewModel) {
   const runtime = viewModel.runtime || {};
   if (runtime.isStandalone) {
-    return "Est\u00e1s en el acceso directo. En iPhone, Safari y la app instalada pueden guardar vaults distintos.";
+    return "Si alternas entre app y navegador, importa un backup para mantener ambos contextos alineados.";
   }
-  return "Est\u00e1s en Safari o navegador web. En iPhone, Safari y el acceso directo pueden no compartir el mismo vault.";
+  return "Si luego usas la app instalada, puede guardar una copia distinta en el mismo iPhone.";
 }
 
 function renderImportCta() {
@@ -101,14 +81,18 @@ function renderAuthSecondaryActions(content) {
 function renderSurface(viewModel) {
   const activeTab = viewModel.currentTab || "home";
   const { state } = viewModel;
+  const currentView = viewModel.moduleViews?.[activeTab];
 
-  if (activeTab === "planning") return renderPlanningFeature(state);
-  if (activeTab === "nutrition") return renderNutritionFeature(state);
-  if (activeTab === "training") return renderTrainingFeature(state);
-  if (activeTab === "wellbeing") return renderWellbeingFeature(state);
-  if (activeTab === "recovery") return renderRecoveryFeature(state);
+  if (activeTab === "planning") return renderPlanningFeature(state, { currentView });
+  if (activeTab === "nutrition") return renderNutritionFeature(state, { currentView });
+  if (activeTab === "training") return renderTrainingFeature(state, { currentView });
+  if (activeTab === "wellbeing") return renderWellbeingFeature(state, { currentView });
+  if (activeTab === "recovery") return renderRecoveryFeature(state, { currentView });
 
-  return renderDashboardFeature(state, { homeCapture: viewModel.homeCapture || "meal" });
+  return renderDashboardFeature(state, {
+    homeCapture: viewModel.homeCapture || "meal",
+    currentView
+  });
 }
 
 function renderVaultFooter() {
@@ -128,7 +112,7 @@ function renderVaultFooter() {
             Importar backup
           </label>
         </div>
-        <p class="muted">Úsalo antes de cambios grandes o al mover la app entre contextos.</p>
+        <p class="muted">Hazlo antes de actualizar, limpiar caché o pasar de web a acceso directo.</p>
       </div>
     </details>
   `;
@@ -145,6 +129,7 @@ export function renderApp(container, viewModel) {
   const { mode, state, status, hasVault, lockMinutes, vaultHealth } = viewModel;
   const displayName = state?.profile?.displayName?.trim() || "Segundo Cerebro";
   const activeTab = viewModel.currentTab || "home";
+  const activeMeta = currentTabMeta(activeTab);
   document.body.dataset.tab = mode === "ready" ? activeTab : mode;
 
   if (mode === "loading") {
@@ -164,7 +149,7 @@ export function renderApp(container, viewModel) {
     container.innerHTML = `
       <main class="screen centered">
         <section class="panel auth-panel">
-          <p class="eyebrow">🔐 Nuevo vault local</p>
+          <p class="eyebrow">🔐 Acceso local</p>
           <h1>Crear acceso</h1>
           <p class="muted">Tus datos quedan cifrados en este dispositivo.</p>
           <p class="shell-note">${renderContextHint(viewModel)}</p>
@@ -177,7 +162,7 @@ export function renderApp(container, viewModel) {
               <span>Confirmar clave local</span>
               <input name="passphraseConfirm" type="password" minlength="8" required placeholder="Repite la clave">
             </label>
-            <button class="primary" type="submit">Crear vault</button>
+            <button class="primary" type="submit">Crear acceso</button>
           </form>
           ${renderAuthSecondaryActions(`
             <p class="muted">Si vienes de otro contexto, importa un backup cifrado.</p>
@@ -209,7 +194,7 @@ export function renderApp(container, viewModel) {
             <button class="primary" type="submit">Desbloquear</button>
           </form>
           ${renderAuthSecondaryActions(`
-            <p class="muted">Tus datos siguen cifrados hasta que abras el vault.</p>
+            <p class="muted">Tus datos siguen cifrados hasta que abras tu espacio.</p>
             <div class="button-row button-row-start">
               ${renderImportCta()}
               ${renderResetVaultButton()}
@@ -222,38 +207,29 @@ export function renderApp(container, viewModel) {
     return;
   }
 
-  const tab = currentTabMeta(activeTab);
   const preparationPack = getWeeklyPreparationPack(state);
   const reviewSummary = getWeeklyReviewSummary(state);
   const todayKey = new Date().toISOString().slice(0, 10);
   const mealsToday = state.nutrition.meals.filter(meal => meal.date === todayKey).length;
   const sessionsToday = state.training.sessions.filter(session => session.date === todayKey).length;
-  let shellNote = "Sistema local listo para usar.";
-
-  if (activeTab === "home") {
-    shellNote = `${mealsToday} comida(s) y ${sessionsToday} entreno(s) hoy.`;
-  } else if (activeTab === "planning") {
-    shellNote = `Preparación semanal ${preparationPack.readinessScore}/100.`;
-  } else if (activeTab === "recovery") {
-    shellNote = `Revisión semanal al ${reviewSummary.completion}%.`;
-  }
-
-  const shellPills = [
-    activeTab === "home" ? `${mealsToday} comida(s)` : tab.label,
-    activeTab === "home" ? `${sessionsToday} entreno(s)` : null,
-    activeTab === "planning" ? `${preparationPack.readinessScore}/100` : null,
-    activeTab === "recovery" ? `${reviewSummary.completion}% revisión` : null
-  ].filter(Boolean);
+  const shellPill =
+    activeTab === "home"
+      ? "Hoy"
+      : activeTab === "planning"
+        ? "Semana"
+        : activeTab === "recovery"
+          ? "Sueño"
+          : activeMeta.label;
 
   container.innerHTML = `
     <main class="screen app-screen theme-${activeTab}">
       <header class="topbar shell-topbar">
         <div class="shell-brand">
-          <p class="eyebrow shell-kicker">Segundo Cerebro local</p>
           <p class="shell-title">${displayName}</p>
-          <p class="shell-note">${shellNote}</p>
           <div class="shell-pill-row">
-            ${shellPills.map(item => `<span class="shell-pill">${item}</span>`).join("")}
+            <span class="shell-pill shell-pill-active"><span class="shell-pill-icon" aria-hidden="true">${activeMeta.icon}</span>${shellPill}</span>
+            ${activeTab === "home" ? `<span class="shell-pill">${mealsToday} comida(s)</span>` : ""}
+            ${activeTab === "home" ? `<span class="shell-pill">${sessionsToday} entreno(s)</span>` : ""}
           </div>
         </div>
         <div class="topbar-actions">
@@ -262,7 +238,6 @@ export function renderApp(container, viewModel) {
       </header>
 
       ${status ? `<p class="status app-status" role="status" aria-live="polite">${status}</p>` : ""}
-      ${renderTabBar(activeTab)}
       ${renderSurface(viewModel)}
       ${renderMaintenanceFooter(activeTab)}
       ${renderBottomNav(activeTab)}
