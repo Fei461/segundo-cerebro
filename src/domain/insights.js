@@ -76,7 +76,7 @@ export function getCycleContext(state, inputDate = new Date()) {
       phase: "menstrual",
       cycleDay,
       periodActive,
-      label: `Fase menstrual - dia ${cycleDay}`
+      label: `Fase menstrual - día ${cycleDay}`
     };
   }
   if (cycleDay <= 13) {
@@ -84,7 +84,7 @@ export function getCycleContext(state, inputDate = new Date()) {
       phase: "folicular",
       cycleDay,
       periodActive,
-      label: `Fase folicular - dia ${cycleDay}`
+      label: `Fase folicular - día ${cycleDay}`
     };
   }
   if (cycleDay <= 17) {
@@ -92,7 +92,7 @@ export function getCycleContext(state, inputDate = new Date()) {
       phase: "ovulatoria",
       cycleDay,
       periodActive,
-      label: `Ventana ovulatoria - dia ${cycleDay}`
+      label: `Ventana ovulatoria - día ${cycleDay}`
     };
   }
   return {
@@ -283,7 +283,7 @@ export function getCycleSupportSuggestions(state, inputDate = new Date()) {
     suggestions.push("Tratar la energía baja como una señal operativa y ajustar la carga.");
   }
   if (health.digestionHeavyCount >= 2) {
-    suggestions.push("Revisar comidas repetidas con sensacion pesada antes de seguir acumulandolas.");
+    suggestions.push("Revisar comidas repetidas con sensación pesada antes de seguir acumulándolas.");
   }
 
   return suggestions.slice(0, 4);
@@ -321,7 +321,7 @@ export function getWeeklyAutoSummary(state, inputDate = new Date()) {
     reviewItems.push(`Revisar tolerancia de ${health.mealSignals[0].name}.`);
   }
   if (health.dominantSymptoms[0]) {
-    reviewItems.push(`Mirar patron de ${health.dominantSymptoms[0].name}.`);
+    reviewItems.push(`Mirar patrón de ${health.dominantSymptoms[0].name}.`);
   }
   if (plannedMeals > loggedMeals && plannedMeals > 0) {
     reviewItems.push("Cerrar la brecha entre comida planificada y comida registrada.");

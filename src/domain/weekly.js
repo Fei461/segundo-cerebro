@@ -1,4 +1,4 @@
-import { getPlannedMeals, getPlannedSessions, replacePlannedMeals, replacePlannedSessions } from "./plans.js";
+﻿import { getPlannedMeals, getPlannedSessions, replacePlannedMeals, replacePlannedSessions } from "./plans.js";
 import { getSuggestedWeeklyMealSlots, getWeeklyNutritionPrepBoard, getWeeklyNutritionReview } from "./personal-nutrition.js";
 import { getWeeklyHealthInsights } from "./insights.js";
 
@@ -237,7 +237,7 @@ export function getOperationalTimeline(state, inputDate = new Date()) {
           time: event.time || "99:99",
           kind: "evento",
           title: event.title,
-          detail: `${event.category || "agenda"}${pressure ? ` - presion ${pressure.status}` : ""}`,
+          detail: `${event.category || "agenda"}${pressure ? ` - presión ${pressure.status}` : ""}`,
           urgency: pressure?.status === "overloaded" ? 3 : 2
         });
       });
@@ -564,7 +564,7 @@ export function getWeeklyPreparationPack(state, inputDate = new Date()) {
     },
     {
       key: "review",
-      title: "Foco de revision",
+      title: "Foco de revisión",
       detail:
         health.cycleContext.phase !== "sin-datos"
           ? `${nutritionReview.nextAction} - ${health.cycleContext.label}`
@@ -587,7 +587,7 @@ export function getWeeklyPreparationPack(state, inputDate = new Date()) {
 
   let headline = "Semana lista para afinar.";
   if (readinessScore < 35) {
-    headline = "Semana todavia poco preparada.";
+    headline = "Semana todavía poco preparada.";
   } else if (readinessScore < 70) {
     headline = "Semana encaminada, pero con huecos.";
   }
@@ -760,11 +760,11 @@ export function getSuggestedWeeklySessions(state, inputDate = new Date()) {
       routineName: fallback.routineName,
       notes:
         dayLoad >= 2
-          ? "Sesion sugerida ligera por agenda cargada."
+          ? "Sesión sugerida ligera por agenda cargada."
           : isOverloaded
-            ? "Sesion simplificada por semana sobrecargada."
+            ? "Sesión simplificada por semana sobrecargada."
             : lowAdherenceWeek
-              ? "Sesion recortada para recuperar adherencia sin generar deuda."
+              ? "Sesión recortada para recuperar adherencia sin generar deuda."
               : cycleSensitive
                 ? "Sesión suavizada por fase del ciclo o energía sintomática más delicada."
               : isWatch
@@ -785,9 +785,9 @@ export function getWeeklyPriorityBoard(state, inputDate = new Date()) {
   if (preparationPack.readinessScore < 40) {
     priorities.push({
       id: "weekly-readiness",
-      title: "Cerrar primero la preparacion de la semana",
+      title: "Cerrar primero la preparación de la semana",
       detail: `${preparationPack.readinessScore}/100 de readiness y ${preparationPack.suggestions.length} acciones pendientes.`,
-      area: "planificacion",
+      area: "planificación",
       severity: 3
     });
   }
@@ -797,7 +797,7 @@ export function getWeeklyPriorityBoard(state, inputDate = new Date()) {
       id: "meal-gaps",
       title: "Completar huecos del meal planner",
       detail: `${preparationPack.suggestedMealSlots.length} slots de comida aun abiertos.`,
-      area: "nutricion",
+      area: "nutrición",
       severity: 2
     });
   }
@@ -806,7 +806,7 @@ export function getWeeklyPriorityBoard(state, inputDate = new Date()) {
     priorities.push({
       id: "session-gaps",
       title: "Cerrar la estructura minima de entreno",
-      detail: `${preparationPack.suggestedSessions.length} sesiones futuras sugeridas aun sin aplicar.`,
+      detail: `${preparationPack.suggestedSessions.length} sesiones futuras sugeridas aún sin aplicar.`,
       area: "entreno",
       severity: 2
     });
@@ -817,7 +817,7 @@ export function getWeeklyPriorityBoard(state, inputDate = new Date()) {
       id: "sleep",
       title: "Proteger recuperación esta semana",
       detail: `Sueño medio en ${health.avgSleepHours.toFixed(1)} h con impacto probable en energía y adherencia.`,
-      area: "recuperacion",
+      area: "recuperación",
       severity: 3
     });
   }
@@ -827,7 +827,7 @@ export function getWeeklyPriorityBoard(state, inputDate = new Date()) {
       id: "tolerance",
       title: "Revisar tolerancia alimentaria",
       detail: `${health.mealSignals[0].name} se repite en comidas con malestar.`,
-      area: "nutricion",
+      area: "nutrición",
       severity: 2
     });
   }
@@ -951,7 +951,7 @@ export function getWeeklyCalibrationBoard(state, inputDate = new Date()) {
     suggestedTasks.push("Reducir fricción del entreno previsto y ajustar carga a energía real.");
   }
   if (watchDays.length >= 2) {
-    suggestedTasks.push("Proteger dos dias de margen con comida facil y agenda menos cargada.");
+    suggestedTasks.push("Proteger dos días de margen con comida fácil y agenda menos cargada.");
   }
   if (health.cycleContext.phase === "menstrual") {
     suggestedTasks.push("Adaptar la semana a fase menstrual con menos fricción y más recuperación.");
@@ -969,7 +969,7 @@ export function getWeeklyCalibrationBoard(state, inputDate = new Date()) {
   }
 
   const note = [
-    "Recalibracion semanal",
+    "Recalibración semanal",
     "",
     `Adherencia comidas: ${totalDoneMeals}/${totalPlannedMeals} (${mealAdherence}%)`,
     `Adherencia entreno: ${totalDoneSessions}/${totalPlannedSessions} (${sessionAdherence}%)`,
@@ -977,7 +977,7 @@ export function getWeeklyCalibrationBoard(state, inputDate = new Date()) {
     `Dias sobrecargados: ${overloadedDays.length}`,
     "",
     "Mapa diario",
-    ...dayEntries.map(day => `- ${day.date}: ${day.status} - presion ${day.pressureScore.toFixed(1)} - eventos ${day.events} - comida ${day.plannedMealDone}/${day.plannedMeals} - entreno ${day.plannedSessionDone}/${day.plannedSessions}${day.sleepHours ? ` - sueno ${day.sleepHours.toFixed(1)} h` : ""}`),
+    ...dayEntries.map(day => `- ${day.date}: ${day.status} - presión ${day.pressureScore.toFixed(1)} - eventos ${day.events} - comida ${day.plannedMealDone}/${day.plannedMeals} - entreno ${day.plannedSessionDone}/${day.plannedSessions}${day.sleepHours ? ` - sueño ${day.sleepHours.toFixed(1)} h` : ""}`),
     "",
     `Siguiente ajuste: ${nextAdjustment}`
   ].join("\n");
@@ -1105,7 +1105,7 @@ export function getWeeklyReviewFlow(state, inputDate = new Date()) {
           : calibration.watchDays > 1
             ? "in-progress"
             : "stable",
-      detail: `${calibration.overloadedDays} dias sobrecargados - comida ${calibration.mealAdherence}% - entreno ${calibration.sessionAdherence}%.`,
+      detail: `${calibration.overloadedDays} días sobrecargados - comida ${calibration.mealAdherence}% - entreno ${calibration.sessionAdherence}%.`,
       action: calibration.nextAdjustment,
       cta: "save-weekly-calibration-note"
     },

@@ -1,4 +1,4 @@
-export const PERSONAL_PANTRY = [
+﻿export const PERSONAL_PANTRY = [
   {
     family: "Bases rapidas",
     items: ["Tortitas de arroz", "Arroz", "Macarrones", "Fideos de arroz", "Patata", "Pan", "Quinoa", "Harina PAN"]
@@ -408,7 +408,7 @@ export function getWeeklyNutritionReview({ plannedMeals = [], loggedMeals = [], 
   if (coveredFamilies.size < 5) {
     nextAction = "Abrir la semana con más variedad de familias básicas.";
   } else if (repeatedMeals.length > 0) {
-    nextAction = `Reducir repeticion de ${repeatedMeals[0].name} con una alternativa simple.`;
+    nextAction = `Reducir repetición de ${repeatedMeals[0].name} con una alternativa simple.`;
   } else if (suspectIngredients.length > 0) {
     nextAction = `Vigilar si ${suspectIngredients[0].name} vuelve a aparecer con malestar.`;
   } else if (shoppingList.length > 0) {
@@ -496,13 +496,13 @@ export function getWeeklyNutritionPrepBoard({ plannedMeals = [], loggedMeals = [
 
   const watchouts = [];
   if (review.suspectIngredients.length > 0) {
-    watchouts.push(`Vigilar ${review.suspectIngredients[0].name} por repeticion con malestar.`);
+    watchouts.push(`Vigilar ${review.suspectIngredients[0].name} por repetición con malestar.`);
   }
   if (review.variety.missingFamilies.length > 0) {
     watchouts.push(`Meter al menos una opcion de ${review.variety.missingFamilies[0]} en la semana.`);
   }
   if (review.repeatedMeals.length > 0) {
-    watchouts.push(`Romper la repeticion de ${review.repeatedMeals[0].name} con una alternativa simple.`);
+    watchouts.push(`Romper la repetición de ${review.repeatedMeals[0].name} con una alternativa simple.`);
   }
 
   const batchItems = [...repeatedRecipeBatches, ...familyPrep].slice(0, 6);

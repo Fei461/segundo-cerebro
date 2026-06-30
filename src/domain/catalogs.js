@@ -1,4 +1,4 @@
-export const TRAINING_TYPES = ["Fuerza", "Cardio", "Movilidad", "Recuperación", "Otro"];
+﻿export const TRAINING_TYPES = ["Fuerza", "Cardio", "Movilidad", "Recuperación", "Otro"];
 
 export const EXERCISE_LIBRARY = [
   "Sentadilla trasera",
@@ -8,11 +8,11 @@ export const EXERCISE_LIBRARY = [
   "Hip thrust",
   "Peso muerto rumano",
   "Peso muerto convencional",
-  "Buenos dias",
+  "Buenos días",
   "Zancadas",
   "Step up",
   "Curl femoral",
-  "Extension de cuadriceps",
+  "Extensión de cuádriceps",
   "Elevacion de gemelos",
   "Press banca",
   "Press inclinado",
@@ -26,7 +26,7 @@ export const EXERCISE_LIBRARY = [
   "Remo en polea",
   "Face pull",
   "Curl biceps",
-  "Extension triceps",
+  "Extensión tríceps",
   "Plancha",
   "Dead bug",
   "Pallof press",
@@ -42,7 +42,7 @@ export const EXERCISE_LIBRARY = [
   "Movilidad tobillo",
   "Movilidad hombro",
   "Estiramientos suaves",
-  "Respiracion diafragmatica"
+  "Respiración diafragmática"
 ];
 
 export const EXERCISE_LIBRARY_GROUPS = [
@@ -58,9 +58,9 @@ export const EXERCISE_LIBRARY_GROUPS = [
       "Prensa",
       "Zancadas",
       "Step up",
-      "Buenos dias",
+      "Buenos días",
       "Curl femoral",
-      "Extension de cuadriceps",
+      "Extensión de cuádriceps",
       "Elevacion de gemelos"
     ]
   },
@@ -79,7 +79,7 @@ export const EXERCISE_LIBRARY_GROUPS = [
       "Remo en polea",
       "Face pull",
       "Curl biceps",
-      "Extension triceps"
+      "Extensión tríceps"
     ]
   },
   {
@@ -110,7 +110,7 @@ export const EXERCISE_LIBRARY_GROUPS = [
       "Movilidad tobillo",
       "Movilidad hombro",
       "Estiramientos suaves",
-      "Respiracion diafragmatica"
+      "Respiración diafragmática"
     ]
   }
 ];
