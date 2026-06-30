@@ -427,10 +427,10 @@ export function renderNutritionFeature(state) {
     <section id="nutrition-panel" class="panel stack nutrition-panel">
       <div class="section-head">
         <div>
-          <p class="eyebrow">Nutrición</p>
-          <h3>Comer, planificar y repetir sin fricción</h3>
+          <p class="eyebrow">🍎 Nutrición</p>
+          <h3>Comer sin fricción</h3>
         </div>
-        <p class="muted">Registrar, planificar y preparar sin sentirlo como una hoja eterna.</p>
+        <p class="muted">Registrar, planificar y repetir.</p>
       </div>
 
       ${pageDock([
@@ -445,7 +445,7 @@ export function renderNutritionFeature(state) {
           <div class="section-head">
             <div>
               <p class="eyebrow">Hoy</p>
-              <h4>Comer y registrar sin fricción</h4>
+              <h4>Resumen rápido</h4>
             </div>
           </div>
           <section class="nutrition-summary compact-metrics">
@@ -472,28 +472,47 @@ export function renderNutritionFeature(state) {
               <p class="entry-meta">${variety.families.length ? variety.families.join(" - ") : "Aún sin familias detectadas esta semana"}</p>
             </article>
           </section>
-          <div class="stack">${mealItems(mealsToday)}</div>
+          ${collapsiblePanel("Registro", "Ver comidas guardadas", `<div class="stack">${mealItems(mealsToday)}</div>`)}
         </section>
 
         <section id="nutrition-planner" class="subpanel stack rail-card">
           <div class="section-head">
             <div>
               <p class="eyebrow">Planner</p>
-              <h4>Añadir al planner</h4>
+              <h4>Planner semanal</h4>
             </div>
           </div>
-          <form id="planner-form" class="stack">
-            <div class="field-grid planner-fields">
-              <label><span>Fecha</span><input name="date" type="date" value="${today}" required></label>
-              <label><span>Slot</span><input name="slot" value="Comida" required></label>
-              <label><span>Receta</span><select name="recipeId"><option value="">Libre</option>${recipeOptions(state.recipes)}</select></label>
-            </div>
-            <div class="field-grid">
-              <label><span>Nombre visible</span><input name="name" placeholder="Se autocompleta si eliges receta"></label>
-              <label><span>Kcal libres</span><input name="calories" type="number" step="1" value="0"></label>
-            </div>
-            <button class="primary" type="submit">Guardar en planner</button>
-          </form>
+          <section class="dashboard-summary compact-metrics">
+            <article class="summary-card">
+              <p class="eyebrow">Planner</p>
+              <p class="metric">${state.plans?.meals?.length || 0}</p>
+              <p class="entry-meta">comidas previstas</p>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Compra</p>
+              <p class="metric">${prepBoard.checklistTitles.length}</p>
+              <p class="entry-meta">acciones de compra y prep</p>
+            </article>
+          </section>
+          ${collapsiblePanel(
+            "Añadir comida",
+            "Guardar en planner",
+            `
+              <form id="planner-form" class="stack">
+                <div class="field-grid planner-fields">
+                  <label><span>Fecha</span><input name="date" type="date" value="${today}" required></label>
+                  <label><span>Slot</span><input name="slot" value="Comida" required></label>
+                  <label><span>Receta</span><select name="recipeId"><option value="">Libre</option>${recipeOptions(state.recipes)}</select></label>
+                </div>
+                <div class="field-grid">
+                  <label><span>Nombre visible</span><input name="name" placeholder="Se autocompleta si eliges receta"></label>
+                  <label><span>Kcal libres</span><input name="calories" type="number" step="1" value="0"></label>
+                </div>
+                <button class="primary" type="submit">Guardar en planner</button>
+              </form>
+            `,
+            false
+          )}
           ${collapsiblePanel(
             "Semana",
             "Ver planner semanal",
@@ -504,7 +523,7 @@ export function renderNutritionFeature(state) {
 
       ${collapsiblePanel(
         "Pack semanal",
-        "Semana nutricional",
+        "Pack semanal",
         `
           <section class="dashboard-summary compact-metrics">
             <article class="summary-card">
@@ -537,7 +556,7 @@ export function renderNutritionFeature(state) {
               <div class="section-head">
                 <div>
                   <p class="eyebrow">Batch cooking</p>
-                  <h4>Bloques recomendados</h4>
+                  <h4>Batch cooking</h4>
                 </div>
               </div>
               <div class="stack">${batchItemCards(prepBoard)}</div>
@@ -546,7 +565,7 @@ export function renderNutritionFeature(state) {
               <div class="section-head">
                 <div>
                   <p class="eyebrow">Montaje</p>
-                  <h4>Primeras comidas a cerrar</h4>
+                  <h4>Prioridades</h4>
                 </div>
               </div>
               <div class="stack">${priorityMealCards(prepBoard)}</div>
@@ -557,7 +576,7 @@ export function renderNutritionFeature(state) {
 
       ${collapsiblePanel(
         "Registrar hoy",
-        "Añadir comida manual",
+        "Comida manual",
         `
           <form id="meal-form" class="stack">
             <div class="field-grid">
@@ -570,16 +589,17 @@ export function renderNutritionFeature(state) {
               <label><span>Carbos</span><input name="carbs" type="number" step="0.1" value="0"></label>
               <label><span>Grasas</span><input name="fat" type="number" step="0.1" value="0"></label>
             </div>
-            <label><span>Postcomida</span><input name="reaction" placeholder="Ej. Hinchazón, Pesadez o Energía baja"></label>
+            <label><span>Postcomida</span><input name="reaction" placeholder="Ej. Hinchazón, pesadez o energía baja"></label>
             <button class="primary" type="submit">Guardar comida</button>
           </form>
-        `
+        `,
+        false
       )}
 
       <section class="fold-grid">
         ${collapsiblePanel(
           "Recetas",
-          "Guardar y reutilizar",
+          "Recetas guardadas",
           `
             <div id="nutrition-recipes" class="section-block"></div>
             <form id="recipe-form" class="stack">
@@ -599,7 +619,7 @@ export function renderNutritionFeature(state) {
 
         ${collapsiblePanel(
           "Despensa personal",
-          "Plantillas y fondo de armario",
+          "Despensa y plantillas",
           `
             <div id="nutrition-pantry" class="section-block"></div>
             <section class="dashboard-summary compact-metrics">
@@ -656,7 +676,7 @@ export function renderNutritionFeature(state) {
 
         ${collapsiblePanel(
           "Variedad y compra",
-          "Lectura semanal útil",
+          "Variedad y compra",
           `
             <div class="nutrition-grid">
               <section class="subpanel stack">
@@ -710,7 +730,7 @@ export function renderNutritionFeature(state) {
                 <div class="section-head">
                   <div>
                     <p class="eyebrow">Tolerancia</p>
-                    <h4>Ingredientes sospechosos</h4>
+                    <h4>Ingredientes a vigilar</h4>
                   </div>
                 </div>
                 <div class="stack">${reactionSignalItems(state)}</div>

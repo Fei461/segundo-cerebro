@@ -482,10 +482,10 @@ export function renderPlanningFeature(state) {
     <section id="planning-panel" class="panel stack">
       <div class="section-head">
         <div>
-          <p class="eyebrow">Semana</p>
-          <h3>Planificar, ajustar y cerrar la semana</h3>
+          <p class="eyebrow">🗓️ Semana</p>
+          <h3>Planificar la semana</h3>
         </div>
-        <p class="muted">Plan, huecos y reset en una sola vista.</p>
+        <p class="muted">Plan, huecos y reset.</p>
       </div>
 
       ${pageDock([
@@ -495,10 +495,15 @@ export function renderPlanningFeature(state) {
         { id: "planning-management", label: "Gestión" }
       ])}
 
-      ${collapsiblePanel(
-        "Semana preparada",
-        "Secuencia de reset",
-        `
+      <div id="planning-week" class="planning-focus-grid section-block">
+        <section id="planning-summary" class="subpanel stack rail-card planning-hero-card">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Semana real</p>
+              <h4>Centro operativo</h4>
+              <p class="entry-note">Plan, agenda y ejecución.</p>
+            </div>
+          </div>
           <section class="planning-summary compact-metrics">
             <article class="summary-card">
               <p class="eyebrow">Readiness</p>
@@ -506,73 +511,31 @@ export function renderPlanningFeature(state) {
               <p class="entry-meta">${preparationPack.headline}</p>
             </article>
             <article class="summary-card">
-              <p class="eyebrow">Checklist</p>
-              <p class="metric">${preparationPack.checklist.done}/${preparationPack.checklist.total}</p>
-              <p class="entry-meta">tareas del reset actual</p>
-            </article>
-            <article class="summary-card">
-              <p class="eyebrow">Sugerencias</p>
-              <p class="metric">${preparationPack.suggestions.length}</p>
-              <p class="entry-meta">acciones nuevas detectadas</p>
-            </article>
-            <article class="summary-card">
-              <p class="eyebrow">Foco</p>
-              <p class="metric">${preparationPack.nutritionReview.variety.covered}/${preparationPack.nutritionReview.variety.total}</p>
-              <p class="entry-meta">familias cubiertas</p>
-            </article>
-          </section>
-          ${preparationPackActions()}
-          <div class="stack">${preparationPackItems(preparationPack)}</div>
-        `,
-        false
-      )}
-
-      <div id="planning-week" class="planning-focus-grid section-block">
-        <section id="planning-summary" class="subpanel stack rail-card planning-hero-card">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Semana real</p>
-              <h4>Centro operativo</h4>
-              <p class="entry-note">Plan, agenda y ejecución en una sola lectura.</p>
-            </div>
-          </div>
-          <section class="planning-summary compact-metrics">
-            <article class="summary-card">
               <p class="eyebrow">Hoy</p>
-              <p class="metric">${eventsToday(state.calendar.events)} eventos</p>
-              <p class="entry-meta">agenda diaria</p>
+              <p class="metric">${eventsToday(state.calendar.events)}</p>
+              <p class="entry-meta">eventos en agenda</p>
             </article>
             <article class="summary-card">
-              <p class="eyebrow">Calendario</p>
-              <p class="metric">${state.calendar.events.length}</p>
-              <p class="entry-meta">eventos activos</p>
-            </article>
-            <article class="summary-card">
-              <p class="eyebrow">Horario</p>
-              <p class="metric">${state.schedule.blocks.length}</p>
-              <p class="entry-meta">bloques semanales</p>
-            </article>
-            <article class="summary-card">
-              <p class="eyebrow">Planner comida</p>
+              <p class="eyebrow">Comida</p>
               <p class="metric">${summary.plannedMeals}</p>
-              <p class="entry-meta">${summary.doneMeals} marcadas como hechas</p>
+              <p class="entry-meta">${summary.doneMeals} hechas</p>
             </article>
             <article class="summary-card">
-              <p class="eyebrow">Planner entreno</p>
+              <p class="eyebrow">Entreno</p>
               <p class="metric">${summary.plannedSessions}</p>
-              <p class="entry-meta">${summary.doneSessions} ejecutadas</p>
-            </article>
-            <article class="summary-card">
-              <p class="eyebrow">Registro real</p>
-              <p class="metric">${summary.loggedMeals}</p>
-              <p class="entry-meta">${summary.executedSessions} sesiones registradas</p>
+              <p class="entry-meta">${summary.doneSessions} hechos</p>
             </article>
             <article class="summary-card">
               <p class="eyebrow">Tolerancia</p>
               <p class="metric">${tolerance.mealsWithReaction}/${tolerance.meals}</p>
-              <p class="entry-meta">comidas con sensación postcomida registrada</p>
+              <p class="entry-meta">postcomidas registradas</p>
             </article>
           </section>
+          <div class="button-row button-row-start">
+            <button class="primary compact" data-action="apply-weekly-reset-routine">Aplicar reset</button>
+            <button class="ghost compact" data-action="apply-weekly-nutrition-pack">Pack nutricional</button>
+            <button class="ghost compact" data-action="apply-weekly-calibration-pack">Recalibrar</button>
+          </div>
         </section>
 
         <section class="subpanel stack rail-card">
@@ -586,7 +549,35 @@ export function renderPlanningFeature(state) {
         </section>
       </div>
 
-      <section id="planning-workflows" class="fold-grid section-block">
+      <div id="planning-workflows" class="section-block">
+        ${collapsiblePanel(
+          "Reset semanal",
+          "Secuencia de preparación",
+          `
+            <section class="planning-summary compact-metrics">
+              <article class="summary-card">
+                <p class="eyebrow">Checklist</p>
+                <p class="metric">${preparationPack.checklist.done}/${preparationPack.checklist.total}</p>
+                <p class="entry-meta">estado actual</p>
+              </article>
+              <article class="summary-card">
+                <p class="eyebrow">Sugerencias</p>
+                <p class="metric">${preparationPack.suggestions.length}</p>
+                <p class="entry-meta">acciones detectadas</p>
+              </article>
+              <article class="summary-card">
+                <p class="eyebrow">Variedad</p>
+                <p class="metric">${preparationPack.nutritionReview.variety.covered}/${preparationPack.nutritionReview.variety.total}</p>
+                <p class="entry-meta">familias cubiertas</p>
+              </article>
+            </section>
+            ${preparationPackActions()}
+            <div class="stack">${preparationPackItems(preparationPack)}</div>
+          `,
+          false
+        )}
+
+        <section class="fold-grid">
         ${collapsiblePanel(
           "Tablero semanal",
           "Ver los 7 días",
@@ -643,7 +634,8 @@ export function renderPlanningFeature(state) {
             <div class="stack">${reviewFlowItems(reviewFlow)}</div>
           `
         )}
-      </section>
+        </section>
+      </div>
 
       <div id="planning-management" class="section-block">
         ${collapsiblePanel(

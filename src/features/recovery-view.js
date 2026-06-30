@@ -18,14 +18,6 @@ function collapsiblePanel(eyebrow, title, body, open = false) {
   `;
 }
 
-function pageDock(items) {
-  return `
-    <nav class="page-dock" aria-label="Navegación de revisión">
-      ${items.map(item => `<a class="page-anchor" href="#${item.id}">${item.label}</a>`).join("")}
-    </nav>
-  `;
-}
-
 function recentSleepEntries(entries) {
   return Object.entries(entries || {})
     .sort((left, right) => right[0].localeCompare(left[0]))
@@ -50,8 +42,7 @@ function sleepItems(entries) {
         <article class="entry">
           <div>
             <p class="entry-title">${date}</p>
-            <p class="entry-meta">${Number(value.hours || 0).toFixed(1)} h - calidad ${value.quality || 3}/5</p>
-            ${value.notes ? `<p class="entry-note">${value.notes}</p>` : ""}
+            <p class="entry-meta">${Number(value.hours || 0).toFixed(1)} h · calidad ${value.quality || 3}/5</p>
           </div>
           <button class="ghost compact" data-action="delete-sleep" data-date="${date}">Eliminar</button>
         </article>
@@ -71,8 +62,7 @@ function calibrationDayItems(calibration) {
         <article class="entry">
           <div>
             <p class="entry-title">${day.date}</p>
-            <p class="entry-meta">${day.status} - presión ${day.pressureScore.toFixed(1)} - sueño ${day.sleepHours ? `${day.sleepHours.toFixed(1)} h` : "sin dato"}</p>
-            <p class="entry-note">${day.recommendation}</p>
+            <p class="entry-meta">${day.status} · presion ${day.pressureScore.toFixed(1)} · sueno ${day.sleepHours ? `${day.sleepHours.toFixed(1)} h` : "sin dato"}</p>
           </div>
         </article>
       `
@@ -88,20 +78,13 @@ export function renderRecoveryFeature(state) {
       <div class="section-head">
         <div>
           <p class="eyebrow">Revisión</p>
-          <h3>Descanso, presión y reajuste</h3>
+          <h3>Descanso y reajuste</h3>
         </div>
-        <p class="muted">Dormir, leer la carga y ajustar la semana desde un mismo sitio.</p>
+        <p class="muted">Dormir, leer carga y ajustar.</p>
       </div>
 
-      ${pageDock([
-        { id: "recovery-summary", label: "Resumen" },
-        { id: "recovery-log", label: "Registrar" },
-        { id: "recovery-read", label: "Lectura" },
-        { id: "recovery-history", label: "Historial" }
-      ])}
-
-      <div id="recovery-summary" class="recovery-focus-grid section-block">
-        <section id="recovery-read" class="subpanel stack rail-card panel-toned recovery-hero-card">
+      <div class="recovery-focus-grid section-block">
+        <section class="subpanel stack rail-card panel-toned recovery-hero-card">
           <div class="section-head">
             <div>
               <p class="eyebrow">Lectura semanal</p>
@@ -120,12 +103,12 @@ export function renderRecoveryFeature(state) {
               <p class="entry-meta">noches guardadas</p>
             </article>
             <article class="summary-card">
-              <p class="eyebrow">Días sobrecargados</p>
+              <p class="eyebrow">Sobrecarga</p>
               <p class="metric">${calibration.overloadedDays}</p>
               <p class="entry-meta">${calibration.watchDays} en vigilancia</p>
             </article>
             <article class="summary-card">
-              <p class="eyebrow">Ajuste clave</p>
+              <p class="eyebrow">Ajuste</p>
               <p class="metric">${calibration.topPressureDay?.date || "estable"}</p>
               <p class="entry-meta">${calibration.nextAdjustment}</p>
             </article>
@@ -134,41 +117,37 @@ export function renderRecoveryFeature(state) {
             <button class="ghost compact" data-action="apply-weekly-calibration-pack">Aplicar recalibración</button>
             <button class="ghost compact" data-action="save-weekly-calibration-note">Guardar nota</button>
           </div>
-          <article class="entry">
-            <div>
-              <p class="entry-title">Siguiente ajuste</p>
-              <p class="entry-meta">${calibration.nextAdjustment}</p>
-            </div>
-          </article>
-          <div class="stack">${calibrationDayItems(calibration)}</div>
+          ${collapsiblePanel("Detalle", "Días a vigilar", `<div class="stack">${calibrationDayItems(calibration)}</div>`)}
         </section>
 
-        <section id="recovery-log" class="subpanel stack rail-card">
+        <section class="subpanel stack rail-card">
           <div class="section-head">
             <div>
               <p class="eyebrow">Registrar</p>
               <h4>Nueva noche</h4>
             </div>
           </div>
-          <form id="sleep-form" class="stack">
-            <div class="field-grid">
-              <label><span>Fecha</span><input name="date" type="date" value="${todayKey()}" required></label>
-              <label><span>Horas</span><input name="hours" type="number" step="0.1" min="0" value="7.5" required></label>
-            </div>
-            <div class="field-grid">
-              <label><span>Calidad (1-5)</span><input name="quality" type="number" min="1" max="5" value="3" required></label>
-              <label><span>Hora de dormir</span><input name="sleepStart" type="time"></label>
-            </div>
-            <div class="field-grid">
-              <label><span>Hora de despertar</span><input name="sleepEnd" type="time"></label>
-              <label><span>Notas</span><input name="notes" placeholder="Cafeína, estrés, despertares..."></label>
-            </div>
-            <button class="primary" type="submit">Guardar noche</button>
-          </form>
+          ${collapsiblePanel(
+            "Sueño",
+            "Guardar noche",
+            `
+              <form id="sleep-form" class="stack">
+                <div class="field-grid">
+                  <label><span>Fecha</span><input name="date" type="date" value="${todayKey()}" required></label>
+                  <label><span>Horas</span><input name="hours" type="number" step="0.1" min="0" value="7.5" required></label>
+                </div>
+                <div class="field-grid">
+                  <label><span>Calidad (1-5)</span><input name="quality" type="number" min="1" max="5" value="3" required></label>
+                  <label><span>Nota</span><input name="notes" placeholder="Cafeína, estrés, despertares..."></label>
+                </div>
+                <button class="primary" type="submit">Guardar noche</button>
+              </form>
+            `
+          )}
         </section>
       </div>
 
-      <section id="recovery-history" class="fold-grid section-block">
+      <section class="fold-grid section-block">
         ${collapsiblePanel("Noches guardadas", "Ver historial reciente", `<div class="stack">${sleepItems(state.sleepEntries)}</div>`)}
       </section>
     </section>

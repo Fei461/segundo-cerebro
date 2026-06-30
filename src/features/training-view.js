@@ -1,14 +1,26 @@
-import { EXERCISE_LIBRARY, EXERCISE_LIBRARY_GROUPS, TRAINING_TYPES } from "../domain/catalogs.js";
 import { getWeeklyHealthInsights } from "../domain/insights.js";
-import { getUpcomingPlannedSessions } from "../domain/plans.js";
-import { formatPlanStatus, formatSuggestionReason } from "../ui/formatters.js";
+import { getPlannedSessions } from "../domain/plans.js";
+import { formatCycleContextLabel } from "../ui/formatters.js";
+
+const TRAINING_TYPES = ["Fuerza", "Cardio", "Movilidad", "Recuperacion"];
+const EXERCISE_LIBRARY = [
+  "Hip thrust",
+  "Sentadilla",
+  "Peso muerto rumano",
+  "Prensa",
+  "Remo",
+  "Jalon al pecho",
+  "Press banca",
+  "Press militar",
+  "Core",
+  "Running",
+  "Bici",
+  "Pilates",
+  "Movilidad cadera"
+];
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function formatNumber(value) {
-  return Number(value || 0).toFixed(0);
 }
 
 function collapsiblePanel(eyebrow, title, body, open = false) {
@@ -25,72 +37,54 @@ function collapsiblePanel(eyebrow, title, body, open = false) {
   `;
 }
 
-function pageDock(items) {
-  return `
-    <nav class="page-dock" aria-label="Navegación de entreno">
-      ${items.map(item => `<a class="page-anchor" href="#${item.id}">${item.label}</a>`).join("")}
-    </nav>
-  `;
-}
-
 function weeklyTotals(sessions) {
-  const today = new Date();
-  const minDate = new Date(today);
-  minDate.setDate(today.getDate() - 6);
-  const minKey = minDate.toISOString().slice(0, 10);
+  const keys = new Set();
+  const base = new Date();
+  for (let index = 0; index < 7; index += 1) {
+    const day = new Date(base);
+    day.setDate(base.getDate() - index);
+    keys.add(day.toISOString().slice(0, 10));
+  }
 
   return sessions
-    .filter(session => session.date >= minKey)
+    .filter(session => keys.has(session.date))
     .reduce(
-      (accumulator, session) => ({
-        count: accumulator.count + 1,
-        minutes: accumulator.minutes + Number(session.duration || 0),
-        load: accumulator.load + Number(session.loadKg || 0),
-        distance: accumulator.distance + Number(session.distanceKm || 0)
+      (totals, session) => ({
+        count: totals.count + 1,
+        minutes: totals.minutes + Number(session.duration || 0),
+        load: totals.load + Number(session.loadKg || 0),
+        distance: totals.distance + Number(session.distanceKm || 0)
       }),
       { count: 0, minutes: 0, load: 0, distance: 0 }
     );
 }
 
-function sessionItems(sessions) {
+function upcomingSessions(state) {
+  const today = todayKey();
+  return getPlannedSessions(state)
+    .filter(session => session.date >= today)
+    .sort((left, right) => `${left.date}-${left.type}`.localeCompare(`${right.date}-${right.type}`));
+}
+
+function recentSessionItems(items) {
+  const sessions = items
+    .slice()
+    .sort((left, right) => `${right.date}-${right.type}`.localeCompare(`${left.date}-${left.type}`))
+    .slice(0, 5);
+
   if (sessions.length === 0) {
-    return `<p class="muted">Todavía no hay sesiones registradas en esta nueva app.</p>`;
+    return `<p class="muted">Aún no hay sesiones registradas.</p>`;
   }
 
   return sessions
-    .slice()
-    .sort((left, right) => String(right.date).localeCompare(String(left.date)))
-    .slice(0, 8)
     .map(
       session => `
         <article class="entry">
           <div>
-            <p class="entry-title">${session.date} - ${session.type} - ${session.activity || "sin detalle"}</p>
-            <p class="entry-meta">${formatNumber(session.duration)} min${session.rpe ? ` - RPE ${session.rpe}` : ""}${session.loadKg ? ` - ${formatNumber(session.loadKg)} kg` : ""}${session.distanceKm ? ` - ${session.distanceKm} km` : ""}</p>
-            <p class="entry-note">Energía ${session.preEnergy ?? "-"} - Recuperación ${session.recoveryScore ?? "-"} - Molestias ${session.sorenessScore ?? "-"}</p>
-            ${session.notes ? `<p class="entry-note">${session.notes}</p>` : ""}
+            <p class="entry-title">${session.date} · ${session.type}</p>
+            <p class="entry-meta">${session.activity} · ${session.duration} min${session.rpe ? ` · RPE ${session.rpe}` : ""}</p>
           </div>
-          <button class="ghost compact" data-action="delete-session" data-id="${session.id}">Eliminar</button>
-        </article>
-      `
-    )
-    .join("");
-}
-
-function routineItems(routines) {
-  if (routines.length === 0) {
-    return `<p class="muted">Todavía no has guardado rutinas base.</p>`;
-  }
-
-  return routines
-    .map(
-      routine => `
-        <article class="entry">
-          <div>
-            <p class="entry-title">${routine.name}</p>
-            <p class="entry-meta">${routine.focus || "Sin foco"} - ${routine.exercises || ""}</p>
-          </div>
-          <button class="ghost compact" data-action="delete-routine" data-id="${routine.id}">Eliminar</button>
+          <button class="ghost compact" data-action="delete-training" data-id="${session.id}">Eliminar</button>
         </article>
       `
     )
@@ -98,26 +92,23 @@ function routineItems(routines) {
 }
 
 function plannedSessionItems(state) {
-  const plannedSessions = getUpcomingPlannedSessions(state);
-  if (plannedSessions.length === 0) {
-    return `<p class="muted">Todavía no hay sesiones futuras programadas.</p>`;
+  const items = upcomingSessions(state);
+  if (items.length === 0) {
+    return `<p class="muted">Aún no hay sesiones programadas.</p>`;
   }
 
-  return plannedSessions
-    .slice(0, 8)
+  return items
+    .slice(0, 6)
     .map(
-      session => `
+      item => `
         <article class="entry">
           <div>
-            <p class="entry-title">${session.date} - ${session.type} - ${session.activity}</p>
-            <p class="entry-meta">${formatNumber(session.duration)} min${session.routineName ? ` - ${session.routineName}` : ""} - ${formatPlanStatus(session.status)}</p>
-            ${session.reason ? `<p class="entry-note">Sugerencia generada por: ${formatSuggestionReason(session.reason)}</p>` : ""}
-            ${session.notes ? `<p class="entry-note">${session.notes}</p>` : ""}
+            <p class="entry-title">${item.date} · ${item.type}</p>
+            <p class="entry-meta">${item.activity} · ${item.duration} min · ${item.status || "planned"}</p>
           </div>
           <div class="button-row">
-            <button class="primary compact" data-action="complete-planned-session" data-id="${session.id}">Ejecutar</button>
-            <button class="ghost compact" data-action="cycle-planned-session-status" data-id="${session.id}">Estado</button>
-            <button class="ghost compact" data-action="delete-planned-session" data-id="${session.id}">Eliminar</button>
+            <button class="ghost compact" data-action="cycle-planned-session-status" data-id="${item.id}" data-status="done">Hecho</button>
+            <button class="ghost compact" data-action="cycle-planned-session-status" data-id="${item.id}" data-status="skipped">Omitir</button>
           </div>
         </article>
       `
@@ -125,67 +116,71 @@ function plannedSessionItems(state) {
     .join("");
 }
 
-function libraryGroupItems() {
-  return EXERCISE_LIBRARY_GROUPS.map(
-    group => `
-      <article class="summary-card">
-        <p class="eyebrow">${group.title}</p>
-        <p class="entry-meta">${group.items.slice(0, 6).join(" - ")}</p>
-      </article>
-    `
-  ).join("");
-}
-
-function weeklyCrossSignals(state) {
-  const health = getWeeklyHealthInsights(state);
-  const signals = health.signals
-    .filter(signal => ["training", "training-energy", "fatigue", "recovery", "cycle-phase"].includes(signal.kind))
-    .slice(0, 4);
-
-  if (signals.length === 0) {
-    return `<p class="muted">Aún no hay suficientes cruces entre entreno, recuperación y ciclo para una lectura semanal potente.</p>`;
+function routineItems(items) {
+  if (items.length === 0) {
+    return `<p class="muted">Aún no hay rutinas guardadas.</p>`;
   }
 
-  return signals
+  return items
     .map(
-      signal => `
+      item => `
         <article class="entry">
           <div>
-            <p class="entry-title">${signal.title}</p>
-            <p class="entry-meta">${signal.detail}</p>
+            <p class="entry-title">${item.name}</p>
+            <p class="entry-meta">${item.focus}</p>
           </div>
+          <button class="ghost compact" data-action="delete-routine" data-id="${item.id}">Eliminar</button>
         </article>
       `
     )
     .join("");
+}
+
+function libraryItems() {
+  return [
+    { title: "Fuerza", items: EXERCISE_LIBRARY.slice(0, 8) },
+    { title: "Cardio", items: EXERCISE_LIBRARY.slice(8, 11) },
+    { title: "Movilidad", items: EXERCISE_LIBRARY.slice(11) }
+  ]
+    .map(
+      group => `
+        <article class="summary-card">
+          <p class="eyebrow">${group.title}</p>
+          <p class="entry-meta">${group.items.join(" · ")}</p>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function crossSignals(state) {
+  const health = getWeeklyHealthInsights(state);
+  const items = [
+    `Ciclo: ${formatCycleContextLabel(health.cycleContext)}`,
+    `Señales activas: ${health.signals.length}`,
+    `Recuperación baja: ${health.signals.filter(signal => signal.kind === "recovery").length}`,
+    `Energía media: ${health.avgEnergy ? health.avgEnergy.toFixed(1) : "-"} / 5`
+  ];
+
+  return items.map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`).join("");
 }
 
 export function renderTrainingFeature(state) {
   const totals = weeklyTotals(state.training.sessions);
   const typeOptions = TRAINING_TYPES.map(type => `<option value="${type}">${type}</option>`).join("");
   const exerciseOptions = EXERCISE_LIBRARY.map(exercise => `<option value="${exercise}"></option>`).join("");
-  const plannedCount = getUpcomingPlannedSessions(state).length;
 
   return `
     <section id="training-panel" class="panel stack">
       <div class="section-head">
         <div>
           <p class="eyebrow">Entreno</p>
-          <h3>Entrenar, programar y leer carga</h3>
+          <h3>Entrenar sin ruido</h3>
         </div>
-        <p class="muted">Registro simple, semana visible y relación clara con recuperación y ciclo.</p>
+        <p class="muted">Registrar, programar y leer carga.</p>
       </div>
 
-      ${pageDock([
-        { id: "training-summary", label: "Resumen" },
-        { id: "training-capture", label: "Registrar" },
-        { id: "training-planned", label: "Programadas" },
-        { id: "training-library", label: "Biblioteca" }
-      ])}
-
-      ${collapsiblePanel("Lectura cruzada", "Entreno, recuperación y ciclo", `<div class="stack">${weeklyCrossSignals(state)}</div>`)}
-
-      <div id="training-summary" class="training-focus-grid section-block">
+      <div class="training-focus-grid section-block">
         <section class="subpanel stack rail-card training-hero-card">
           <div class="section-head">
             <div>
@@ -195,110 +190,103 @@ export function renderTrainingFeature(state) {
           </div>
           <section class="training-summary compact-metrics">
             <article class="summary-card">
-              <p class="eyebrow">7 días</p>
-              <p class="metric">${totals.count} sesiones</p>
-              <p class="entry-meta">${formatNumber(totals.minutes)} min</p>
+              <p class="eyebrow">7 dias</p>
+              <p class="metric">${totals.count}</p>
+              <p class="entry-meta">${totals.minutes} min</p>
             </article>
             <article class="summary-card">
               <p class="eyebrow">Carga</p>
-              <p class="metric">${formatNumber(totals.load)} kg</p>
-              <p class="entry-meta">volumen simple semanal</p>
+              <p class="metric">${totals.load}</p>
+              <p class="entry-meta">kg movidos</p>
             </article>
             <article class="summary-card">
               <p class="eyebrow">Cardio</p>
-              <p class="metric">${Number(totals.distance || 0).toFixed(1)} km</p>
-              <p class="entry-meta">distancia semanal</p>
+              <p class="metric">${Number(totals.distance || 0).toFixed(1)}</p>
+              <p class="entry-meta">km</p>
             </article>
             <article class="summary-card">
               <p class="eyebrow">Programadas</p>
-              <p class="metric">${plannedCount}</p>
-              <p class="entry-meta">sesiones futuras activas</p>
+              <p class="metric">${upcomingSessions(state).length}</p>
+              <p class="entry-meta">sesiones futuras</p>
             </article>
           </section>
-          ${collapsiblePanel("Reciente", "Últimas sesiones", `<div class="stack">${sessionItems(state.training.sessions)}</div>`)}
+          ${collapsiblePanel("Lectura cruzada", "Entreno, recuperacion y ciclo", `<div class="stack">${crossSignals(state)}</div>`)}
+          ${collapsiblePanel("Reciente", "Ultimas sesiones", `<div class="stack">${recentSessionItems(state.training.sessions)}</div>`)}
         </section>
 
-        <section id="training-capture" class="subpanel stack rail-card">
+        <section class="subpanel stack rail-card">
           <div class="section-head">
             <div>
               <p class="eyebrow">Registrar</p>
-              <h4>Nueva sesión</h4>
+              <h4>Acciones rápidas</h4>
             </div>
           </div>
-          <form id="training-form" class="stack">
-            <div class="field-grid">
-              <label><span>Fecha</span><input name="date" type="date" value="${todayKey()}" required></label>
-              <label><span>Tipo</span><select name="type" required>${typeOptions}</select></label>
-            </div>
-            <div class="field-grid">
-              <label><span>Actividad</span><input name="activity" list="exercise-library" placeholder="Ej. hip thrust o running" required></label>
-              <label><span>Duración (min)</span><input name="duration" type="number" step="1" min="0" value="60" required></label>
-            </div>
-            <datalist id="exercise-library">${exerciseOptions}</datalist>
-            <div class="field-grid four">
-              <label><span>RPE</span><input name="rpe" type="number" step="1" min="1" max="10" value="7"></label>
-              <label><span>Carga kg</span><input name="loadKg" type="number" step="1" min="0" value="0"></label>
-              <label><span>Distancia km</span><input name="distanceKm" type="number" step="0.1" min="0" value="0"></label>
-              <label><span>Rutina usada</span><input name="routineName" placeholder="Opcional"></label>
-            </div>
-            <div class="field-grid">
-              <label><span>Energía previa (1-5)</span><input name="preEnergy" type="number" min="1" max="5" value="3"></label>
-              <label><span>Recuperación (1-5)</span><input name="recoveryScore" type="number" min="1" max="5" value="3"></label>
-            </div>
-            <div class="field-grid">
-              <label><span>Molestias (1-5)</span><input name="sorenessScore" type="number" min="1" max="5" value="1"></label>
-              <label><span>Notas</span><input name="notes" placeholder="Sensaciones, molestias, contexto..."></label>
-            </div>
-            <button class="primary" type="submit">Guardar sesión</button>
-          </form>
-
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Programar</p>
-              <h4>Sesión futura</h4>
-            </div>
-          </div>
-          <form id="planned-session-form" class="stack">
-            <div class="field-grid">
-              <label><span>Fecha</span><input name="date" type="date" value="${todayKey()}" required></label>
-              <label><span>Tipo</span><select name="type" required>${typeOptions}</select></label>
-            </div>
-            <div class="field-grid">
-              <label><span>Actividad</span><input name="activity" list="exercise-library" placeholder="Ej. upper, running suave..." required></label>
-              <label><span>Duración (min)</span><input name="duration" type="number" step="1" min="1" value="60" required></label>
-            </div>
-            <div class="field-grid">
-              <label><span>Rutina base</span><input name="routineName" placeholder="Opcional"></label>
-              <label><span>Estado</span><select name="status"><option value="planned">Previsto</option><option value="partial">Parcial</option><option value="skipped">Omitido</option><option value="done">Hecho</option></select></label>
-            </div>
-            <label><span>Notas</span><textarea name="notes" rows="3" placeholder="Objetivo, sensaciones esperadas, recordatorios..."></textarea></label>
-            <button class="primary" type="submit">Programar sesión</button>
-          </form>
+          <datalist id="exercise-library">${exerciseOptions}</datalist>
+          ${collapsiblePanel(
+            "Nueva sesión",
+            "Guardar sesión",
+            `
+              <form id="training-form" class="stack">
+                <div class="field-grid">
+                  <label><span>Fecha</span><input name="date" type="date" value="${todayKey()}" required></label>
+                  <label><span>Tipo</span><select name="type" required>${typeOptions}</select></label>
+                </div>
+                <div class="field-grid">
+                  <label><span>Actividad</span><input name="activity" list="exercise-library" placeholder="Ej. running o sentadilla" required></label>
+                  <label><span>Duración (min)</span><input name="duration" type="number" step="1" min="0" value="60" required></label>
+                </div>
+                <div class="field-grid four">
+                  <label><span>RPE</span><input name="rpe" type="number" step="1" min="1" max="10" value="7"></label>
+                  <label><span>Carga kg</span><input name="loadKg" type="number" step="1" min="0" value="0"></label>
+                  <label><span>Distancia km</span><input name="distanceKm" type="number" step="0.1" min="0" value="0"></label>
+                  <label><span>Rutina</span><input name="routineName" placeholder="Opcional"></label>
+                </div>
+                <button class="primary" type="submit">Guardar sesión</button>
+              </form>
+            `
+          )}
+          ${collapsiblePanel(
+            "Programar",
+            "Crear sesión futura",
+            `
+              <form id="planned-session-form" class="stack">
+                <div class="field-grid">
+                  <label><span>Fecha</span><input name="date" type="date" value="${todayKey()}" required></label>
+                  <label><span>Tipo</span><select name="type" required>${typeOptions}</select></label>
+                </div>
+                <div class="field-grid">
+                  <label><span>Actividad</span><input name="activity" list="exercise-library" placeholder="Ej. upper o movilidad" required></label>
+                  <label><span>Duración (min)</span><input name="duration" type="number" step="1" min="1" value="60" required></label>
+                </div>
+                <div class="field-grid">
+                  <label><span>Rutina base</span><input name="routineName" placeholder="Opcional"></label>
+                  <label><span>Estado</span><select name="status"><option value="planned">Previsto</option><option value="partial">Parcial</option><option value="done">Hecho</option><option value="skipped">Omitido</option></select></label>
+                </div>
+                <label><span>Notas</span><input name="notes" placeholder="Objetivo o ajuste"></label>
+                <button class="primary" type="submit">Programar sesión</button>
+              </form>
+            `
+          )}
         </section>
       </div>
 
       <section class="fold-grid section-block">
-        <div id="training-planned">
-          ${collapsiblePanel("Programadas", "Sesiones futuras", `<div class="stack">${plannedSessionItems(state)}</div>`)}
-        </div>
+        ${collapsiblePanel("Programadas", "Sesiones futuras", `<div class="stack">${plannedSessionItems(state)}</div>`)}
         ${collapsiblePanel(
           "Rutinas",
           "Guardar base reutilizable",
           `
             <form id="routine-form" class="stack">
               <div class="field-grid">
-                <label><span>Nombre</span><input name="name" placeholder="Ej. Lower A" required></label>
-                <label><span>Foco</span><input name="focus" placeholder="Glúteo, espalda, cardio..." required></label>
+                <label><span>Nombre</span><input name="name" placeholder="Ej. Pierna A" required></label>
+                <label><span>Enfoque</span><input name="focus" placeholder="Fuerza gluteo, cardio..." required></label>
               </div>
-              <label><span>Ejercicios</span><textarea name="exercises" rows="4" placeholder="Una línea por ejercicio o estructura de la sesión"></textarea></label>
               <button class="primary" type="submit">Guardar rutina</button>
             </form>
             <div class="stack">${routineItems(state.training.routines)}</div>
           `
         )}
-        <div id="training-library">
-          ${collapsiblePanel("Biblioteca V1", "Ejercicios base", `<section class="dashboard-summary">${libraryGroupItems()}</section>`)}
-        </div>
+        ${collapsiblePanel("Biblioteca V1", "Ejercicios base", `<section class="dashboard-summary">${libraryItems()}</section>`)}
       </section>
     </section>
   `;

@@ -25,18 +25,10 @@ function collapsiblePanel(eyebrow, title, body, open = false) {
   `;
 }
 
-function pageDock(items) {
-  return `
-    <nav class="page-dock" aria-label="Navegación de salud">
-      ${items.map(item => `<a class="page-anchor" href="#${item.id}">${item.label}</a>`).join("")}
-    </nav>
-  `;
-}
-
 function recentSymptoms(symptomLog) {
   return Object.entries(symptomLog || {})
     .sort((left, right) => right[0].localeCompare(left[0]))
-    .slice(0, 10);
+    .slice(0, 8);
 }
 
 function medicationToday(medication, date) {
@@ -49,7 +41,7 @@ function medicationToday(medication, date) {
 function renderSymptoms(symptomLog) {
   const entries = recentSymptoms(symptomLog);
   if (entries.length === 0) {
-    return `<p class="muted">Aún no has registrado síntomas en la nueva app.</p>`;
+    return `<p class="muted">Aún no has registrado síntomas.</p>`;
   }
 
   return entries
@@ -58,9 +50,7 @@ function renderSymptoms(symptomLog) {
         <article class="entry">
           <div>
             <p class="entry-title">${date}</p>
-            <p class="entry-meta">${items.map(item => `${item.name} (${item.intensity}/5)`).join(" - ")}</p>
-            <p class="entry-note">${items.map(item => `E ${item.energy ?? "-"} - A ${item.mood ?? "-"} - D ${item.digestion || "-"}`).join(" - ")}</p>
-            ${items.some(item => item.note) ? `<p class="entry-note">${items.map(item => item.note).filter(Boolean).join(" - ")}</p>` : ""}
+            <p class="entry-meta">${items.map(item => `${item.name} (${item.intensity}/5)`).join(" · ")}</p>
           </div>
         </article>
       `
@@ -80,7 +70,7 @@ function renderMedications(medication) {
         <article class="entry">
           <div>
             <p class="entry-title">${med.name}</p>
-            <p class="entry-meta">${med.dose || "sin dosis"}${med.notes ? ` - ${med.notes}` : ""}</p>
+            <p class="entry-meta">${med.dose || "sin dosis"}${med.notes ? ` · ${med.notes}` : ""}</p>
           </div>
           <div class="button-row">
             <button class="${med.taken ? "primary" : "ghost"} compact" data-action="toggle-med" data-id="${med.id}">${med.taken ? "Tomado hoy" : "Marcar hoy"}</button>
@@ -97,7 +87,7 @@ function renderSymptomGroups() {
     group => `
       <article class="summary-card">
         <p class="eyebrow">${group.title}</p>
-        <p class="entry-meta">${group.items.slice(0, 6).join(" - ")}</p>
+        <p class="entry-meta">${group.items.slice(0, 6).join(" · ")}</p>
       </article>
     `
   ).join("");
@@ -105,20 +95,10 @@ function renderSymptomGroups() {
 
 function renderSupportSuggestions(suggestions) {
   if (suggestions.length === 0) {
-    return `<p class="muted">Aún faltan datos para sugerencias por fase, pero la estructura ya está preparada.</p>`;
+    return `<p class="muted">Aún faltan datos para sugerencias por fase.</p>`;
   }
 
-  return suggestions
-    .map(
-      item => `
-        <article class="entry">
-          <div>
-            <p class="entry-title">${item}</p>
-          </div>
-        </article>
-      `
-    )
-    .join("");
+  return suggestions.map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`).join("");
 }
 
 export function renderWellbeingFeature(state) {
@@ -140,22 +120,15 @@ export function renderWellbeingFeature(state) {
       <div class="section-head">
         <div>
           <p class="eyebrow">Salud</p>
-          <h3>Ciclo, síntomas y soporte diario</h3>
+          <h3>Ciclo y síntomas</h3>
         </div>
-        <p class="muted">Captura rápida y lectura transversal sin convertirlo en un módulo pesado.</p>
+        <p class="muted">Captura rápida y lectura simple.</p>
       </div>
 
-      ${pageDock([
-        { id: "wellbeing-summary", label: "Resumen" },
-        { id: "wellbeing-capture", label: "Registrar" },
-        { id: "wellbeing-support", label: "Soporte" },
-        { id: "wellbeing-history", label: "Historial" }
-      ])}
-
-      <section id="wellbeing-summary" class="wellbeing-summary compact-metrics section-block">
+      <section class="wellbeing-summary compact-metrics section-block">
         <article class="summary-card">
           <p class="eyebrow">Ciclo</p>
-          <p class="metric">${state.cycle.periodDays.length} días</p>
+          <p class="metric">${state.cycle.periodDays.length}</p>
           <button class="${periodToday ? "primary" : "ghost"} compact" data-action="toggle-period">${periodToday ? "Quitar hoy" : "Marcar hoy"}</button>
         </article>
         <article class="summary-card">
@@ -175,95 +148,78 @@ export function renderWellbeingFeature(state) {
         </article>
       </section>
 
-      <div id="wellbeing-support" class="section-block">
-        ${collapsiblePanel(
-          "Lectura y soporte",
-          "Ciclo, energía y sugerencias",
-          `
-            <section class="subpanel stack panel-toned">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">Lectura transversal</p>
-                  <h4>Cómo está afectando a la semana</h4>
-                </div>
-              </div>
-              <div class="stack">
-                <article class="entry">
-                  <div>
-                    <p class="entry-title">Fase y contexto</p>
-                    <p class="entry-meta">${weeklyHealth.cycleContext.label}</p>
-                    <p class="entry-note">${cycleSignals.length ? cycleSignals.join(" - ") : "Sin señales dominantes esta semana."}</p>
-                  </div>
-                </article>
-                <article class="entry">
-                  <div>
-                    <p class="entry-title">Digestión y energía</p>
-                    <p class="entry-meta">${weeklyHealth.digestionHeavyCount} registros digestivos pesados - energía media ${weeklyHealth.avgEnergy ? weeklyHealth.avgEnergy.toFixed(1) : "-"}/5</p>
-                    <p class="entry-note">${weeklyHealth.avgMood ? `Ánimo medio ${weeklyHealth.avgMood.toFixed(1)}/5` : "Aún faltan datos de ánimo."}</p>
-                  </div>
-                </article>
-              </div>
-            </section>
-            <section class="subpanel stack panel-toned">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">Soporte por fase</p>
-                  <h4>Sugerencias accionables para hoy y la semana</h4>
-                </div>
-              </div>
-              <div class="stack">${renderSupportSuggestions(supportSuggestions)}</div>
-            </section>
-          `
-        )}
-      </div>
-
-      <div id="wellbeing-capture" class="training-grid section-block">
+      <div class="training-grid section-block">
         <section class="subpanel stack rail-card">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Síntomas</p>
-              <h4>Registrar síntoma</h4>
+              <p class="eyebrow">Lectura y soporte</p>
+              <h4>Ciclo, energía y sugerencias</h4>
             </div>
           </div>
-          <form id="symptom-form" class="stack">
-            <div class="field-grid">
-              <label><span>Fecha</span><input name="date" type="date" value="${today}" required></label>
-              <label><span>Síntoma</span><input name="name" list="cycle-symptom-library" placeholder="Ej. cólicos o dolor ovulatorio" required></label>
+          <article class="entry">
+            <div>
+              <p class="entry-title">Fase y señales</p>
+              <p class="entry-meta">${weeklyHealth.cycleContext.label}</p>
+              <p class="entry-note">${cycleSignals.length ? cycleSignals.join(" · ") : "Sin señales dominantes esta semana."}</p>
             </div>
-            <datalist id="cycle-symptom-library">${symptomOptions}</datalist>
-            <div class="field-grid">
-              <label><span>Intensidad (1-5)</span><input name="intensity" type="number" min="1" max="5" value="3" required></label>
-              <label><span>Digestión</span><select name="digestion"><option value="">Opcional</option>${digestionOptions}</select></label>
+          </article>
+          <article class="entry">
+            <div>
+              <p class="entry-title">Sugerencias accionables para hoy y la semana</p>
             </div>
-            <div class="field-grid">
-              <label><span>Energía (1-5)</span><select name="energy"><option value="">Opcional</option>${energyOptions}</select></label>
-              <label><span>Ánimo (1-5)</span><select name="mood"><option value="">Opcional</option>${moodOptions}</select></label>
-            </div>
-            <label><span>Nota</span><input name="note" placeholder="Opcional"></label>
-            <button class="primary" type="submit">Guardar síntoma</button>
-          </form>
+          </article>
+          <div class="stack">${renderSupportSuggestions(supportSuggestions)}</div>
         </section>
 
         <section class="subpanel stack rail-card">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Medicación</p>
-              <h4>Gestión diaria</h4>
+              <p class="eyebrow">Registrar</p>
+              <h4>Captura rápida</h4>
             </div>
           </div>
-          <form id="med-form" class="stack">
-            <div class="field-grid">
-              <label><span>Nombre</span><input name="name" placeholder="Ej. Magnesio" required></label>
-              <label><span>Dosis</span><input name="dose" placeholder="Ej. 1 cápsula"></label>
-            </div>
-            <label><span>Notas</span><input name="notes" placeholder="Horario, pauta o aclaración"></label>
-            <button class="primary" type="submit">Guardar medicación</button>
-          </form>
+          <datalist id="cycle-symptom-library">${symptomOptions}</datalist>
+          ${collapsiblePanel(
+            "Síntoma",
+            "Guardar síntoma",
+            `
+              <form id="symptom-form" class="stack">
+                <div class="field-grid">
+                  <label><span>Fecha</span><input name="date" type="date" value="${today}" required></label>
+                  <label><span>Síntoma</span><input name="name" list="cycle-symptom-library" placeholder="Ej. cólicos o dolor ovulatorio" required></label>
+                </div>
+                <div class="field-grid">
+                  <label><span>Intensidad (1-5)</span><input name="intensity" type="number" min="1" max="5" value="3" required></label>
+                  <label><span>Digestión</span><select name="digestion"><option value="">Opcional</option>${digestionOptions}</select></label>
+                </div>
+                <div class="field-grid">
+                  <label><span>Energía (1-5)</span><select name="energy"><option value="">Opcional</option>${energyOptions}</select></label>
+                  <label><span>Ánimo (1-5)</span><select name="mood"><option value="">Opcional</option>${moodOptions}</select></label>
+                </div>
+                <label><span>Nota</span><input name="note" placeholder="Opcional"></label>
+                <button class="primary" type="submit">Guardar síntoma</button>
+              </form>
+            `
+          )}
+          ${collapsiblePanel(
+            "Medicación",
+            "Añadir medicación",
+            `
+              <form id="med-form" class="stack">
+                <div class="field-grid">
+                  <label><span>Nombre</span><input name="name" placeholder="Ej. Magnesio" required></label>
+                  <label><span>Dosis</span><input name="dose" placeholder="Ej. 1 cápsula"></label>
+                </div>
+                <label><span>Notas</span><input name="notes" placeholder="Horario o aclaración"></label>
+                <button class="primary" type="submit">Guardar medicación</button>
+              </form>
+            `
+          )}
           <div class="stack">${renderMedications(state.medication)}</div>
         </section>
       </div>
 
-      <section id="wellbeing-history" class="fold-grid section-block">
+      <section class="fold-grid section-block">
         ${collapsiblePanel("Últimos síntomas", "Ver registros", `<div class="stack">${renderSymptoms(state.cycle.symptomLog)}</div>`)}
         ${collapsiblePanel("Biblioteca V1", "Síntomas base y familias operativas", `<section class="dashboard-summary">${renderSymptomGroups()}</section>`)}
       </section>
