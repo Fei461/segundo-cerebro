@@ -82,6 +82,22 @@ function renderResetVaultButton(label = "Restablecer este contexto") {
   return `<button id="reset-vault-button" class="ghost compact" type="button">${label}</button>`;
 }
 
+function renderAuthSecondaryActions(content) {
+  return `
+    <details class="panel panel-toned disclosure-panel auth-secondary-panel">
+      <summary class="disclosure-summary">
+        <div>
+          <p class="eyebrow">Opciones</p>
+          <h4>Backup y contexto</h4>
+        </div>
+      </summary>
+      <div class="stack disclosure-body">
+        ${content}
+      </div>
+    </details>
+  `;
+}
+
 function renderSurface(viewModel) {
   const activeTab = viewModel.currentTab || "home";
   const { state } = viewModel;
@@ -148,9 +164,9 @@ export function renderApp(container, viewModel) {
     container.innerHTML = `
       <main class="screen centered">
         <section class="panel auth-panel">
-          <p class="eyebrow">Nuevo vault local</p>
-          <h1>Crear acceso seguro</h1>
-          <p class="muted">Esta base guarda tu información sensible cifrada solo en este navegador o acceso directo.</p>
+          <p class="eyebrow">🔐 Nuevo vault local</p>
+          <h1>Crear acceso</h1>
+          <p class="muted">Tus datos quedan cifrados en este dispositivo.</p>
           <p class="shell-note">${renderContextHint(viewModel)}</p>
           <form id="setup-form" class="stack">
             <label>
@@ -163,11 +179,13 @@ export function renderApp(container, viewModel) {
             </label>
             <button class="primary" type="submit">Crear vault</button>
           </form>
-          <div class="button-row button-row-start">
-            ${renderImportCta()}
-            ${vaultHealth === "incomplete" ? renderResetVaultButton("Limpiar contexto roto") : ""}
-          </div>
-          <p class="muted">Si tu vault vive en el acceso directo del iPhone, exporta allí un backup cifrado e impórtalo aquí.</p>
+          ${renderAuthSecondaryActions(`
+            <p class="muted">Si vienes de otro contexto, importa un backup cifrado.</p>
+            <div class="button-row button-row-start">
+              ${renderImportCta()}
+              ${vaultHealth === "incomplete" ? renderResetVaultButton("Limpiar contexto roto") : ""}
+            </div>
+          `)}
           ${status ? `<p class="status">${status}</p>` : ""}
         </section>
       </main>
@@ -179,9 +197,9 @@ export function renderApp(container, viewModel) {
     container.innerHTML = `
       <main class="screen centered">
         <section class="panel auth-panel">
-          <p class="eyebrow">${hasVault ? "Vault bloqueado" : "Acceso requerido"}</p>
-          <h1>Desbloquear Segundo Cerebro</h1>
-          <p class="muted">Autobloqueo configurado a ${lockMinutes} minutos de inactividad.</p>
+          <p class="eyebrow">${hasVault ? "🔒 Vault bloqueado" : "🔒 Acceso requerido"}</p>
+          <h1>Desbloquear</h1>
+          <p class="muted">Autobloqueo a ${lockMinutes} min.</p>
           <p class="shell-note">${renderContextHint(viewModel)}</p>
           <form id="unlock-form" class="stack">
             <label>
@@ -190,11 +208,13 @@ export function renderApp(container, viewModel) {
             </label>
             <button class="primary" type="submit">Desbloquear</button>
           </form>
-          <div class="button-row button-row-start">
-            ${renderImportCta()}
-            ${renderResetVaultButton()}
-          </div>
-          <p class="shell-note">Tus datos siguen cifrados en este dispositivo hasta que abras el vault o importes un backup.</p>
+          ${renderAuthSecondaryActions(`
+            <p class="muted">Tus datos siguen cifrados hasta que abras el vault.</p>
+            <div class="button-row button-row-start">
+              ${renderImportCta()}
+              ${renderResetVaultButton()}
+            </div>
+          `)}
           ${status ? `<p class="status">${status}</p>` : ""}
         </section>
       </main>
@@ -219,8 +239,7 @@ export function renderApp(container, viewModel) {
   }
 
   const shellPills = [
-    tab.label,
-    activeTab === "home" ? `${mealsToday} comida(s)` : null,
+    activeTab === "home" ? `${mealsToday} comida(s)` : tab.label,
     activeTab === "home" ? `${sessionsToday} entreno(s)` : null,
     activeTab === "planning" ? `${preparationPack.readinessScore}/100` : null,
     activeTab === "recovery" ? `${reviewSummary.completion}% revisión` : null
@@ -230,9 +249,9 @@ export function renderApp(container, viewModel) {
     <main class="screen app-screen theme-${activeTab}">
       <header class="topbar shell-topbar">
         <div class="shell-brand">
-          <p class="eyebrow">Segundo Cerebro local</p>
+          <p class="eyebrow shell-kicker">Segundo Cerebro local</p>
           <p class="shell-title">${displayName}</p>
-          <p class="shell-note">${tab.label} - ${shellNote}</p>
+          <p class="shell-note">${shellNote}</p>
           <div class="shell-pill-row">
             ${shellPills.map(item => `<span class="shell-pill">${item}</span>`).join("")}
           </div>
