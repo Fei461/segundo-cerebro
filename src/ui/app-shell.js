@@ -1,4 +1,4 @@
-import { renderDashboardFeature } from "../features/dashboard-view.js";
+﻿import { renderDashboardFeature } from "../features/dashboard-view.js";
 import { renderNutritionFeature } from "../features/nutrition-view.js";
 import { renderPlanningFeature } from "../features/planning-view.js";
 import { renderRecoveryFeature } from "../features/recovery-view.js";
@@ -7,12 +7,12 @@ import { renderWellbeingFeature } from "../features/wellbeing-view.js";
 import { getWeeklyPreparationPack, getWeeklyReviewSummary } from "../domain/weekly.js";
 
 const APP_TABS = [
-  { id: "home", label: "Hoy", eyebrow: "Centro de mando" },
-  { id: "planning", label: "Semana", eyebrow: "Planificación" },
-  { id: "nutrition", label: "Nutrición", eyebrow: "Comidas y recetas" },
-  { id: "training", label: "Entreno", eyebrow: "Sesiones y progresion" },
-  { id: "wellbeing", label: "Salud", eyebrow: "Ciclo y bienestar" },
-  { id: "recovery", label: "Revisión", eyebrow: "Sueño y recalibración" }
+  { id: "home", label: "Hoy", mobileLabel: "Hoy", eyebrow: "Centro de mando" },
+  { id: "planning", label: "Semana", mobileLabel: "Semana", eyebrow: "Planificaci\u00f3n" },
+  { id: "nutrition", label: "Nutrici\u00f3n", mobileLabel: "Comida", eyebrow: "Comidas y recetas" },
+  { id: "training", label: "Entreno", mobileLabel: "Entreno", eyebrow: "Sesiones y progresi\u00f3n" },
+  { id: "wellbeing", label: "Salud", mobileLabel: "Salud", eyebrow: "Ciclo y bienestar" },
+  { id: "recovery", label: "Revisi\u00f3n", mobileLabel: "Sue\u00f1o", eyebrow: "Sue\u00f1o y recalibraci\u00f3n" }
 ];
 
 function currentTabMeta(activeTab) {
@@ -30,6 +30,7 @@ function renderTabBar(activeTab) {
             data-action="open-tab"
             data-tab="${tab.id}"
             aria-pressed="${tab.id === activeTab ? "true" : "false"}"
+            aria-current="${tab.id === activeTab ? "page" : "false"}"
           >
             ${tab.label}
           </button>
@@ -41,7 +42,7 @@ function renderTabBar(activeTab) {
 
 function renderBottomNav(activeTab) {
   return `
-    <nav class="bottom-nav" aria-label="Navegacion principal">
+    <nav class="bottom-nav" aria-label="Navegaci\u00f3n principal">
       ${APP_TABS.map(
         tab => `
           <button
@@ -50,12 +51,30 @@ function renderBottomNav(activeTab) {
             data-action="open-tab"
             data-tab="${tab.id}"
             aria-pressed="${tab.id === activeTab ? "true" : "false"}"
+            aria-current="${tab.id === activeTab ? "page" : "false"}"
           >
-            <span>${tab.label}</span>
+            <span>${tab.mobileLabel || tab.label}</span>
           </button>
         `
       ).join("")}
     </nav>
+  `;
+}
+
+function renderContextHint(viewModel) {
+  const runtime = viewModel.runtime || {};
+  if (runtime.isStandalone) {
+    return "Est\u00e1s en el acceso directo. En iPhone, Safari y la app instalada pueden guardar vaults distintos.";
+  }
+  return "Est\u00e1s en Safari o navegador web. En iPhone, Safari y el acceso directo pueden no compartir el mismo vault.";
+}
+
+function renderImportCta() {
+  return `
+    <label class="file-button compact-file auth-file">
+      <input id="import-file" type="file" accept=".json,application/json">
+      Importar backup
+    </label>
   `;
 }
 
@@ -69,75 +88,37 @@ function renderSurface(viewModel) {
   if (activeTab === "wellbeing") return renderWellbeingFeature(state);
   if (activeTab === "recovery") return renderRecoveryFeature(state);
 
-  return `
-    <section class="surface-stack">
-      ${renderDashboardFeature(state, { homeCapture: viewModel.homeCapture || "meal" })}
-      ${renderPrototypeStatus(viewModel)}
-    </section>
-  `;
+  return renderDashboardFeature(state, { homeCapture: viewModel.homeCapture || "meal" });
 }
 
-function renderPrototypeStatus(viewModel) {
-  const runtime = viewModel.runtime || {};
-  const checks = [
-    {
-      label: "Vault",
-      value: viewModel.mode === "ready" ? "activo" : "bloqueado",
-      tone: viewModel.mode === "ready" ? "ok" : "watch"
-    },
-    {
-      label: "Standalone",
-      value: runtime.isStandalone ? "si" : "no",
-      tone: runtime.isStandalone ? "ok" : "watch"
-    },
-    {
-      label: "Online",
-      value: runtime.isOnline === false ? "no" : "si",
-      tone: runtime.isOnline === false ? "watch" : "ok"
-    },
-    {
-      label: "SW",
-      value: runtime.hasServiceWorker ? "listo" : "sin soporte",
-      tone: runtime.hasServiceWorker ? "ok" : "watch"
-    }
-  ];
-
+function renderVaultFooter() {
   return `
-    <details class="panel support-panel support-panel-collapsed">
-      <summary class="support-summary-toggle">
+    <details class="panel panel-toned compact-vault-bar disclosure-panel">
+      <summary class="disclosure-summary">
         <div>
           <p class="eyebrow">Seguridad local</p>
-          <h3>Backups y control del vault</h3>
+          <h4>Backup y recuperación</h4>
         </div>
-        <span class="muted">Ver</span>
       </summary>
-      <div class="stack support-panel-body">
-        <section class="support-summary">
-          ${checks
-            .map(
-              item => `
-                <article class="summary-card">
-                  <p class="eyebrow">${item.label}</p>
-                  <p class="metric">${item.value}</p>
-                  <p class="entry-meta">${item.tone === "ok" ? "correcto" : "a revisar"}</p>
-                </article>
-              `
-            )
-            .join("")}
-        </section>
+      <div class="stack disclosure-body">
         <div class="button-row button-row-start">
           <button id="export-button" class="primary compact">Exportar backup cifrado</button>
-          <label class="file-button compact-file">
+          <label class="file-button compact-file auth-file">
             <input id="import-file" type="file" accept=".json,application/json">
-            Importar backup o legado
+            Importar backup
           </label>
         </div>
-        <p class="muted">
-          La seguridad sigue aquí cuando la necesitas, pero ya no invade la experiencia diaria.
-        </p>
+        <p class="muted">Úsalo antes de cambios grandes o al mover la app entre contextos.</p>
       </div>
     </details>
   `;
+}
+
+function renderMaintenanceFooter(activeTab) {
+  if (activeTab !== "recovery") {
+    return "";
+  }
+  return renderVaultFooter();
 }
 
 export function renderApp(container, viewModel) {
@@ -165,11 +146,12 @@ export function renderApp(container, viewModel) {
         <section class="panel auth-panel">
           <p class="eyebrow">Nuevo vault local</p>
           <h1>Crear acceso seguro</h1>
-          <p class="muted">Esta nueva base guarda la información sensible cifrada en el dispositivo.</p>
+          <p class="muted">Esta base guarda tu informaci\u00f3n sensible cifrada en este contexto del dispositivo.</p>
+          <p class="shell-note">${renderContextHint(viewModel)}</p>
           <form id="setup-form" class="stack">
             <label>
               <span>Passphrase</span>
-              <input name="passphrase" type="password" minlength="8" required placeholder="Minimo 8 caracteres">
+              <input name="passphrase" type="password" minlength="8" required placeholder="M\u00ednimo 8 caracteres">
             </label>
             <label>
               <span>Confirmar passphrase</span>
@@ -177,6 +159,10 @@ export function renderApp(container, viewModel) {
             </label>
             <button class="primary" type="submit">Crear vault</button>
           </form>
+          <div class="button-row button-row-start">
+            ${renderImportCta()}
+          </div>
+          <p class="muted">Si tu vault vive en el acceso directo del iPhone, exporta all\u00ed un backup cifrado e imp\u00f3rtalo aqu\u00ed.</p>
           ${status ? `<p class="status">${status}</p>` : ""}
         </section>
       </main>
@@ -191,6 +177,7 @@ export function renderApp(container, viewModel) {
           <p class="eyebrow">${hasVault ? "Vault bloqueado" : "Acceso requerido"}</p>
           <h1>Desbloquear Segundo Cerebro</h1>
           <p class="muted">Autobloqueo configurado a ${lockMinutes} minutos de inactividad.</p>
+          <p class="shell-note">${renderContextHint(viewModel)}</p>
           <form id="unlock-form" class="stack">
             <label>
               <span>Passphrase</span>
@@ -198,7 +185,10 @@ export function renderApp(container, viewModel) {
             </label>
             <button class="primary" type="submit">Desbloquear</button>
           </form>
-          <p class="shell-note">Tus datos siguen cifrados en este dispositivo hasta que abras el vault.</p>
+          <div class="button-row button-row-start">
+            ${renderImportCta()}
+          </div>
+          <p class="shell-note">Tus datos siguen cifrados en este dispositivo hasta que abras el vault o importes un backup.</p>
           ${status ? `<p class="status">${status}</p>` : ""}
         </section>
       </main>
@@ -209,17 +199,26 @@ export function renderApp(container, viewModel) {
   const tab = currentTabMeta(activeTab);
   const preparationPack = getWeeklyPreparationPack(state);
   const reviewSummary = getWeeklyReviewSummary(state);
-  const mealsToday = state.nutrition.meals.filter(meal => meal.date === new Date().toISOString().slice(0, 10)).length;
-  const sessionsToday = state.training.sessions.filter(session => session.date === new Date().toISOString().slice(0, 10)).length;
-  let shellNote = "Sistema local listo para uso diario.";
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const mealsToday = state.nutrition.meals.filter(meal => meal.date === todayKey).length;
+  const sessionsToday = state.training.sessions.filter(session => session.date === todayKey).length;
+  let shellNote = "Sistema local listo para usar.";
 
   if (activeTab === "home") {
-    shellNote = `Hoy llevas ${mealsToday} comida(s) y ${sessionsToday} entreno(s) registrados.`;
+    shellNote = `${mealsToday} comida(s) y ${sessionsToday} entreno(s) hoy.`;
   } else if (activeTab === "planning") {
-    shellNote = `Semana preparada ${preparationPack.readinessScore}/100.`;
+    shellNote = `Preparación semanal ${preparationPack.readinessScore}/100.`;
   } else if (activeTab === "recovery") {
-    shellNote = `Revisión semanal ${reviewSummary.completion}% completada.`;
+    shellNote = `Revisión semanal al ${reviewSummary.completion}%.`;
   }
+
+  const shellPills = [
+    tab.label,
+    activeTab === "home" ? `${mealsToday} comida(s)` : null,
+    activeTab === "home" ? `${sessionsToday} entreno(s)` : null,
+    activeTab === "planning" ? `${preparationPack.readinessScore}/100` : null,
+    activeTab === "recovery" ? `${reviewSummary.completion}% revisión` : null
+  ].filter(Boolean);
 
   container.innerHTML = `
     <main class="screen app-screen theme-${activeTab}">
@@ -228,15 +227,19 @@ export function renderApp(container, viewModel) {
           <p class="eyebrow">Segundo Cerebro local</p>
           <p class="shell-title">${displayName}</p>
           <p class="shell-note">${tab.label} - ${shellNote}</p>
+          <div class="shell-pill-row">
+            ${shellPills.map(item => `<span class="shell-pill">${item}</span>`).join("")}
+          </div>
         </div>
         <div class="topbar-actions">
           <button id="lock-button" class="ghost compact">Bloquear</button>
         </div>
       </header>
 
-      ${status ? `<p class="status app-status">${status}</p>` : ""}
+      ${status ? `<p class="status app-status" role="status" aria-live="polite">${status}</p>` : ""}
       ${renderTabBar(activeTab)}
       ${renderSurface(viewModel)}
+      ${renderMaintenanceFooter(activeTab)}
       ${renderBottomNav(activeTab)}
     </main>
   `;
