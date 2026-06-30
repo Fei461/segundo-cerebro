@@ -1,8 +1,9 @@
-﻿import { createSalt, decryptJson, deriveEncryptionKey, encryptJson } from "./crypto.js";
+import { createSalt, decryptJson, deriveEncryptionKey, encryptJson } from "./crypto.js";
 import { migrateStateToCurrentSchema } from "../domain/migrate.js";
 import { validateImportedPayload } from "../domain/validate.js";
-import { getMeta, getRecord, setMeta, setRecord } from "./indexeddb.js";
+import { deleteMeta, deleteRecord, getMeta, getRecord, setMeta, setRecord } from "./indexeddb.js";
 import { createDefaultState, mergeState, SCHEMA_VERSION } from "../domain/schema.js";
+import { assessVaultHealth } from "./vault-health.js";
 
 const META_KEY = "vault-meta";
 const DATA_KEY = "app-state";
@@ -17,8 +18,22 @@ export class SecureStore {
     return getMeta(META_KEY);
   }
 
+  async getVaultStatus() {
+    const [meta, encryptedRecord] = await Promise.all([
+      getMeta(META_KEY),
+      getRecord(DATA_KEY)
+    ]);
+
+    return {
+      ...assessVaultHealth(meta, encryptedRecord),
+      meta,
+      encryptedRecord
+    };
+  }
+
   async hasVault() {
-    return Boolean(await this.getVaultMeta());
+    const status = await this.getVaultStatus();
+    return status.canUnlock;
   }
 
   async initializeVault(passphrase, state = createDefaultState()) {
@@ -31,12 +46,17 @@ export class SecureStore {
     const normalized = migrateStateToCurrentSchema(validateImportedPayload(mergeState(state)));
     const encrypted = await encryptJson(key, normalized);
 
-    await setMeta(META_KEY, {
-      schemaVersion: SCHEMA_VERSION,
-      salt,
-      createdAt: new Date().toISOString()
-    });
     await setRecord(DATA_KEY, encrypted);
+    try {
+      await setMeta(META_KEY, {
+        schemaVersion: SCHEMA_VERSION,
+        salt,
+        createdAt: new Date().toISOString()
+      });
+    } catch (error) {
+      await deleteRecord(DATA_KEY).catch(() => {});
+      throw error;
+    }
 
     this.sessionKey = key;
     this.sessionState = mergeState({
@@ -51,19 +71,17 @@ export class SecureStore {
   }
 
   async unlock(passphrase) {
-    const meta = await this.getVaultMeta();
+    const vaultStatus = await this.getVaultStatus();
 
-    if (!meta) {
+    if (!vaultStatus.canUnlock) {
+      if (vaultStatus.needsRepair) {
+        throw new Error("El vault local está incompleto en este contexto. Restablécelo o importa un backup.");
+      }
       throw new Error("La caja fuerte todavía no existe.");
     }
 
+    const { meta, encryptedRecord: encrypted } = vaultStatus;
     const key = await deriveEncryptionKey(passphrase, meta.salt);
-    const encrypted = await getRecord(DATA_KEY);
-
-    if (!encrypted) {
-      throw new Error("No existe ningún estado guardado.");
-    }
-
     const state = migrateStateToCurrentSchema(validateImportedPayload(await decryptJson(key, encrypted)));
 
     this.sessionKey = key;
@@ -81,6 +99,14 @@ export class SecureStore {
   lock() {
     this.sessionKey = null;
     this.sessionState = null;
+  }
+
+  async resetVault() {
+    this.lock();
+    await Promise.allSettled([
+      deleteMeta(META_KEY),
+      deleteRecord(DATA_KEY)
+    ]);
   }
 
   isUnlocked() {

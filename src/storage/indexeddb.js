@@ -61,6 +61,10 @@ export function setMeta(key, value) {
   return withStore(META_STORE, "readwrite", store => requestToPromise(store.put(value, key)));
 }
 
+export function deleteMeta(key) {
+  return withStore(META_STORE, "readwrite", store => requestToPromise(store.delete(key)));
+}
+
 export function getRecord(key) {
   return withStore(RECORDS_STORE, "readonly", store => requestToPromise(store.get(key)));
 }
