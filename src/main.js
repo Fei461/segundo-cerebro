@@ -1,4 +1,4 @@
-import { createDefaultState } from "./domain/schema.js";
+﻿import { createDefaultState } from "./domain/schema.js";
 import {
   canonicalizeIngredientName,
   getWeeklyNutritionPrepBoard,
@@ -37,6 +37,7 @@ import { SecureStore } from "./storage/secure-store.js";
 import { renderApp } from "./ui/app-shell.js";
 
 const AUTOLOCK_MINUTES = 5;
+const UI_STATE_KEY = "segundo-cerebro-ui-state-v1";
 const secureStore = new SecureStore();
 const appElement = document.getElementById("app");
 
@@ -58,6 +59,34 @@ const viewModel = {
 
 let autolockTimer = null;
 let statusTimer = null;
+
+function loadUiState() {
+  try {
+    const raw = window.sessionStorage.getItem(UI_STATE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") {
+      if (typeof parsed.currentTab === "string" && parsed.currentTab) {
+        viewModel.currentTab = parsed.currentTab;
+      }
+      if (typeof parsed.homeCapture === "string" && parsed.homeCapture) {
+        viewModel.homeCapture = parsed.homeCapture;
+      }
+    }
+  } catch {}
+}
+
+function saveUiState() {
+  try {
+    window.sessionStorage.setItem(
+      UI_STATE_KEY,
+      JSON.stringify({
+        currentTab: viewModel.currentTab,
+        homeCapture: viewModel.homeCapture
+      })
+    );
+  } catch {}
+}
 
 function setLockMinutesFromState(state) {
   viewModel.lockMinutes = Number(state?.appMeta?.autoLockMinutes || AUTOLOCK_MINUTES);
@@ -219,7 +248,7 @@ async function logPlannedDay(date) {
   const entries = getPlannedMealsForDate(viewModel.state, date);
 
   if (entries.length === 0) {
-    setStatus("No hay plan guardado para ese dia.");
+    setStatus("No hay plan guardado para ese día.");
     return;
   }
 
@@ -292,7 +321,7 @@ async function addTrainingSession(payload) {
     }
   }, sessionEntry);
 
-  await persistState(nextState, "Sesion guardada.");
+  await persistState(nextState, "Sesión guardada.");
 }
 
 async function addRoutine(payload) {
@@ -320,7 +349,7 @@ async function addPlannedSession(payload) {
     ...payload
   };
 
-  await persistState(replacePlannedSession(viewModel.state, plannedSession), "Sesion programada.");
+  await persistState(replacePlannedSession(viewModel.state, plannedSession), "Sesión programada.");
 }
 
 function cyclePlanStatus(currentStatus) {
@@ -369,11 +398,11 @@ async function addSuggestedWeeklyTasks(titles) {
   );
 
   if (nextState === viewModel.state) {
-    setStatus("No habia sugerencias nuevas que anadir.");
+    setStatus("No había sugerencias nuevas que añadir.");
     return;
   }
 
-  await persistState(nextState, "Sugerencias anadidas al reset semanal.");
+  await persistState(nextState, "Sugerencias añadidas al reset semanal.");
 }
 
 async function ensureResetBlockForWeek() {
@@ -389,7 +418,7 @@ async function ensureResetBlockForWeek() {
 async function applyResetRoutine() {
   const nextState = applyWeeklyResetRoutine(viewModel.state);
   if (nextState === viewModel.state) {
-    setStatus("No habia cambios nuevos para aplicar en el reset semanal.");
+    setStatus("No había cambios nuevos para aplicar en el reset semanal.");
     return;
   }
 
@@ -429,7 +458,7 @@ async function applySuggestedSessions() {
     }))
   );
 
-  await persistState(nextState, "Sesiones futuras sugeridas anadidas.");
+  await persistState(nextState, "Sesiones futuras sugeridas añadidas.");
 }
 
 async function toggleReviewStep(stepKey) {
@@ -764,7 +793,7 @@ async function applyWeeklyCalibrationPack() {
     }
   };
 
-  await persistState(nextState, "Recalibracion semanal aplicada.");
+  await persistState(nextState, "Recalibración semanal aplicada.");
 }
 
 function setStatus(message) {
@@ -775,11 +804,12 @@ function setStatus(message) {
     statusTimer = window.setTimeout(() => {
       viewModel.status = "";
       paint();
-    }, 2600);
+    }, 2200);
   }
 }
 
 function clearStatus() {
+  if (!viewModel.status) return;
   viewModel.status = "";
   paint();
 }
@@ -800,11 +830,11 @@ function renderFatalApp(message) {
         </div>
       </div>
       <p class="muted">
-        No deberias quedarte con una pantalla en blanco. Este aviso deja visible el problema para que podamos corregirlo sin perder tiempo.
+        No deberías quedarte con una pantalla en blanco. Este aviso deja visible el problema para que podamos corregirlo sin perder tiempo.
       </p>
       <article class="entry">
         <div>
-          <p class="entry-title">Detalle tecnico</p>
+          <p class="entry-title">Detalle técnico</p>
           <p class="entry-note">${message}</p>
         </div>
       </article>
@@ -856,7 +886,7 @@ async function exportEncryptedBackup() {
 
   const passphrase = window.prompt("Introduce una passphrase para cifrar este backup:");
   if (!passphrase) {
-    setStatus("Exportacion cancelada.");
+    setStatus("Exportación cancelada.");
     return;
   }
 
@@ -879,24 +909,44 @@ async function handleLegacyFile(file) {
   if (parsed.kind === "encrypted-backup-v1") {
     const passphrase = window.prompt("Introduce la passphrase del backup cifrado:");
     if (!passphrase) {
-      throw new Error("Importacion cancelada.");
+      throw new Error("Importación cancelada.");
     }
     importedState = await importEncryptedBackup(rawText, passphrase);
   } else {
     importedState = importLegacyPayload(rawText);
   }
 
-  viewModel.state = await secureStore.saveState(importedState);
+  if (secureStore.isUnlocked()) {
+    viewModel.state = await secureStore.saveState(importedState);
+  } else if (viewModel.hasVault) {
+    const vaultPassphrase = window.prompt("Introduce la passphrase del vault actual para reemplazar su contenido:");
+    if (!vaultPassphrase) {
+      throw new Error("Importación cancelada.");
+    }
+    await secureStore.unlock(vaultPassphrase);
+    viewModel.state = await secureStore.saveState(importedState);
+    viewModel.mode = "ready";
+  } else {
+    const newPassphrase = window.prompt("Crea una passphrase local para este contexto antes de importar:");
+    if (!newPassphrase) {
+      throw new Error("Importación cancelada.");
+    }
+    viewModel.state = await secureStore.initializeVault(newPassphrase, importedState);
+    viewModel.mode = "ready";
+    viewModel.hasVault = true;
+  }
   setLockMinutesFromState(viewModel.state);
   scheduleAutolock();
   setStatus("Datos importados a la nueva base.");
 }
 
 function openTab(tab) {
-  if (!tab) return;
+  if (!tab || viewModel.currentTab === tab) return;
   viewModel.currentTab = tab;
+  saveUiState();
   paint();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
 }
 
 function wireUi() {
@@ -910,7 +960,7 @@ function wireUi() {
 
       try {
         if (passphrase !== passphraseConfirm) {
-          throw new Error("La confirmacion de passphrase no coincide.");
+          throw new Error("La confirmación de passphrase no coincide.");
         }
         const state = await secureStore.initializeVault(passphrase);
         viewModel.state = state;
@@ -949,7 +999,7 @@ function wireUi() {
     lockButton.addEventListener("click", () => {
       secureStore.lock();
       viewModel.mode = "locked";
-      setStatus("Sesion bloqueada manualmente.");
+      setStatus("Sesión bloqueada manualmente.");
     });
   }
 
@@ -1003,7 +1053,7 @@ function wireUi() {
         await addMealEntry(mealPayloadFromFormData(formData));
         quickMealForm.reset();
       } catch (error) {
-        setStatus(error.message || "No se pudo guardar la comida rapida.");
+        setStatus(error.message || "No se pudo guardar la comida rápida.");
       }
     });
   }
@@ -1134,7 +1184,7 @@ function wireUi() {
         await addTrainingSession(trainingPayloadFromFormData(formData));
         quickTrainingForm.reset();
       } catch (error) {
-        setStatus(error.message || "No se pudo guardar el entreno rapido.");
+        setStatus(error.message || "No se pudo guardar el entreno rápido.");
       }
     });
   }
@@ -1220,7 +1270,7 @@ function wireUi() {
         });
         quickCheckinForm.reset();
       } catch (error) {
-        setStatus(error.message || "No se pudo guardar el check-in rapido.");
+        setStatus(error.message || "No se pudo guardar el check-in rápido.");
       }
     });
   }
@@ -1261,7 +1311,7 @@ function wireUi() {
         });
         quickEventForm.reset();
       } catch (error) {
-        setStatus(error.message || "No se pudo guardar el evento rapido.");
+        setStatus(error.message || "No se pudo guardar el evento rápido.");
       }
     });
   }
@@ -1277,7 +1327,7 @@ function wireUi() {
         await saveNoteEntry(key, value);
         quickNoteForm.reset();
       } catch (error) {
-        setStatus(error.message || "No se pudo guardar la nota rapida.");
+        setStatus(error.message || "No se pudo guardar la nota rápida.");
       }
     });
   }
@@ -1448,6 +1498,7 @@ function wireUi() {
   appElement.querySelectorAll("[data-action='set-home-capture']").forEach(button => {
     button.addEventListener("click", () => {
       viewModel.homeCapture = String(button.dataset.capture || "meal");
+      saveUiState();
       paint();
     });
   });
@@ -1598,7 +1649,7 @@ function wireUi() {
             sessions: viewModel.state.training.sessions.filter(session => session.id !== id)
           }
         },
-        "Sesion eliminada."
+        "Sesión eliminada."
       );
     });
   });
@@ -1653,7 +1704,7 @@ function wireUi() {
         }
       );
 
-      await persistState(nextState, "Sesion programada pasada a ejecutada.");
+      await persistState(nextState, "Sesión programada pasada a ejecutada.");
     });
   });
 
@@ -1675,7 +1726,7 @@ function wireUi() {
   appElement.querySelectorAll("[data-action='delete-planned-session']").forEach(button => {
     button.addEventListener("click", async () => {
       const sessionId = String(button.dataset.id || "");
-      await persistState(removePlannedSession(viewModel.state, sessionId), "Sesion programada eliminada.");
+      await persistState(removePlannedSession(viewModel.state, sessionId), "Sesión programada eliminada.");
     });
   });
 
@@ -1805,6 +1856,7 @@ function wireUi() {
 }
 
 async function bootstrap() {
+  loadUiState();
   updateRuntimeStatus();
   viewModel.hasVault = await secureStore.hasVault();
   viewModel.mode = viewModel.hasVault ? "locked" : "setup";
