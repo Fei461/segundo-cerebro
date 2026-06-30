@@ -48,6 +48,7 @@ const viewModel = {
   homeCapture: "meal",
   status: "",
   hasVault: false,
+  vaultHealth: "empty",
   lockMinutes: AUTOLOCK_MINUTES,
   fatalError: "",
   runtime: {
@@ -934,10 +935,26 @@ async function handleLegacyFile(file) {
     viewModel.state = await secureStore.initializeVault(newPassphrase, importedState);
     viewModel.mode = "ready";
     viewModel.hasVault = true;
+    viewModel.vaultHealth = "ready";
   }
   setLockMinutesFromState(viewModel.state);
   scheduleAutolock();
   setStatus("Datos importados a la nueva base.");
+}
+
+async function resetVaultContext() {
+  const confirmed = window.confirm(
+    "Esto borrará solo el vault guardado en este navegador o acceso directo. Tus backups exportados no se borran. ¿Quieres continuar?"
+  );
+  if (!confirmed) return;
+
+  await secureStore.resetVault();
+  viewModel.state = createDefaultState();
+  viewModel.hasVault = false;
+  viewModel.vaultHealth = "empty";
+  viewModel.mode = "setup";
+  setLockMinutesFromState(viewModel.state);
+  setStatus("Contexto local restablecido. Ya puedes crear un vault nuevo o importar un backup.");
 }
 
 function openTab(tab) {
@@ -964,10 +981,13 @@ function wireUi() {
         }
         const state = await secureStore.initializeVault(passphrase);
         viewModel.state = state;
+        viewModel.hasVault = true;
+        viewModel.vaultHealth = "ready";
         setLockMinutesFromState(state);
         viewModel.mode = "ready";
         clearStatus();
         scheduleAutolock();
+        paint();
       } catch (error) {
         setStatus(error.message || "No se pudo crear el vault.");
       }
@@ -984,12 +1004,26 @@ function wireUi() {
       try {
         const state = await secureStore.unlock(passphrase);
         viewModel.state = state;
+        viewModel.hasVault = true;
+        viewModel.vaultHealth = "ready";
         setLockMinutesFromState(state);
         viewModel.mode = "ready";
         clearStatus();
         scheduleAutolock();
-      } catch {
-        setStatus("No se pudo desbloquear. Revisa la passphrase.");
+        paint();
+      } catch (error) {
+        setStatus(error.message || "No se pudo desbloquear. Revisa la clave local.");
+      }
+    });
+  }
+
+  const resetVaultButton = document.getElementById("reset-vault-button");
+  if (resetVaultButton) {
+    resetVaultButton.addEventListener("click", async () => {
+      try {
+        await resetVaultContext();
+      } catch (error) {
+        setStatus(error.message || "No se pudo restablecer este contexto.");
       }
     });
   }
@@ -1858,9 +1892,14 @@ function wireUi() {
 async function bootstrap() {
   loadUiState();
   updateRuntimeStatus();
-  viewModel.hasVault = await secureStore.hasVault();
+  const vaultStatus = await secureStore.getVaultStatus();
+  viewModel.hasVault = vaultStatus.canUnlock;
+  viewModel.vaultHealth = vaultStatus.status;
   viewModel.mode = viewModel.hasVault ? "locked" : "setup";
   viewModel.lockMinutes = AUTOLOCK_MINUTES;
+  if (vaultStatus.needsRepair) {
+    viewModel.status = "He encontrado un vault incompleto en este contexto. Puedes limpiarlo y crear uno nuevo o importar un backup.";
+  }
   paint();
 }
 
