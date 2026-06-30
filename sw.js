@@ -1,4 +1,4 @@
-const CACHE_NAME = "segundo-cerebro-app-v4";
+const CACHE_NAME = "segundo-cerebro-app-v5";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -40,9 +40,8 @@ self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))
-    )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", event => {
@@ -50,14 +49,16 @@ self.addEventListener("fetch", event => {
 
   const requestUrl = new URL(event.request.url);
   const isSameOrigin = requestUrl.origin === self.location.origin;
+  const isNavigation = event.request.mode === "navigate";
   const shouldPreferNetwork =
     isSameOrigin &&
-    ["document", "script", "style", "manifest"].includes(event.request.destination);
+    (isNavigation || ["document", "script", "style", "manifest"].includes(event.request.destination));
 
   event.respondWith(
     (shouldPreferNetwork
       ? fetch(event.request)
           .then(response => {
+            if (!response || response.status >= 400) return response;
             const responseClone = response.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
             return response;
@@ -68,6 +69,7 @@ self.addEventListener("fetch", event => {
 
           return fetch(event.request)
             .then(response => {
+              if (!response || response.status >= 400) return response;
               const responseClone = response.clone();
               caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
               return response;
@@ -75,4 +77,10 @@ self.addEventListener("fetch", event => {
             .catch(() => caches.match("./index.html"));
         }))
   );
+});
+
+self.addEventListener("message", event => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
