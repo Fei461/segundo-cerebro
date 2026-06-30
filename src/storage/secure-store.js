@@ -1,4 +1,4 @@
-import { createSalt, decryptJson, deriveEncryptionKey, encryptJson } from "./crypto.js";
+﻿import { createSalt, decryptJson, deriveEncryptionKey, encryptJson } from "./crypto.js";
 import { migrateStateToCurrentSchema } from "../domain/migrate.js";
 import { validateImportedPayload } from "../domain/validate.js";
 import { getMeta, getRecord, setMeta, setRecord } from "./indexeddb.js";
@@ -54,14 +54,14 @@ export class SecureStore {
     const meta = await this.getVaultMeta();
 
     if (!meta) {
-      throw new Error("La caja fuerte todavia no existe.");
+      throw new Error("La caja fuerte todavía no existe.");
     }
 
     const key = await deriveEncryptionKey(passphrase, meta.salt);
     const encrypted = await getRecord(DATA_KEY);
 
     if (!encrypted) {
-      throw new Error("No existe ningun estado guardado.");
+      throw new Error("No existe ningún estado guardado.");
     }
 
     const state = migrateStateToCurrentSchema(validateImportedPayload(await decryptJson(key, encrypted)));
