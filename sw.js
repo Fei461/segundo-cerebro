@@ -1,4 +1,4 @@
-const CACHE_NAME = "segundo-cerebro-app-v2";
+const CACHE_NAME = "segundo-cerebro-app-v4";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -16,12 +16,12 @@ const APP_SHELL = [
   "./src/domain/plans.js",
   "./src/domain/schema.js",
   "./src/domain/weekly.js",
-  "./src/features/dashboard/dashboard-view.js",
-  "./src/features/nutrition/nutrition-view.js",
-  "./src/features/planning/planning-view.js",
-  "./src/features/recovery/recovery-view.js",
-  "./src/features/training/training-view.js",
-  "./src/features/wellbeing/wellbeing-view.js",
+  "./src/features/dashboard-view.js",
+  "./src/features/nutrition-view.js",
+  "./src/features/planning-view.js",
+  "./src/features/recovery-view.js",
+  "./src/features/training-view.js",
+  "./src/features/wellbeing-view.js",
   "./src/storage/crypto.js",
   "./src/storage/backup.js",
   "./src/storage/indexeddb.js",
