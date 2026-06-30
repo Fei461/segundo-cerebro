@@ -46,6 +46,14 @@ const viewModel = {
   state: createDefaultState(),
   currentTab: "home",
   homeCapture: "meal",
+  moduleViews: {
+    home: "overview",
+    planning: "overview",
+    nutrition: "today",
+    training: "overview",
+    wellbeing: "overview",
+    recovery: "overview"
+  },
   status: "",
   hasVault: false,
   vaultHealth: "empty",
@@ -73,6 +81,12 @@ function loadUiState() {
       if (typeof parsed.homeCapture === "string" && parsed.homeCapture) {
         viewModel.homeCapture = parsed.homeCapture;
       }
+      if (parsed.moduleViews && typeof parsed.moduleViews === "object") {
+        viewModel.moduleViews = {
+          ...viewModel.moduleViews,
+          ...parsed.moduleViews
+        };
+      }
     }
   } catch {}
 }
@@ -83,7 +97,8 @@ function saveUiState() {
       UI_STATE_KEY,
       JSON.stringify({
         currentTab: viewModel.currentTab,
-        homeCapture: viewModel.homeCapture
+        homeCapture: viewModel.homeCapture,
+        moduleViews: viewModel.moduleViews
       })
     );
   } catch {}
@@ -1064,6 +1079,20 @@ function wireUi() {
     });
   });
 
+  appElement.querySelectorAll("[data-action='open-module-view']").forEach(button => {
+    button.addEventListener("click", () => {
+      const tab = String(button.dataset.tab || viewModel.currentTab || "home");
+      const view = String(button.dataset.view || "overview");
+      viewModel.moduleViews = {
+        ...viewModel.moduleViews,
+        [tab]: view
+      };
+      viewModel.currentTab = tab;
+      saveUiState();
+      paint();
+    });
+  });
+
   const mealForm = document.getElementById("meal-form");
   if (mealForm) {
     mealForm.addEventListener("submit", async event => {
@@ -1924,7 +1953,31 @@ window.matchMedia?.("(display-mode: standalone)")?.addEventListener?.("change", 
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+    navigator.serviceWorker
+      .register("./sw.js")
+      .then(registration => {
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: "SKIP_WAITING" });
+        }
+
+        registration.addEventListener("updatefound", () => {
+          const worker = registration.installing;
+          if (!worker) return;
+          worker.addEventListener("statechange", () => {
+            if (worker.state === "installed" && navigator.serviceWorker.controller) {
+              worker.postMessage({ type: "SKIP_WAITING" });
+            }
+          });
+        });
+      })
+      .catch(() => {});
+  });
+
+  let reloadingForServiceWorker = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloadingForServiceWorker) return;
+    reloadingForServiceWorker = true;
+    window.location.reload();
   });
 }
 
