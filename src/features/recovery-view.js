@@ -1,41 +1,35 @@
 import { getWeeklyCalibrationBoard } from "../domain/weekly.js";
+import { emptyState, featureHeader, sectionCard, viewSwitcher } from "../ui/feature-layout.js";
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function collapsiblePanel(eyebrow, title, body, open = false) {
-  return `
-    <details class="subpanel disclosure-panel"${open ? " open" : ""}>
-      <summary class="disclosure-summary">
-        <div>
-          <p class="eyebrow">${eyebrow}</p>
-          <h4>${title}</h4>
-        </div>
-      </summary>
-      <div class="stack disclosure-body">${body}</div>
-    </details>
-  `;
-}
-
 function recentSleepEntries(entries) {
   return Object.entries(entries || {})
     .sort((left, right) => right[0].localeCompare(left[0]))
-    .slice(0, 7);
+    .slice(0, 6);
 }
 
 function averageHours(entries) {
   const values = recentSleepEntries(entries).map(([, value]) => Number(value.hours || 0));
-  if (values.length === 0) return "0.0";
+  if (!values.length) return "0.0";
   return (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1);
+}
+
+function statCard(label, value, detail) {
+  return `
+    <article class="summary-card summary-card-soft">
+      <p class="eyebrow">${label}</p>
+      <p class="metric">${value}</p>
+      <p class="entry-meta">${detail}</p>
+    </article>
+  `;
 }
 
 function sleepItems(entries) {
   const items = recentSleepEntries(entries);
-  if (items.length === 0) {
-    return `<p class="muted">Aún no hay noches registradas.</p>`;
-  }
-
+  if (!items.length) return emptyState("Aún no hay noches registradas.");
   return items
     .map(
       ([date, value]) => `
@@ -52,17 +46,15 @@ function sleepItems(entries) {
 }
 
 function calibrationDayItems(calibration) {
-  if (calibration.dayEntries.length === 0) {
-    return `<p class="muted">Aún no hay datos suficientes para recalibrar la semana.</p>`;
-  }
-
+  if (!calibration.dayEntries.length) return emptyState("Aún no hay datos suficientes para esta lectura.");
   return calibration.dayEntries
+    .slice(0, 5)
     .map(
       day => `
         <article class="entry">
           <div>
             <p class="entry-title">${day.date}</p>
-            <p class="entry-meta">${day.status} · presion ${day.pressureScore.toFixed(1)} · sueno ${day.sleepHours ? `${day.sleepHours.toFixed(1)} h` : "sin dato"}</p>
+            <p class="entry-meta">${day.status} · presión ${day.pressureScore.toFixed(1)} · sueño ${day.sleepHours ? `${day.sleepHours.toFixed(1)} h` : "sin dato"}</p>
           </div>
         </article>
       `
@@ -70,86 +62,68 @@ function calibrationDayItems(calibration) {
     .join("");
 }
 
-export function renderRecoveryFeature(state) {
+export function renderRecoveryFeature(state, options = {}) {
+  const currentView = options.currentView || "overview";
   const calibration = getWeeklyCalibrationBoard(state);
 
-  return `
-    <section id="recovery-panel" class="panel stack">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">Revisión</p>
-          <h3>Descanso y reajuste</h3>
-        </div>
-        <p class="muted">Dormir, leer carga y ajustar.</p>
-      </div>
+  let body = "";
 
-      <div class="recovery-focus-grid section-block">
-        <section class="subpanel stack rail-card panel-toned recovery-hero-card">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Lectura semanal</p>
-              <h4>Mapa de presión y recuperación</h4>
+  if (currentView === "sleep") {
+    body = `
+      ${sectionCard(
+        "Registrar",
+        "Guardar noche",
+        `
+          <form id="sleep-form" class="stack">
+            <div class="field-grid">
+              <label><span>Fecha</span><input name="date" type="date" value="${todayKey()}" required></label>
+              <label><span>Horas</span><input name="hours" type="number" step="0.1" min="0" value="7.5" required></label>
             </div>
-          </div>
-          <section class="recovery-summary compact-metrics">
-            <article class="summary-card">
-              <p class="eyebrow">Media 7d</p>
-              <p class="metric">${averageHours(state.sleepEntries)} h</p>
-              <p class="entry-meta">promedio reciente</p>
-            </article>
-            <article class="summary-card">
-              <p class="eyebrow">Registros</p>
-              <p class="metric">${Object.keys(state.sleepEntries).length}</p>
-              <p class="entry-meta">noches guardadas</p>
-            </article>
-            <article class="summary-card">
-              <p class="eyebrow">Sobrecarga</p>
-              <p class="metric">${calibration.overloadedDays}</p>
-              <p class="entry-meta">${calibration.watchDays} en vigilancia</p>
-            </article>
-            <article class="summary-card">
-              <p class="eyebrow">Ajuste</p>
-              <p class="metric">${calibration.topPressureDay?.date || "estable"}</p>
-              <p class="entry-meta">${calibration.nextAdjustment}</p>
-            </article>
+            <div class="field-grid">
+              <label><span>Calidad (1-5)</span><input name="quality" type="number" min="1" max="5" value="3" required></label>
+              <label><span>Nota</span><input name="notes" placeholder="Cafeína, estrés, despertares..."></label>
+            </div>
+            <button class="primary" type="submit">Guardar noche</button>
+          </form>
+        `,
+        "section-card-tinted section-card-recovery"
+      )}
+    `;
+  } else if (currentView === "history") {
+    body = sectionCard("Historial", "Noches recientes", `<div class="stack">${sleepItems(state.sleepEntries)}</div>`, "section-card-glass section-card-recovery-light");
+  } else {
+    body = `
+      ${sectionCard(
+        "Semana",
+        "Descanso y recuperación",
+        `
+          <section class="dashboard-summary compact-metrics feature-metrics-soft">
+            ${statCard("Media 7d", `${averageHours(state.sleepEntries)} h`, "promedio")}
+            ${statCard("Registros", Object.keys(state.sleepEntries).length, "noches")}
+            ${statCard("Vigilancia", calibration.watchDays, "días")}
+            ${statCard("Ajuste", calibration.topPressureDay?.date || "estable", calibration.nextAdjustment)}
           </section>
-          <div class="button-row">
-            <button class="ghost compact" data-action="apply-weekly-calibration-pack">Aplicar recalibración</button>
+          <div class="button-row button-row-start button-row-soft">
+            <button class="primary compact" data-action="apply-weekly-calibration-pack">Ajustar semana</button>
             <button class="ghost compact" data-action="save-weekly-calibration-note">Guardar nota</button>
           </div>
-          ${collapsiblePanel("Detalle", "Días a vigilar", `<div class="stack">${calibrationDayItems(calibration)}</div>`)}
-        </section>
+        `,
+        "section-card-hero section-card-recovery"
+      )}
+      ${sectionCard("Detalle", "Días a mirar", `<div class="stack">${calibrationDayItems(calibration)}</div>`, "section-card-glass section-card-recovery-light")}
+    `;
+  }
 
-        <section class="subpanel stack rail-card">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Registrar</p>
-              <h4>Nueva noche</h4>
-            </div>
-          </div>
-          ${collapsiblePanel(
-            "Sueño",
-            "Guardar noche",
-            `
-              <form id="sleep-form" class="stack">
-                <div class="field-grid">
-                  <label><span>Fecha</span><input name="date" type="date" value="${todayKey()}" required></label>
-                  <label><span>Horas</span><input name="hours" type="number" step="0.1" min="0" value="7.5" required></label>
-                </div>
-                <div class="field-grid">
-                  <label><span>Calidad (1-5)</span><input name="quality" type="number" min="1" max="5" value="3" required></label>
-                  <label><span>Nota</span><input name="notes" placeholder="Cafeína, estrés, despertares..."></label>
-                </div>
-                <button class="primary" type="submit">Guardar noche</button>
-              </form>
-            `
-          )}
-        </section>
-      </div>
-
-      <section class="fold-grid section-block">
-        ${collapsiblePanel("Noches guardadas", "Ver historial reciente", `<div class="stack">${sleepItems(state.sleepEntries)}</div>`)}
-      </section>
+  return `
+    <section id="recovery-panel" class="panel stack app-feature-shell">
+      ${featureHeader("Sueño", "Dormir y ajustar", "", { emblem: "☾", emblemTone: "recovery" })}
+      ${viewSwitcher("recovery", currentView, [
+        { id: "overview", label: "Resumen" },
+        { id: "sleep", label: "Registrar" },
+        { id: "history", label: "Historial" }
+      ])}
+      <div class="sr-only">Mapa de presión y recuperación</div>
+      ${body}
     </section>
   `;
 }

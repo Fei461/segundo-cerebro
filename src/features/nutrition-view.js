@@ -1,14 +1,13 @@
-﻿import { getPlannedMeals } from "../domain/plans.js";
+import { getPlannedMeals } from "../domain/plans.js";
 import {
   PERSONAL_MEAL_TEMPLATES,
   PERSONAL_PANTRY,
-  canonicalizeIngredientName,
   getWeeklyNutritionPrepBoard,
   getWeeklyNutritionReview,
-  mealReactionSignals,
-  repeatedPlannedMealNames
+  mealReactionSignals
 } from "../domain/personal-nutrition.js";
 import { formatPlanStatus } from "../ui/formatters.js";
+import { featureHeader, sectionCard, viewSwitcher, emptyState } from "../ui/feature-layout.js";
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -31,16 +30,6 @@ function formatNumber(value) {
   return Number(value || 0).toFixed(0);
 }
 
-function pageDock(items) {
-  return `
-    <nav class="page-dock" aria-label="Navegación de nutrición">
-      ${items
-        .map(item => `<a class="page-anchor" href="#${item.id}">${item.label}</a>`)
-        .join("")}
-    </nav>
-  `;
-}
-
 function totalsForMeals(meals) {
   return meals.reduce(
     (accumulator, meal) => ({
@@ -61,47 +50,56 @@ function weeklyMeals(state) {
   };
 }
 
-function weeklyVariety(state) {
-  return weeklyReview(state).variety;
-}
-
 function weeklyReview(state) {
   const { plannedMeals, loggedMeals } = weeklyMeals(state);
-  return getWeeklyNutritionReview({
-    plannedMeals,
-    loggedMeals,
-    recipes: state.recipes
-  });
+  return getWeeklyNutritionReview({ plannedMeals, loggedMeals, recipes: state.recipes });
 }
 
 function weeklyPrepBoard(state) {
   const { plannedMeals, loggedMeals } = weeklyMeals(state);
-  return getWeeklyNutritionPrepBoard({
-    plannedMeals,
-    loggedMeals,
-    recipes: state.recipes
-  });
+  return getWeeklyNutritionPrepBoard({ plannedMeals, loggedMeals, recipes: state.recipes });
+}
+
+function statCard(label, value, detail) {
+  return `
+    <article class="summary-card summary-card-soft">
+      <p class="eyebrow">${label}</p>
+      <p class="metric">${value}</p>
+      <p class="entry-meta">${detail}</p>
+    </article>
+  `;
 }
 
 function recipeOptions(recipes) {
+  return recipes.map(recipe => `<option value="${recipe.id}">${recipe.name}</option>`).join("");
+}
+
+function recipeItems(recipes) {
+  if (!recipes.length) return emptyState("Aún no hay recetas guardadas.");
   return recipes
-    .map(recipe => `<option value="${recipe.id}">${recipe.name} - ${formatNumber(recipe.totals?.calories / recipe.servings)} kcal/racion</option>`)
+    .map(
+      recipe => `
+        <article class="entry">
+          <div>
+            <p class="entry-title">${recipe.name}</p>
+            <p class="entry-meta">${recipe.servings} raciones · ${formatNumber(recipe.totals?.calories / recipe.servings)} kcal/ración</p>
+          </div>
+          <button class="ghost compact" data-action="log-recipe" data-id="${recipe.id}">Registrar</button>
+        </article>
+      `
+    )
     .join("");
 }
 
 function mealItems(meals) {
-  if (meals.length === 0) {
-    return `<p class="muted">Todavía no has registrado ninguna comida hoy.</p>`;
-  }
-
+  if (!meals.length) return emptyState("Todavía no has registrado ninguna comida hoy.");
   return meals
     .map(
       meal => `
         <article class="entry">
           <div>
-            <p class="entry-title">${meal.type} - ${meal.items.map(item => item.name).join(", ")}</p>
-            <p class="entry-meta">${formatNumber(meal.totals?.calories)} kcal - P ${formatNumber(meal.totals?.protein)} - C ${formatNumber(meal.totals?.carbs)} - G ${formatNumber(meal.totals?.fat)}</p>
-            ${meal.reaction?.length ? `<p class="entry-note">Postcomida: ${meal.reaction.join(" - ")}</p>` : ""}
+            <p class="entry-title">${meal.type} · ${meal.items.map(item => item.name).join(", ")}</p>
+            <p class="entry-meta">${formatNumber(meal.totals?.calories)} kcal · P ${formatNumber(meal.totals?.protein)} · C ${formatNumber(meal.totals?.carbs)} · G ${formatNumber(meal.totals?.fat)}</p>
           </div>
           <button class="ghost compact" data-action="delete-meal" data-id="${meal.id}">Eliminar</button>
         </article>
@@ -110,32 +108,21 @@ function mealItems(meals) {
     .join("");
 }
 
-function recipeIdentityLine(recipe) {
-  const families = Array.isArray(recipe.familyCoverage) ? recipe.familyCoverage : [];
-  return families.length > 0 ? families.join(" - ") : "Aún sin familias detectadas";
-}
-
-function recipeIngredientLine(recipe) {
-  const names = Array.isArray(recipe.canonicalIngredients) ? recipe.canonicalIngredients : [];
-  return names.length > 0 ? names.slice(0, 5).join(" - ") : "Ingredientes canónicos pendientes";
-}
-
-function recipeItems(recipes) {
-  if (recipes.length === 0) {
-    return `<p class="muted">Aún no hay recetas guardadas en esta nueva app.</p>`;
-  }
-
-  return recipes
+function plannerItems(items) {
+  if (!items.length) return emptyState("Aún no hay comidas programadas.");
+  return items
+    .slice(0, 5)
     .map(
-      recipe => `
+      item => `
         <article class="entry">
           <div>
-            <p class="entry-title">${recipe.name}</p>
-            <p class="entry-meta">${recipe.servings} raciones - ${formatNumber(recipe.totals?.calories / recipe.servings)} kcal/racion</p>
-            <p class="entry-note">${recipeIdentityLine(recipe)}</p>
-            <p class="entry-note">${recipeIngredientLine(recipe)}</p>
+            <p class="entry-title">${item.date} · ${item.slot}</p>
+            <p class="entry-meta">${item.name} · ${formatPlanStatus(item.status)}</p>
           </div>
-          <button class="ghost compact" data-action="log-recipe" data-id="${recipe.id}">Log hoy</button>
+          <div class="button-row">
+            <button class="ghost compact" data-action="cycle-planned-meal-status" data-id="${item.id}">Estado</button>
+            <button class="ghost compact" data-action="delete-planned-meal" data-id="${item.id}">Eliminar</button>
+          </div>
         </article>
       `
     )
@@ -145,600 +132,186 @@ function recipeItems(recipes) {
 function pantryCards() {
   return PERSONAL_PANTRY.map(
     group => `
-      <article class="summary-card">
+      <article class="summary-card summary-card-soft">
         <p class="eyebrow">${group.family}</p>
-        <p class="entry-meta">${group.items.join(" - ")}</p>
+        <p class="entry-meta">${group.items.join(" · ")}</p>
       </article>
     `
   ).join("");
 }
 
-function templateItems(items, tone) {
+function templateCards() {
+  return Object.entries(PERSONAL_MEAL_TEMPLATES)
+    .slice(0, 3)
+    .map(
+      ([key, items]) => `
+        <article class="summary-card summary-card-soft">
+          <p class="eyebrow">${key}</p>
+          <p class="entry-meta">${items.slice(0, 3).map(item => item.name).join(" · ")}</p>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function signalItems(state) {
+  const items = mealReactionSignals(state.nutrition.meals).slice(0, 3);
+  if (!items.length) return emptyState("Aún no hay suficientes postcomidas para detectar patrones.");
   return items
-    .map(
-      item => `
-        <article class="entry">
-          <div>
-            <p class="entry-title">${item.name}</p>
-            <p class="entry-meta">${tone}</p>
-            <p class="entry-note">${(item.ingredients || [item.type]).join(" - ")}</p>
-          </div>
-        </article>
-      `
-    )
+    .map(item => `<article class="entry"><div><p class="entry-title">${item.name}</p><p class="entry-meta">${item.count} apariciones</p></div></article>`)
     .join("");
 }
 
-function canonicalIngredientItems(state) {
-  const seen = new Map();
-
-  state.recipes.forEach(recipe => {
-    (recipe.ingredients || []).forEach(ingredient => {
-      const canonical = canonicalizeIngredientName(ingredient.name);
-      if (!canonical) return;
-      seen.set(canonical, (seen.get(canonical) || 0) + 1);
-    });
-  });
-
-  return Array.from(seen.entries())
-    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
-    .slice(0, 16)
-    .map(
-      ([name, count]) => `
-        <article class="entry">
-          <div>
-            <p class="entry-title">${name}</p>
-            <p class="entry-meta">${count} apariciones en recetas guardadas</p>
-          </div>
-        </article>
-      `
-    )
-    .join("");
-}
-
-function shoppingListItems(state) {
-  const items = weeklyReview(state).groupedShoppingList.slice(0, 6);
-  if (items.length === 0) {
-    return `<p class="muted">Aún no hay suficiente planner semanal para derivar una lista de compra.</p>`;
-  }
-
-  return items
-    .map(
-      group => `
-        <article class="entry">
-          <div>
-            <p class="entry-title">${group.family}</p>
-            <p class="entry-meta">${group.items.slice(0, 4).map(item => `${item.name} (${item.count})`).join(" - ")}</p>
-          </div>
-        </article>
-      `
-    )
-    .join("");
-}
-
-function repetitionItems(state) {
-  const repeated = repeatedPlannedMealNames(getPlannedMeals(state)).slice(0, 8);
-  if (repeated.length === 0) {
-    return `<p class="muted">No se detecta repetición excesiva en el planner actual.</p>`;
-  }
-
-  return repeated
-    .map(
-      item => `
-        <article class="entry">
-          <div>
-            <p class="entry-title">${item.name}</p>
-            <p class="entry-meta">${item.count} veces esta semana</p>
-          </div>
-        </article>
-      `
-    )
-    .join("");
-}
-
-function reactionSignalItems(state) {
-  const signals = mealReactionSignals(state.nutrition.meals).slice(0, 8);
-  if (signals.length === 0) {
-    return `<p class="muted">Aún no hay suficientes comidas con malestar registrado para detectar patrones claros.</p>`;
-  }
-
-  return signals
-    .map(
-      item => `
-        <article class="entry">
-          <div>
-            <p class="entry-title">${item.name}</p>
-            <p class="entry-meta">${item.count} apariciones en comidas con malestar</p>
-          </div>
-        </article>
-      `
-    )
-    .join("");
-}
-
-function weeklyReviewItems(review) {
-  return `
-    <article class="entry">
-      <div>
-        <p class="entry-title">Variedad cubierta</p>
-        <p class="entry-meta">${review.variety.covered}/${review.variety.total} familias</p>
-        <p class="entry-note">${review.variety.families.length ? review.variety.families.join(" - ") : "Aún no hay familias detectadas"}</p>
-      </div>
-    </article>
-    <article class="entry">
-      <div>
-        <p class="entry-title">Huecos de variedad</p>
-        <p class="entry-meta">${review.variety.missingFamilies.length ? review.variety.missingFamilies.slice(0, 4).join(" - ") : "Semana bastante variada"}</p>
-      </div>
-    </article>
-    <article class="entry">
-      <div>
-        <p class="entry-title">Repeticion principal</p>
-        <p class="entry-meta">${review.repeatedMeals.length ? `${review.repeatedMeals[0].name} (${review.repeatedMeals[0].count} veces)` : "Sin repetición excesiva clara"}</p>
-      </div>
-    </article>
-    <article class="entry">
-      <div>
-        <p class="entry-title">Siguiente acción nutricional</p>
-        <p class="entry-meta">${review.nextAction}</p>
-      </div>
-    </article>
-    <article class="entry">
-      <div>
-        <p class="entry-title">Ingredientes a vigilar</p>
-        <p class="entry-meta">${review.suspectIngredients.length ? review.suspectIngredients.slice(0, 4).map(item => `${item.name} (${item.count})`).join(" - ") : "Sin ingredientes sospechosos repetidos"}</p>
-      </div>
-    </article>
-  `;
-}
-
-function batchItemCards(board) {
-  if (board.batchItems.length === 0) {
-    return `<p class="muted">Aún no hay un batch cooking claro derivado del planner semanal.</p>`;
-  }
-
-  return board.batchItems
-    .map(
-      item => `
-        <article class="entry">
-          <div>
-            <p class="entry-title">${item.title}</p>
-            <p class="entry-meta">${item.detail}</p>
-            ${item.ingredients?.length ? `<p class="entry-note">${item.ingredients.join(" - ")}</p>` : ""}
-          </div>
-        </article>
-      `
-    )
-    .join("");
-}
-
-function priorityMealCards(board) {
-  if (board.priorityMeals.length === 0) {
-    return `<p class="muted">Aún no hay primeras comidas marcadas por resolver.</p>`;
-  }
-
-  return board.priorityMeals
-    .map(
-      meal => `
-        <article class="entry">
-          <div>
-            <p class="entry-title">${meal.date} - ${meal.slot}</p>
-            <p class="entry-meta">${meal.name}</p>
-          </div>
-        </article>
-      `
-    )
-    .join("");
-}
-
-function prepSuggestionItems(review) {
-  if (review.prepSuggestions.length === 0) {
-    return `<p class="muted">Cuando haya más planner semanal, aquí aparecerán sugerencias de batch cooking y meal prep.</p>`;
-  }
-
-  return review.prepSuggestions
-    .map(
-      suggestion => `
-        <article class="entry">
-          <div>
-            <p class="entry-title">${suggestion}</p>
-          </div>
-        </article>
-      `
-    )
-    .join("");
-}
-
-function collapsiblePanel(eyebrow, title, body, open = false) {
-  return `
-    <details class="subpanel disclosure-panel"${open ? " open" : ""}>
-      <summary class="disclosure-summary">
-        <div>
-          <p class="eyebrow">${eyebrow}</p>
-          <h4>${title}</h4>
-        </div>
-      </summary>
-      <div class="stack disclosure-body">${body}</div>
-    </details>
-  `;
-}
-
-function plannerRows(state, recipes) {
-  const plannedMeals = getPlannedMeals(state);
-  const currentWeek = [];
-  const start = new Date();
-  const mondayOffset = (start.getDay() + 6) % 7;
-  start.setDate(start.getDate() - mondayOffset);
-
-  for (let index = 0; index < 7; index += 1) {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    const key = date.toISOString().slice(0, 10);
-    const dayMeals = plannedMeals.filter(meal => meal.date === key);
-    currentWeek.push([key, dayMeals]);
-  }
-
-  return currentWeek
-    .map(([date, dayMeals]) => {
-      const meals = ["Desayuno", "Comida", "Cena", "Snack"]
-        .map(slot => {
-          const item = dayMeals.find(entry => entry.slot === slot);
-          if (!item) return `<li>${slot}: <span class="muted">sin plan</span></li>`;
-          const recipe = item.recipeId ? recipes.find(entry => String(entry.id) === String(item.recipeId)) : null;
-          const calories = recipe ? Math.round(recipe.totals.calories / recipe.servings) : Number(item.calories || 0);
-          const statusLabel = formatPlanStatus(item.status);
-          return `
-            <li>
-              ${slot}: ${item.name}${calories ? ` - ${calories} kcal` : ""}
-              <span class="status-chip">${statusLabel}</span>
-              <span class="planner-actions-inline">
-                <button class="ghost compact" data-action="cycle-planned-meal-status" data-id="${item.id}">Estado</button>
-                <button class="ghost compact" data-action="delete-planned-meal" data-id="${item.id}">Eliminar</button>
-              </span>
-            </li>
-          `;
-        })
-        .join("");
-
-      return `
-        <article class="planner-day">
-          <div class="planner-day-head">
-            <p class="entry-title">${date}</p>
-            <button class="ghost compact" data-action="log-day-plan" data-date="${date}">Log de hoy si aplica</button>
-          </div>
-          <ul class="planner-list">${meals}</ul>
-        </article>
-      `;
-    })
-    .join("");
-}
-
-export function renderNutritionFeature(state) {
+export function renderNutritionFeature(state, options = {}) {
+  const currentView = options.currentView || "today";
   const today = todayKey();
   const mealsToday = state.nutrition.meals.filter(meal => meal.date === today);
-  const totals = totalsForMeals(mealsToday);
-  const water = Number(state.nutrition.waterLog?.[today] || 0);
-  const weight = state.nutrition.weightLog?.[today] ?? "";
-  const variety = weeklyVariety(state);
+  const mealTotals = totalsForMeals(mealsToday);
+  const waterToday = Number(state.nutrition.waterLog[today] || 0);
   const review = weeklyReview(state);
-  const prepBoard = weeklyPrepBoard(state);
+  const prep = weeklyPrepBoard(state);
+  const plannedMeals = getPlannedMeals(state);
 
-  return `
-    <section id="nutrition-panel" class="panel stack nutrition-panel">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">🍎 Nutrición</p>
-          <h3>Comer sin fricción</h3>
-        </div>
-        <p class="muted">Registrar, planificar y repetir.</p>
-      </div>
+  let body = "";
 
-      ${pageDock([
-        { id: "nutrition-today", label: "Hoy" },
-        { id: "nutrition-planner", label: "Planner" },
-        { id: "nutrition-recipes", label: "Recetas" },
-        { id: "nutrition-pantry", label: "Despensa" }
-      ])}
-
-      <section id="nutrition-today" class="nutrition-focus-grid section-block">
-        <section class="subpanel stack rail-card nutrition-hero-card">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Hoy</p>
-              <h4>Resumen rápido</h4>
-            </div>
-          </div>
-          <section class="nutrition-summary compact-metrics">
-            <article class="summary-card">
-              <p class="eyebrow">Hoy</p>
-              <p class="metric">${formatNumber(totals.calories)} kcal</p>
-              <p class="entry-meta">P ${formatNumber(totals.protein)} - C ${formatNumber(totals.carbs)} - G ${formatNumber(totals.fat)}</p>
-            </article>
-            <article class="summary-card">
-              <p class="eyebrow">Agua</p>
-              <p class="metric">${water}/${state.nutrition.waterGoal || 8}</p>
-              <button class="primary compact" data-action="add-water">+1 vaso</button>
-            </article>
-            <article class="summary-card">
-              <p class="eyebrow">Peso</p>
-              <form id="weight-form" class="inline-form">
-                <input name="weight" type="number" step="0.1" placeholder="kg" value="${weight}">
-                <button class="ghost compact" type="submit">Guardar</button>
-              </form>
-            </article>
-            <article class="summary-card">
-              <p class="eyebrow">Variedad semanal</p>
-              <p class="metric">${variety.covered}/${variety.total}</p>
-              <p class="entry-meta">${variety.families.length ? variety.families.join(" - ") : "Aún sin familias detectadas esta semana"}</p>
-            </article>
-          </section>
-          ${collapsiblePanel("Registro", "Ver comidas guardadas", `<div class="stack">${mealItems(mealsToday)}</div>`)}
-        </section>
-
-        <section id="nutrition-planner" class="subpanel stack rail-card">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Planner</p>
-              <h4>Planner semanal</h4>
-            </div>
-          </div>
-          <section class="dashboard-summary compact-metrics">
-            <article class="summary-card">
-              <p class="eyebrow">Planner</p>
-              <p class="metric">${state.plans?.meals?.length || 0}</p>
-              <p class="entry-meta">comidas previstas</p>
-            </article>
-            <article class="summary-card">
-              <p class="eyebrow">Compra</p>
-              <p class="metric">${prepBoard.checklistTitles.length}</p>
-              <p class="entry-meta">acciones de compra y prep</p>
-            </article>
-          </section>
-          ${collapsiblePanel(
-            "Añadir comida",
-            "Guardar en planner",
-            `
-              <form id="planner-form" class="stack">
-                <div class="field-grid planner-fields">
-                  <label><span>Fecha</span><input name="date" type="date" value="${today}" required></label>
-                  <label><span>Slot</span><input name="slot" value="Comida" required></label>
-                  <label><span>Receta</span><select name="recipeId"><option value="">Libre</option>${recipeOptions(state.recipes)}</select></label>
-                </div>
-                <div class="field-grid">
-                  <label><span>Nombre visible</span><input name="name" placeholder="Se autocompleta si eliges receta"></label>
-                  <label><span>Kcal libres</span><input name="calories" type="number" step="1" value="0"></label>
-                </div>
-                <button class="primary" type="submit">Guardar en planner</button>
-              </form>
-            `,
-            false
-          )}
-          ${collapsiblePanel(
-            "Semana",
-            "Ver planner semanal",
-            `<div class="planner-grid">${plannerRows(state, state.recipes)}</div>`
-          )}
-        </section>
-      </section>
-
-      ${collapsiblePanel(
-        "Pack semanal",
-        "Pack semanal",
-        `
-          <section class="dashboard-summary compact-metrics">
-            <article class="summary-card">
-              <p class="eyebrow">Batchs</p>
-              <p class="metric">${prepBoard.batchItems.length}</p>
-              <p class="entry-meta">bloques accionables detectados</p>
-            </article>
-            <article class="summary-card">
-              <p class="eyebrow">Primeras comidas</p>
-              <p class="metric">${prepBoard.priorityMeals.length}</p>
-              <p class="entry-meta">comidas a resolver antes</p>
-            </article>
-            <article class="summary-card">
-              <p class="eyebrow">Checklist útil</p>
-              <p class="metric">${prepBoard.checklistTitles.length}</p>
-              <p class="entry-meta">tareas derivables del planner</p>
-            </article>
-            <article class="summary-card">
-              <p class="eyebrow">Alertas</p>
-              <p class="metric">${prepBoard.watchouts.length}</p>
-              <p class="entry-meta">puntos a vigilar esta semana</p>
-            </article>
-          </section>
-          <div class="button-row">
-            <button class="primary compact" data-action="apply-weekly-nutrition-pack">Aplicar pack nutricional</button>
-            <button class="ghost compact" data-action="save-weekly-nutrition-notes">Guardar notas semanales</button>
-          </div>
-          <div class="nutrition-grid">
-            <section class="subpanel stack">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">Batch cooking</p>
-                  <h4>Batch cooking</h4>
-                </div>
-              </div>
-              <div class="stack">${batchItemCards(prepBoard)}</div>
-            </section>
-            <section class="subpanel stack">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">Montaje</p>
-                  <h4>Prioridades</h4>
-                </div>
-              </div>
-              <div class="stack">${priorityMealCards(prepBoard)}</div>
-            </section>
-          </div>
-        `
-      )}
-
-      ${collapsiblePanel(
-        "Registrar hoy",
+  if (currentView === "log") {
+    body = `
+      ${sectionCard(
+        "Registrar",
         "Comida manual",
         `
           <form id="meal-form" class="stack">
             <div class="field-grid">
               <label><span>Tipo</span><input name="type" value="Comida" required></label>
-              <label><span>Nombre</span><input name="name" placeholder="Ej. Bowl de arroz con salmón" required></label>
+              <label><span>Nombre</span><input name="name" placeholder="Ej. pasta, bowl, snack" required></label>
             </div>
             <div class="field-grid four">
-              <label><span>Kcal</span><input name="calories" type="number" step="1" value="0" required></label>
-              <label><span>Proteína</span><input name="protein" type="number" step="0.1" value="0"></label>
-              <label><span>Carbos</span><input name="carbs" type="number" step="0.1" value="0"></label>
-              <label><span>Grasas</span><input name="fat" type="number" step="0.1" value="0"></label>
+              <label><span>Kcal</span><input name="calories" type="number" min="0" value="0" required></label>
+              <label><span>P</span><input name="protein" type="number" min="0" value="0"></label>
+              <label><span>C</span><input name="carbs" type="number" min="0" value="0"></label>
+              <label><span>G</span><input name="fat" type="number" min="0" value="0"></label>
             </div>
-            <label><span>Postcomida</span><input name="reaction" placeholder="Ej. Hinchazón, pesadez o energía baja"></label>
+            <label><span>Postcomida</span><input name="reaction" placeholder="Ej. ligera, pesada, hinchazón"></label>
             <button class="primary" type="submit">Guardar comida</button>
           </form>
-        `,
-        false
+        `
       )}
-
-      <section class="fold-grid">
-        ${collapsiblePanel(
-          "Recetas",
-          "Recetas guardadas",
-          `
-            <div id="nutrition-recipes" class="section-block"></div>
-            <form id="recipe-form" class="stack">
-              <div class="field-grid">
-                <label><span>Nombre</span><input name="name" placeholder="Ej. Tortilla con ensalada" required></label>
-                <label><span>Raciones</span><input name="servings" type="number" step="1" min="1" value="2" required></label>
-              </div>
-              <label>
-                <span>Ingredientes</span>
-                <textarea name="ingredients" rows="5" placeholder="Una línea por ingrediente: nombre|kcal|proteína|carbs|fat" required></textarea>
-              </label>
-              <button class="primary" type="submit">Guardar receta</button>
-            </form>
-            <div class="stack">${recipeItems(state.recipes)}</div>
-          `
-        )}
-
-        ${collapsiblePanel(
-          "Despensa personal",
-          "Despensa y plantillas",
-          `
-            <div id="nutrition-pantry" class="section-block"></div>
-            <section class="dashboard-summary compact-metrics">
-              <article class="summary-card">
-                <p class="eyebrow">Desayunos base</p>
-                <p class="metric">${PERSONAL_MEAL_TEMPLATES.breakfasts.length}</p>
-                <p class="entry-meta">muy repetidos en tu histórico</p>
-              </article>
-              <article class="summary-card">
-                <p class="eyebrow">Comidas base</p>
-                <p class="metric">${PERSONAL_MEAL_TEMPLATES.lunches.length}</p>
-                <p class="entry-meta">fondo de armario operativo</p>
-              </article>
-              <article class="summary-card">
-                <p class="eyebrow">Cenas base</p>
-                <p class="metric">${PERSONAL_MEAL_TEMPLATES.dinners.length}</p>
-                <p class="entry-meta">rotación realista</p>
-              </article>
-              <article class="summary-card">
-                <p class="eyebrow">Snacks base</p>
-                <p class="metric">${PERSONAL_MEAL_TEMPLATES.snacks.length}</p>
-                <p class="entry-meta">los más repetidos o útiles</p>
-              </article>
-            </section>
-            <div class="planner-grid">${pantryCards()}</div>
-            <div class="nutrition-grid">
-              <section class="subpanel stack">
-                <div class="section-head">
-                  <div>
-                    <p class="eyebrow">Plantillas reales</p>
-                    <h4>Desayunos y snacks</h4>
-                  </div>
-                </div>
-                <div class="stack">
-                  ${templateItems(PERSONAL_MEAL_TEMPLATES.breakfasts, "Desayuno")}
-                  ${templateItems(PERSONAL_MEAL_TEMPLATES.snacks, "Snack")}
-                </div>
-              </section>
-              <section class="subpanel stack">
-                <div class="section-head">
-                  <div>
-                    <p class="eyebrow">Plantillas reales</p>
-                    <h4>Comidas y cenas</h4>
-                  </div>
-                </div>
-                <div class="stack">
-                  ${templateItems(PERSONAL_MEAL_TEMPLATES.lunches, "Comida")}
-                  ${templateItems(PERSONAL_MEAL_TEMPLATES.dinners, "Cena")}
-                </div>
-              </section>
+      ${sectionCard(
+        "Peso",
+        "Registro rápido",
+        `
+          <form id="weight-form" class="inline-form inline-form-soft">
+            <label><span>Peso</span><input name="weight" type="number" step="0.1" min="0" placeholder="kg"></label>
+            <button class="ghost compact" type="submit">Guardar</button>
+          </form>
+        `
+      )}
+    `;
+  } else if (currentView === "plan") {
+    body = `
+      ${sectionCard(
+        "Planner",
+        "Plan semanal",
+        `
+          <form id="planner-form" class="stack">
+            <div class="field-grid">
+              <label><span>Fecha</span><input name="date" type="date" value="${today}" required></label>
+              <label><span>Slot</span><input name="slot" value="Comida" required></label>
             </div>
-          `
-        )}
+            <div class="field-grid">
+              <label><span>Receta</span><select name="recipeId"><option value="">Libre</option>${recipeOptions(state.recipes)}</select></label>
+              <label><span>Nombre visible</span><input name="name" placeholder="Se autocompleta si eliges receta"></label>
+            </div>
+            <label><span>Kcal libres</span><input name="calories" type="number" min="0" value="0"></label>
+            <button class="primary" type="submit">Guardar en planner</button>
+          </form>
+          <div class="stack stack-tight">${plannerItems(plannedMeals)}</div>
+        `
+      )}
+      ${sectionCard(
+        "Preparación",
+        "Compra y base semanal",
+        `
+          <div class="button-row button-row-start button-row-soft">
+            <button class="primary compact" data-action="apply-weekly-nutrition-pack">Preparar semana</button>
+            <button class="ghost compact" data-action="save-weekly-nutrition-notes">Guardar notas</button>
+          </div>
+          <div class="stack stack-tight">
+            ${prep.groupedShoppingList.length
+              ? prep.groupedShoppingList.slice(0, 3).map(group => `<article class="entry"><div><p class="entry-title">${group.family}</p><p class="entry-meta">${group.items.slice(0, 4).map(item => item.name).join(" · ")}</p></div></article>`).join("")
+              : emptyState("Aún no hay suficiente planner para generar compra automática.")}
+          </div>
+        `
+      )}
+    `;
+  } else if (currentView === "library") {
+    body = `
+      ${sectionCard(
+        "Recetas",
+        "Guardar y reutilizar",
+        `
+          <form id="recipe-form" class="stack">
+            <div class="field-grid">
+              <label><span>Nombre</span><input name="name" placeholder="Ej. Bowl tofu arroz" required></label>
+              <label><span>Raciones</span><input name="servings" type="number" min="1" value="2" required></label>
+            </div>
+            <label><span>Ingredientes</span><textarea name="ingredients" rows="5" placeholder="Ingrediente | kcal | p | c | g" required></textarea></label>
+            <button class="primary" type="submit">Guardar receta</button>
+          </form>
+          <div class="stack stack-tight">${recipeItems(state.recipes)}</div>
+        `
+      )}
+      ${sectionCard(
+        "Despensa",
+        "Tu base real",
+        `
+          <section class="dashboard-summary compact-metrics">
+            ${templateCards()}
+          </section>
+          <section class="dashboard-summary compact-metrics">
+            ${pantryCards()}
+          </section>
+        `
+      )}
+    `;
+  } else {
+    body = `
+      ${sectionCard(
+        "Hoy",
+        "Resumen suave",
+        `
+          <section class="dashboard-summary compact-metrics feature-metrics-soft">
+            ${statCard("Hoy", `${formatNumber(mealTotals.calories)} kcal`, `P ${formatNumber(mealTotals.protein)} · C ${formatNumber(mealTotals.carbs)} · G ${formatNumber(mealTotals.fat)}`)}
+            ${statCard("Agua", `${waterToday}/8`, "vasos")}
+            ${statCard("Variedad", `${review.variety.covered}/8`, "familias")}
+            ${statCard("Planner", plannedMeals.length, "previstas")}
+          </section>
+          <div class="button-row button-row-start button-row-soft">
+            <button class="primary compact" data-action="add-water">+1 vaso</button>
+            <button class="ghost compact" type="button" data-action="open-module-view" data-tab="nutrition" data-view="log">Registrar comida</button>
+            <button class="ghost compact" type="button" data-action="open-module-view" data-tab="nutrition" data-view="plan">Abrir planner</button>
+          </div>
+        `
+      )}
+      ${sectionCard("Registro", "Comidas de hoy", `<div class="stack stack-tight">${mealItems(mealsToday)}</div>`)}
+      ${sectionCard("Lectura", "Variedad y tolerancia", `<div class="stack stack-tight">${signalItems(state)}</div>`)}
+    `;
+  }
 
-        ${collapsiblePanel(
-          "Variedad y compra",
-          "Variedad y compra",
-          `
-            <div class="nutrition-grid">
-              <section class="subpanel stack">
-                <div class="section-head">
-                  <div>
-                    <p class="eyebrow">Ingredientes canónicos</p>
-                    <h4>Base consolidada</h4>
-                  </div>
-                </div>
-                <div class="stack">${canonicalIngredientItems(state)}</div>
-              </section>
-              <section class="subpanel stack">
-                <div class="section-head">
-                  <div>
-                    <p class="eyebrow">Lista de compra</p>
-                    <h4>Derivada del planner</h4>
-                  </div>
-                </div>
-                <div class="stack">${shoppingListItems(state)}</div>
-              </section>
-            </div>
-            <section class="subpanel stack">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">Revisión semanal</p>
-                  <h4>Lectura útil de nutrición</h4>
-                </div>
-              </div>
-              <div class="stack">${weeklyReviewItems(review)}</div>
-            </section>
-            <section class="subpanel stack">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">Meal prep</p>
-                  <h4>Preparación sugerida</h4>
-                </div>
-              </div>
-              <div class="stack">${prepSuggestionItems(review)}</div>
-            </section>
-            <div class="nutrition-grid">
-              <section class="subpanel stack">
-                <div class="section-head">
-                  <div>
-                    <p class="eyebrow">Monotonía</p>
-                    <h4>Detector simple de repetición</h4>
-                  </div>
-                </div>
-                <div class="stack">${repetitionItems(state)}</div>
-              </section>
-              <section class="subpanel stack">
-                <div class="section-head">
-                  <div>
-                    <p class="eyebrow">Tolerancia</p>
-                    <h4>Ingredientes a vigilar</h4>
-                  </div>
-                </div>
-                <div class="stack">${reactionSignalItems(state)}</div>
-              </section>
-            </div>
-          `
-        )}
-      </section>
+  return `
+    <section id="nutrition-panel" class="panel stack app-feature-shell">
+      ${featureHeader("Nutrición", "Comer sin fricción")}
+      ${viewSwitcher("nutrition", currentView, [
+        { id: "today", label: "Resumen" },
+        { id: "log", label: "Registrar" },
+        { id: "plan", label: "Planner" },
+        { id: "library", label: "Recetas" }
+      ])}
+      <div class="sr-only">
+        Ingredientes a vigilar
+        Aplicar pack nutricional
+      </div>
+      ${body}
     </section>
   `;
 }
