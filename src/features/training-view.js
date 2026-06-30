@@ -25,9 +25,9 @@ function collapsiblePanel(eyebrow, title, body, open = false) {
   `;
 }
 
-function sectionJumpNav(items) {
+function pageDock(items) {
   return `
-    <nav class="page-dock" aria-label="Atajos de entreno">
+    <nav class="page-dock" aria-label="Navegación de entreno">
       ${items.map(item => `<a class="page-anchor" href="#${item.id}">${item.label}</a>`).join("")}
     </nav>
   `;
@@ -164,6 +164,7 @@ export function renderTrainingFeature(state) {
   const totals = weeklyTotals(state.training.sessions);
   const typeOptions = TRAINING_TYPES.map(type => `<option value="${type}">${type}</option>`).join("");
   const exerciseOptions = EXERCISE_LIBRARY.map(exercise => `<option value="${exercise}"></option>`).join("");
+  const plannedCount = getUpcomingPlannedSessions(state).length;
 
   return `
     <section id="training-panel" class="panel stack">
@@ -172,51 +173,56 @@ export function renderTrainingFeature(state) {
           <p class="eyebrow">Entreno</p>
           <h3>Entrenar, programar y leer carga</h3>
         </div>
-        <p class="muted">Registrar, programar y leer carga sin perderte en formularios.</p>
+        <p class="muted">Registro simple, semana visible y relación clara con recuperación y ciclo.</p>
       </div>
 
-      ${sectionJumpNav([
+      ${pageDock([
         { id: "training-summary", label: "Resumen" },
-        { id: "training-log", label: "Registrar" },
-        { id: "training-plan", label: "Programar" },
-        { id: "training-sessions", label: "Sesiones" },
+        { id: "training-capture", label: "Registrar" },
+        { id: "training-planned", label: "Programadas" },
         { id: "training-library", label: "Biblioteca" }
       ])}
 
-      <section id="training-summary" class="training-summary compact-metrics section-block">
-        <article class="summary-card">
-          <p class="eyebrow">7 días</p>
-          <p class="metric">${totals.count} sesiones</p>
-          <p class="entry-meta">${formatNumber(totals.minutes)} min</p>
-        </article>
-        <article class="summary-card">
-          <p class="eyebrow">Carga</p>
-          <p class="metric">${formatNumber(totals.load)} kg</p>
-          <p class="entry-meta">volumen simple semanal</p>
-        </article>
-        <article class="summary-card">
-          <p class="eyebrow">Cardio</p>
-          <p class="metric">${Number(totals.distance || 0).toFixed(1)} km</p>
-          <p class="entry-meta">distancia semanal</p>
-        </article>
-      </section>
+      ${collapsiblePanel("Lectura cruzada", "Entreno, recuperación y ciclo", `<div class="stack">${weeklyCrossSignals(state)}</div>`)}
 
-      <section class="subpanel stack panel-toned section-block">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Lectura cruzada</p>
-            <h4>Entreno, recuperación y ciclo</h4>
-          </div>
-        </div>
-        <div class="stack">${weeklyCrossSignals(state)}</div>
-      </section>
-
-      <div class="training-grid">
-        <section id="training-log" class="subpanel stack section-block">
+      <div id="training-summary" class="training-focus-grid section-block">
+        <section class="subpanel stack rail-card training-hero-card">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Nueva sesión</p>
-              <h4>Registrar entreno</h4>
+              <p class="eyebrow">Resumen</p>
+              <h4>Carga semanal visible</h4>
+            </div>
+          </div>
+          <section class="training-summary compact-metrics">
+            <article class="summary-card">
+              <p class="eyebrow">7 días</p>
+              <p class="metric">${totals.count} sesiones</p>
+              <p class="entry-meta">${formatNumber(totals.minutes)} min</p>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Carga</p>
+              <p class="metric">${formatNumber(totals.load)} kg</p>
+              <p class="entry-meta">volumen simple semanal</p>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Cardio</p>
+              <p class="metric">${Number(totals.distance || 0).toFixed(1)} km</p>
+              <p class="entry-meta">distancia semanal</p>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Programadas</p>
+              <p class="metric">${plannedCount}</p>
+              <p class="entry-meta">sesiones futuras activas</p>
+            </article>
+          </section>
+          ${collapsiblePanel("Reciente", "Últimas sesiones", `<div class="stack">${sessionItems(state.training.sessions)}</div>`)}
+        </section>
+
+        <section id="training-capture" class="subpanel stack rail-card">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Registrar</p>
+              <h4>Nueva sesión</h4>
             </div>
           </div>
           <form id="training-form" class="stack">
@@ -225,7 +231,7 @@ export function renderTrainingFeature(state) {
               <label><span>Tipo</span><select name="type" required>${typeOptions}</select></label>
             </div>
             <div class="field-grid">
-              <label><span>Actividad</span><input name="activity" list="exercise-library" placeholder="Ej. Hip thrust o running" required></label>
+              <label><span>Actividad</span><input name="activity" list="exercise-library" placeholder="Ej. hip thrust o running" required></label>
               <label><span>Duración (min)</span><input name="duration" type="number" step="1" min="0" value="60" required></label>
             </div>
             <datalist id="exercise-library">${exerciseOptions}</datalist>
@@ -245,12 +251,10 @@ export function renderTrainingFeature(state) {
             </div>
             <button class="primary" type="submit">Guardar sesión</button>
           </form>
-        </section>
 
-        <section id="training-plan" class="subpanel stack section-block">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Programación</p>
+              <p class="eyebrow">Programar</p>
               <h4>Sesión futura</h4>
             </div>
           </div>
@@ -260,7 +264,7 @@ export function renderTrainingFeature(state) {
               <label><span>Tipo</span><select name="type" required>${typeOptions}</select></label>
             </div>
             <div class="field-grid">
-              <label><span>Actividad</span><input name="activity" list="exercise-library" placeholder="Ej. Upper, running suave..." required></label>
+              <label><span>Actividad</span><input name="activity" list="exercise-library" placeholder="Ej. upper, running suave..." required></label>
               <label><span>Duración (min)</span><input name="duration" type="number" step="1" min="1" value="60" required></label>
             </div>
             <div class="field-grid">
@@ -271,20 +275,12 @@ export function renderTrainingFeature(state) {
             <button class="primary" type="submit">Programar sesión</button>
           </form>
         </section>
-
-        <section id="training-sessions" class="subpanel stack section-block">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Resumen</p>
-              <h4>Últimas sesiones</h4>
-            </div>
-          </div>
-          <div class="stack">${sessionItems(state.training.sessions)}</div>
-        </section>
       </div>
 
-      <section id="training-library" class="fold-grid section-block">
-        ${collapsiblePanel("Programadas", "Sesiones futuras", `<div class="stack">${plannedSessionItems(state)}</div>`)}
+      <section class="fold-grid section-block">
+        <div id="training-planned">
+          ${collapsiblePanel("Programadas", "Sesiones futuras", `<div class="stack">${plannedSessionItems(state)}</div>`)}
+        </div>
         ${collapsiblePanel(
           "Rutinas",
           "Guardar base reutilizable",
@@ -292,7 +288,7 @@ export function renderTrainingFeature(state) {
             <form id="routine-form" class="stack">
               <div class="field-grid">
                 <label><span>Nombre</span><input name="name" placeholder="Ej. Lower A" required></label>
-                <label><span>Foco</span><input name="focus" placeholder="Gluteo, espalda, cardio..." required></label>
+                <label><span>Foco</span><input name="focus" placeholder="Glúteo, espalda, cardio..." required></label>
               </div>
               <label><span>Ejercicios</span><textarea name="exercises" rows="4" placeholder="Una línea por ejercicio o estructura de la sesión"></textarea></label>
               <button class="primary" type="submit">Guardar rutina</button>
@@ -300,7 +296,9 @@ export function renderTrainingFeature(state) {
             <div class="stack">${routineItems(state.training.routines)}</div>
           `
         )}
-        ${collapsiblePanel("Biblioteca V1", "Ejercicios base", `<section class="dashboard-summary">${libraryGroupItems()}</section>`)}
+        <div id="training-library">
+          ${collapsiblePanel("Biblioteca V1", "Ejercicios base", `<section class="dashboard-summary">${libraryGroupItems()}</section>`)}
+        </div>
       </section>
     </section>
   `;

@@ -1,4 +1,4 @@
-import { getPlannedMeals } from "../domain/plans.js";
+﻿import { getPlannedMeals } from "../domain/plans.js";
 import {
   PERSONAL_MEAL_TEMPLATES,
   PERSONAL_PANTRY,
@@ -29,6 +29,16 @@ function currentWeekKeySet() {
 
 function formatNumber(value) {
   return Number(value || 0).toFixed(0);
+}
+
+function pageDock(items) {
+  return `
+    <nav class="page-dock" aria-label="Navegación de nutrición">
+      ${items
+        .map(item => `<a class="page-anchor" href="#${item.id}">${item.label}</a>`)
+        .join("")}
+    </nav>
+  `;
 }
 
 function totalsForMeals(meals) {
@@ -107,7 +117,7 @@ function recipeIdentityLine(recipe) {
 
 function recipeIngredientLine(recipe) {
   const names = Array.isArray(recipe.canonicalIngredients) ? recipe.canonicalIngredients : [];
-  return names.length > 0 ? names.slice(0, 5).join(" - ") : "Ingredientes canonicos pendientes";
+  return names.length > 0 ? names.slice(0, 5).join(" - ") : "Ingredientes canónicos pendientes";
 }
 
 function recipeItems(recipes) {
@@ -209,7 +219,7 @@ function shoppingListItems(state) {
 function repetitionItems(state) {
   const repeated = repeatedPlannedMealNames(getPlannedMeals(state)).slice(0, 8);
   if (repeated.length === 0) {
-    return `<p class="muted">No se detecta repeticion excesiva en el planner actual.</p>`;
+    return `<p class="muted">No se detecta repetición excesiva en el planner actual.</p>`;
   }
 
   return repeated
@@ -264,12 +274,12 @@ function weeklyReviewItems(review) {
     <article class="entry">
       <div>
         <p class="entry-title">Repeticion principal</p>
-        <p class="entry-meta">${review.repeatedMeals.length ? `${review.repeatedMeals[0].name} (${review.repeatedMeals[0].count} veces)` : "Sin repeticion excesiva clara"}</p>
+        <p class="entry-meta">${review.repeatedMeals.length ? `${review.repeatedMeals[0].name} (${review.repeatedMeals[0].count} veces)` : "Sin repetición excesiva clara"}</p>
       </div>
     </article>
     <article class="entry">
       <div>
-        <p class="entry-title">Siguiente accion nutricional</p>
+        <p class="entry-title">Siguiente acción nutricional</p>
         <p class="entry-meta">${review.nextAction}</p>
       </div>
     </article>
@@ -353,14 +363,6 @@ function collapsiblePanel(eyebrow, title, body, open = false) {
   `;
 }
 
-function sectionJumpNav(items) {
-  return `
-    <nav class="page-dock" aria-label="Atajos de nutricion">
-      ${items.map(item => `<a class="page-anchor" href="#${item.id}">${item.label}</a>`).join("")}
-    </nav>
-  `;
-}
-
 function plannerRows(state, recipes) {
   const plannedMeals = getPlannedMeals(state);
   const currentWeek = [];
@@ -431,113 +433,53 @@ export function renderNutritionFeature(state) {
         <p class="muted">Registrar, planificar y preparar sin sentirlo como una hoja eterna.</p>
       </div>
 
-      ${sectionJumpNav([
+      ${pageDock([
         { id: "nutrition-today", label: "Hoy" },
         { id: "nutrition-planner", label: "Planner" },
         { id: "nutrition-recipes", label: "Recetas" },
-        { id: "nutrition-pantry", label: "Despensa" },
-        { id: "nutrition-weekly", label: "Semana" }
+        { id: "nutrition-pantry", label: "Despensa" }
       ])}
 
-      <section id="nutrition-today" class="nutrition-summary compact-metrics section-block">
-        <article class="summary-card">
-          <p class="eyebrow">Hoy</p>
-          <p class="metric">${formatNumber(totals.calories)} kcal</p>
-          <p class="entry-meta">P ${formatNumber(totals.protein)} - C ${formatNumber(totals.carbs)} - G ${formatNumber(totals.fat)}</p>
-        </article>
-        <article class="summary-card">
-          <p class="eyebrow">Agua</p>
-          <p class="metric">${water}/${state.nutrition.waterGoal || 8}</p>
-          <button class="primary compact" data-action="add-water">+1 vaso</button>
-        </article>
-        <article class="summary-card">
-          <p class="eyebrow">Peso</p>
-          <form id="weight-form" class="inline-form">
-            <input name="weight" type="number" step="0.1" placeholder="kg" value="${weight}">
-            <button class="ghost compact" type="submit">Guardar</button>
-          </form>
-        </article>
-        <article class="summary-card">
-          <p class="eyebrow">Variedad semanal</p>
-          <p class="metric">${variety.covered}/${variety.total}</p>
-          <p class="entry-meta">${variety.families.length ? variety.families.join(" - ") : "Aún sin familias detectadas esta semana"}</p>
-        </article>
-      </section>
-
-      <section id="nutrition-weekly" class="subpanel stack panel-toned section-block">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Pack semanal</p>
-            <h4>Semana nutricional</h4>
-          </div>
-        </div>
-        <section class="dashboard-summary compact-metrics">
-          <article class="summary-card">
-            <p class="eyebrow">Batchs</p>
-            <p class="metric">${prepBoard.batchItems.length}</p>
-            <p class="entry-meta">bloques accionables detectados</p>
-          </article>
-          <article class="summary-card">
-            <p class="eyebrow">Primeras comidas</p>
-            <p class="metric">${prepBoard.priorityMeals.length}</p>
-            <p class="entry-meta">comidas a resolver antes</p>
-          </article>
-          <article class="summary-card">
-            <p class="eyebrow">Checklist util</p>
-            <p class="metric">${prepBoard.checklistTitles.length}</p>
-            <p class="entry-meta">tareas derivables del planner</p>
-          </article>
-          <article class="summary-card">
-            <p class="eyebrow">Alertas</p>
-            <p class="metric">${prepBoard.watchouts.length}</p>
-            <p class="entry-meta">puntos a vigilar esta semana</p>
-          </article>
-        </section>
-        <div class="button-row">
-          <button class="primary compact" data-action="apply-weekly-nutrition-pack">Aplicar pack nutricional</button>
-          <button class="ghost compact" data-action="save-weekly-nutrition-notes">Guardar notas semanales</button>
-        </div>
-        <div class="nutrition-grid">
-          <section class="subpanel stack">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">Batch cooking</p>
-                <h4>Bloques recomendados</h4>
-              </div>
-            </div>
-            <div class="stack">${batchItemCards(prepBoard)}</div>
-          </section>
-          <section class="subpanel stack">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">Montaje</p>
-                <h4>Primeras comidas a cerrar</h4>
-              </div>
-            </div>
-            <div class="stack">${priorityMealCards(prepBoard)}</div>
-          </section>
-        </div>
-      </section>
-
-      <div class="nutrition-grid">
-        <section class="subpanel stack rail-card section-block">
+      <section id="nutrition-today" class="nutrition-focus-grid section-block">
+        <section class="subpanel stack rail-card nutrition-hero-card">
           <div class="section-head">
             <div>
               <p class="eyebrow">Hoy</p>
-              <h4>Registro rapido y real</h4>
+              <h4>Comer y registrar sin fricción</h4>
             </div>
           </div>
-          <div class="button-row button-row-start">
-            <button class="primary compact" data-action="add-water">+1 vaso</button>
-          </div>
+          <section class="nutrition-summary compact-metrics">
+            <article class="summary-card">
+              <p class="eyebrow">Hoy</p>
+              <p class="metric">${formatNumber(totals.calories)} kcal</p>
+              <p class="entry-meta">P ${formatNumber(totals.protein)} - C ${formatNumber(totals.carbs)} - G ${formatNumber(totals.fat)}</p>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Agua</p>
+              <p class="metric">${water}/${state.nutrition.waterGoal || 8}</p>
+              <button class="primary compact" data-action="add-water">+1 vaso</button>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Peso</p>
+              <form id="weight-form" class="inline-form">
+                <input name="weight" type="number" step="0.1" placeholder="kg" value="${weight}">
+                <button class="ghost compact" type="submit">Guardar</button>
+              </form>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Variedad semanal</p>
+              <p class="metric">${variety.covered}/${variety.total}</p>
+              <p class="entry-meta">${variety.families.length ? variety.families.join(" - ") : "Aún sin familias detectadas esta semana"}</p>
+            </article>
+          </section>
           <div class="stack">${mealItems(mealsToday)}</div>
         </section>
 
-        <section id="nutrition-planner" class="subpanel stack rail-card section-block">
+        <section id="nutrition-planner" class="subpanel stack rail-card">
           <div class="section-head">
             <div>
               <p class="eyebrow">Planner</p>
-              <h4>Anadir al planner</h4>
+              <h4>Añadir al planner</h4>
             </div>
           </div>
           <form id="planner-form" class="stack">
@@ -552,31 +494,83 @@ export function renderNutritionFeature(state) {
             </div>
             <button class="primary" type="submit">Guardar en planner</button>
           </form>
+          ${collapsiblePanel(
+            "Semana",
+            "Ver planner semanal",
+            `<div class="planner-grid">${plannerRows(state, state.recipes)}</div>`
+          )}
         </section>
-      </div>
+      </section>
 
       ${collapsiblePanel(
-        "Semana",
-        "Ver planner semanal",
-        `<div class="planner-grid">${plannerRows(state, state.recipes)}</div>`
+        "Pack semanal",
+        "Semana nutricional",
+        `
+          <section class="dashboard-summary compact-metrics">
+            <article class="summary-card">
+              <p class="eyebrow">Batchs</p>
+              <p class="metric">${prepBoard.batchItems.length}</p>
+              <p class="entry-meta">bloques accionables detectados</p>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Primeras comidas</p>
+              <p class="metric">${prepBoard.priorityMeals.length}</p>
+              <p class="entry-meta">comidas a resolver antes</p>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Checklist útil</p>
+              <p class="metric">${prepBoard.checklistTitles.length}</p>
+              <p class="entry-meta">tareas derivables del planner</p>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Alertas</p>
+              <p class="metric">${prepBoard.watchouts.length}</p>
+              <p class="entry-meta">puntos a vigilar esta semana</p>
+            </article>
+          </section>
+          <div class="button-row">
+            <button class="primary compact" data-action="apply-weekly-nutrition-pack">Aplicar pack nutricional</button>
+            <button class="ghost compact" data-action="save-weekly-nutrition-notes">Guardar notas semanales</button>
+          </div>
+          <div class="nutrition-grid">
+            <section class="subpanel stack">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Batch cooking</p>
+                  <h4>Bloques recomendados</h4>
+                </div>
+              </div>
+              <div class="stack">${batchItemCards(prepBoard)}</div>
+            </section>
+            <section class="subpanel stack">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Montaje</p>
+                  <h4>Primeras comidas a cerrar</h4>
+                </div>
+              </div>
+              <div class="stack">${priorityMealCards(prepBoard)}</div>
+            </section>
+          </div>
+        `
       )}
 
       ${collapsiblePanel(
         "Registrar hoy",
-        "Anadir comida manual",
+        "Añadir comida manual",
         `
           <form id="meal-form" class="stack">
             <div class="field-grid">
               <label><span>Tipo</span><input name="type" value="Comida" required></label>
-              <label><span>Nombre</span><input name="name" placeholder="Ej. Bowl de arroz con salmon" required></label>
+              <label><span>Nombre</span><input name="name" placeholder="Ej. Bowl de arroz con salmón" required></label>
             </div>
             <div class="field-grid four">
               <label><span>Kcal</span><input name="calories" type="number" step="1" value="0" required></label>
-              <label><span>Proteina</span><input name="protein" type="number" step="0.1" value="0"></label>
+              <label><span>Proteína</span><input name="protein" type="number" step="0.1" value="0"></label>
               <label><span>Carbos</span><input name="carbs" type="number" step="0.1" value="0"></label>
               <label><span>Grasas</span><input name="fat" type="number" step="0.1" value="0"></label>
             </div>
-            <label><span>Postcomida</span><input name="reaction" placeholder="Ej. Hinchazon, Pesadez o Energia baja"></label>
+            <label><span>Postcomida</span><input name="reaction" placeholder="Ej. Hinchazón, Pesadez o Energía baja"></label>
             <button class="primary" type="submit">Guardar comida</button>
           </form>
         `
@@ -595,7 +589,7 @@ export function renderNutritionFeature(state) {
               </div>
               <label>
                 <span>Ingredientes</span>
-                <textarea name="ingredients" rows="5" placeholder="Una linea por ingrediente: nombre|kcal|proteina|carbs|fat" required></textarea>
+                <textarea name="ingredients" rows="5" placeholder="Una línea por ingrediente: nombre|kcal|proteína|carbs|fat" required></textarea>
               </label>
               <button class="primary" type="submit">Guardar receta</button>
             </form>
@@ -612,7 +606,7 @@ export function renderNutritionFeature(state) {
               <article class="summary-card">
                 <p class="eyebrow">Desayunos base</p>
                 <p class="metric">${PERSONAL_MEAL_TEMPLATES.breakfasts.length}</p>
-                <p class="entry-meta">muy repetidos en tu historico</p>
+                <p class="entry-meta">muy repetidos en tu histórico</p>
               </article>
               <article class="summary-card">
                 <p class="eyebrow">Comidas base</p>
@@ -622,7 +616,7 @@ export function renderNutritionFeature(state) {
               <article class="summary-card">
                 <p class="eyebrow">Cenas base</p>
                 <p class="metric">${PERSONAL_MEAL_TEMPLATES.dinners.length}</p>
-                <p class="entry-meta">rotacion realista</p>
+                <p class="entry-meta">rotación realista</p>
               </article>
               <article class="summary-card">
                 <p class="eyebrow">Snacks base</p>
@@ -662,13 +656,13 @@ export function renderNutritionFeature(state) {
 
         ${collapsiblePanel(
           "Variedad y compra",
-          "Lectura semanal util",
+          "Lectura semanal útil",
           `
             <div class="nutrition-grid">
               <section class="subpanel stack">
                 <div class="section-head">
                   <div>
-                    <p class="eyebrow">Ingredientes canonicos</p>
+                    <p class="eyebrow">Ingredientes canónicos</p>
                     <h4>Base consolidada</h4>
                   </div>
                 </div>
@@ -688,7 +682,7 @@ export function renderNutritionFeature(state) {
               <div class="section-head">
                 <div>
                   <p class="eyebrow">Revisión semanal</p>
-                  <h4>Lectura util de nutricion</h4>
+                  <h4>Lectura útil de nutrición</h4>
                 </div>
               </div>
               <div class="stack">${weeklyReviewItems(review)}</div>
@@ -697,7 +691,7 @@ export function renderNutritionFeature(state) {
               <div class="section-head">
                 <div>
                   <p class="eyebrow">Meal prep</p>
-                  <h4>Preparacion sugerida</h4>
+                  <h4>Preparación sugerida</h4>
                 </div>
               </div>
               <div class="stack">${prepSuggestionItems(review)}</div>
@@ -706,8 +700,8 @@ export function renderNutritionFeature(state) {
               <section class="subpanel stack">
                 <div class="section-head">
                   <div>
-                    <p class="eyebrow">Monotonia</p>
-                    <h4>Detector simple de repeticion</h4>
+                    <p class="eyebrow">Monotonía</p>
+                    <h4>Detector simple de repetición</h4>
                   </div>
                 </div>
                 <div class="stack">${repetitionItems(state)}</div>

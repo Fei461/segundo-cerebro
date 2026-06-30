@@ -18,9 +18,9 @@ function collapsiblePanel(eyebrow, title, body, open = false) {
   `;
 }
 
-function sectionJumpNav(items) {
+function pageDock(items) {
   return `
-    <nav class="page-dock" aria-label="Atajos de revisión y recuperación">
+    <nav class="page-dock" aria-label="Navegación de revisión">
       ${items.map(item => `<a class="page-anchor" href="#${item.id}">${item.label}</a>`).join("")}
     </nav>
   `;
@@ -90,45 +90,64 @@ export function renderRecoveryFeature(state) {
           <p class="eyebrow">Revisión</p>
           <h3>Descanso, presión y reajuste</h3>
         </div>
-        <p class="muted">Dormir, leer la carga y ajustar la semana desde el mismo sitio.</p>
+        <p class="muted">Dormir, leer la carga y ajustar la semana desde un mismo sitio.</p>
       </div>
 
-      ${sectionJumpNav([
+      ${pageDock([
         { id: "recovery-summary", label: "Resumen" },
         { id: "recovery-log", label: "Registrar" },
-        { id: "recovery-map", label: "Mapa" },
+        { id: "recovery-read", label: "Lectura" },
         { id: "recovery-history", label: "Historial" }
       ])}
 
-      <section id="recovery-summary" class="recovery-summary compact-metrics section-block">
-        <article class="summary-card">
-          <p class="eyebrow">Media 7d</p>
-          <p class="metric">${averageHours(state.sleepEntries)} h</p>
-          <p class="entry-meta">promedio reciente</p>
-        </article>
-        <article class="summary-card">
-          <p class="eyebrow">Registros</p>
-          <p class="metric">${Object.keys(state.sleepEntries).length}</p>
-          <p class="entry-meta">noches guardadas</p>
-        </article>
-        <article class="summary-card">
-          <p class="eyebrow">Dias sobrecargados</p>
-          <p class="metric">${calibration.overloadedDays}</p>
-          <p class="entry-meta">${calibration.watchDays} en vigilancia</p>
-        </article>
-        <article class="summary-card">
-          <p class="eyebrow">Ajuste clave</p>
-          <p class="metric">${calibration.topPressureDay?.date || "estable"}</p>
-          <p class="entry-meta">${calibration.nextAdjustment}</p>
-        </article>
-      </section>
-
-      <div class="planning-grid">
-        <section id="recovery-log" class="subpanel stack section-block">
+      <div id="recovery-summary" class="recovery-focus-grid section-block">
+        <section id="recovery-read" class="subpanel stack rail-card panel-toned recovery-hero-card">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Nueva noche</p>
-              <h4>Registrar sueño</h4>
+              <p class="eyebrow">Lectura semanal</p>
+              <h4>Mapa de presión y recuperación</h4>
+            </div>
+          </div>
+          <section class="recovery-summary compact-metrics">
+            <article class="summary-card">
+              <p class="eyebrow">Media 7d</p>
+              <p class="metric">${averageHours(state.sleepEntries)} h</p>
+              <p class="entry-meta">promedio reciente</p>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Registros</p>
+              <p class="metric">${Object.keys(state.sleepEntries).length}</p>
+              <p class="entry-meta">noches guardadas</p>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Días sobrecargados</p>
+              <p class="metric">${calibration.overloadedDays}</p>
+              <p class="entry-meta">${calibration.watchDays} en vigilancia</p>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Ajuste clave</p>
+              <p class="metric">${calibration.topPressureDay?.date || "estable"}</p>
+              <p class="entry-meta">${calibration.nextAdjustment}</p>
+            </article>
+          </section>
+          <div class="button-row">
+            <button class="ghost compact" data-action="apply-weekly-calibration-pack">Aplicar recalibración</button>
+            <button class="ghost compact" data-action="save-weekly-calibration-note">Guardar nota</button>
+          </div>
+          <article class="entry">
+            <div>
+              <p class="entry-title">Siguiente ajuste</p>
+              <p class="entry-meta">${calibration.nextAdjustment}</p>
+            </div>
+          </article>
+          <div class="stack">${calibrationDayItems(calibration)}</div>
+        </section>
+
+        <section id="recovery-log" class="subpanel stack rail-card">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Registrar</p>
+              <h4>Nueva noche</h4>
             </div>
           </div>
           <form id="sleep-form" class="stack">
@@ -147,30 +166,10 @@ export function renderRecoveryFeature(state) {
             <button class="primary" type="submit">Guardar noche</button>
           </form>
         </section>
-
-        <section id="recovery-map" class="subpanel stack panel-toned section-block">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Lectura semanal</p>
-              <h4>Mapa de presión y recuperación</h4>
-            </div>
-          </div>
-          <div class="button-row">
-            <button class="ghost compact" data-action="apply-weekly-calibration-pack">Aplicar recalibración</button>
-            <button class="ghost compact" data-action="save-weekly-calibration-note">Guardar nota</button>
-          </div>
-          <article class="entry">
-            <div>
-              <p class="entry-title">Siguiente ajuste</p>
-              <p class="entry-meta">${calibration.nextAdjustment}</p>
-            </div>
-          </article>
-        </section>
       </div>
 
       <section id="recovery-history" class="fold-grid section-block">
         ${collapsiblePanel("Noches guardadas", "Ver historial reciente", `<div class="stack">${sleepItems(state.sleepEntries)}</div>`)}
-        ${collapsiblePanel("Mapa semanal", "Presión y recuperación", `<div class="stack">${calibrationDayItems(calibration)}</div>`)}
       </section>
     </section>
   `;

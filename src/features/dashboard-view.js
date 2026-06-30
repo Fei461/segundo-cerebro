@@ -1,4 +1,4 @@
-import { getWeeklyAutoSummary } from "../domain/insights.js";
+﻿import { getWeeklyAutoSummary } from "../domain/insights.js";
 import {
   getDailyCommandCenter,
   getOperationalTimeline,
@@ -54,19 +54,11 @@ function reviewStepActionLabel(step) {
   if (step.cta === "apply-suggested-meal-slots") return "Completar";
   if (step.cta === "apply-suggested-sessions") return "Programar";
   if (step.cta === "save-weekly-calibration-note") return "Guardar";
-  return "Accion";
+  return "Acción";
 }
 
 function quickLink(label, tab) {
   return `<button class="chip-link chip-button" type="button" data-action="open-tab" data-tab="${tab}">${label}</button>`;
-}
-
-function sectionJumpNav(items) {
-  return `
-    <nav class="page-dock" aria-label="Atajos de hoy">
-      ${items.map(item => `<a class="page-anchor" href="#${item.id}">${item.label}</a>`).join("")}
-    </nav>
-  `;
 }
 
 function collapsiblePanel(eyebrow, title, body, open = false) {
@@ -276,7 +268,7 @@ function prototypeQaItems() {
   const items = [
     "Crear o desbloquear el vault",
     "Cerrar una comida prevista como hecho o parcial",
-    "Guardar una comida rapida y un entreno rapido",
+    "Guardar una comida rápida y un entreno rápido",
     "Aplicar reset semanal o pack nutricional",
     "Exportar backup y volver a importarlo"
   ];
@@ -301,7 +293,7 @@ function starterChecklist() {
       detail: "Es la forma más rápida de notar si el sistema ya te organiza de verdad."
     },
     {
-      title: "Exporta un backup despues de montar tu primera semana",
+      title: "Exporta un backup después de montar tu primera semana",
       detail: "Así validas seguridad y recuperación desde el principio."
     }
   ];
@@ -399,7 +391,7 @@ function quickMealCapture(today) {
       </div>
       <label><span>Postcomida</span><input name="reaction" placeholder="Ej. hinchazón, pesadez, energía baja"></label>
       <p class="entry-note">Se registra directamente en hoy (${today}).</p>
-      <button class="primary" type="submit">Guardar comida rapida</button>
+      <button class="primary" type="submit">Guardar comida rápida</button>
     </form>
   `;
 }
@@ -413,7 +405,7 @@ function quickTrainingCapture(today) {
       </div>
       <div class="field-grid">
         <label><span>Actividad</span><input name="activity" placeholder="Ej. Upper, movilidad, caminar" required></label>
-        <label><span>Duracion</span><input name="duration" type="number" min="1" max="600" value="45" required></label>
+        <label><span>Duración</span><input name="duration" type="number" min="1" max="600" value="45" required></label>
       </div>
       <div class="field-grid four">
         <label><span>RPE</span><input name="rpe" type="number" min="1" max="10" value="6"></label>
@@ -422,14 +414,14 @@ function quickTrainingCapture(today) {
         <label><span>Rutina</span><input name="routineName" placeholder="Opcional"></label>
       </div>
       <div class="field-grid">
-        <label><span>Energia</span><input name="preEnergy" type="number" min="1" max="5" value="3"></label>
+        <label><span>Energía</span><input name="preEnergy" type="number" min="1" max="5" value="3"></label>
         <label><span>Recuperación</span><input name="recoveryScore" type="number" min="1" max="5" value="3"></label>
       </div>
       <div class="field-grid">
         <label><span>Molestias</span><input name="sorenessScore" type="number" min="1" max="5" value="1"></label>
-        <label><span>Notas</span><input name="notes" placeholder="Contexto rapido"></label>
+        <label><span>Notas</span><input name="notes" placeholder="Contexto rápido"></label>
       </div>
-      <button class="primary" type="submit">Guardar entreno rapido</button>
+      <button class="primary" type="submit">Guardar entreno rápido</button>
     </form>
   `;
 }
@@ -481,8 +473,8 @@ function quickEventCapture(today) {
   return `
     <form id="quick-event-form" class="stack">
       <div class="field-grid">
-        <label><span>Titulo</span><input name="title" placeholder="Ej. Compra o cita" required></label>
-        <label><span>Categoria</span><input name="category" placeholder="Personal, salud..."></label>
+        <label><span>Título</span><input name="title" placeholder="Ej. Compra o cita" required></label>
+        <label><span>Categoría</span><input name="category" placeholder="Personal, salud..."></label>
       </div>
       <div class="field-grid">
         <label><span>Fecha</span><input name="date" type="date" value="${today}" required></label>
@@ -506,12 +498,12 @@ function quickNoteCapture() {
 
 function renderHomeCapture(current, today) {
   const titleMap = {
-    meal: "Comida rapida",
-    training: "Entreno rapido",
+    meal: "Comida rápida",
+    training: "Entreno rápido",
     checkin: "Check-in corporal",
     sleep: "Sueño rápido",
-    event: "Evento rapido",
-    note: "Nota rapida"
+    event: "Evento rápido",
+    note: "Nota rápida"
   };
 
   const bodyMap = {
@@ -524,12 +516,12 @@ function renderHomeCapture(current, today) {
           <label><span>Intensidad (1-5)</span><input name="intensity" type="number" min="1" max="5" value="3" required></label>
         </div>
         <div class="field-grid">
-          <label><span>Energia (1-5)</span><input name="energy" type="number" min="1" max="5" value="3"></label>
+          <label><span>Energía (1-5)</span><input name="energy" type="number" min="1" max="5" value="3"></label>
           <label><span>Animo (1-5)</span><input name="mood" type="number" min="1" max="5" value="3"></label>
         </div>
         <div class="field-grid">
           <label><span>Digestión</span><input name="digestion" placeholder="Ligera, pesada, hinchazón..."></label>
-          <label><span>Nota</span><input name="note" placeholder="Contexto rapido"></label>
+          <label><span>Nota</span><input name="note" placeholder="Contexto rápido"></label>
         </div>
         <button class="primary" type="submit">Guardar check-in</button>
       </form>
@@ -544,7 +536,7 @@ function renderHomeCapture(current, today) {
       <div class="section-head">
         <div>
           <p class="eyebrow">Captura desde home</p>
-          <h4>${titleMap[current] || "Comida rapida"}</h4>
+          <h4>${titleMap[current] || "Comida rápida"}</h4>
         </div>
         <p class="muted">Añade algo en segundos y sigue.</p>
       </div>
@@ -553,6 +545,14 @@ function renderHomeCapture(current, today) {
         ${bodyMap[current] || bodyMap.meal}
       </div>
     </section>
+  `;
+}
+
+function pageDock(items) {
+  return `
+    <nav class="page-dock" aria-label="Navegación de hoy">
+      ${items.map(item => `<a class="page-anchor" href="#${item.id}">${item.label}</a>`).join("")}
+    </nav>
   `;
 }
 
@@ -569,9 +569,6 @@ export function renderDashboardFeature(state, options = {}) {
   const displayName = state.profile.displayName || "";
   const autoLockMinutes = state.appMeta.autoLockMinutes || 5;
   const firstUse = isFirstUseState(state);
-  const weeklyReviewCount =
-    state.nutrition.meals.filter(meal => meal.date >= new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)).length +
-    state.training.sessions.filter(session => session.date >= new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)).length;
   const focusPills = [
     dailyCommand.focusAreas.length ? dailyCommand.focusAreas.join(" - ") : "ejecutar lo previsto",
     dailyCommand.blockers.length ? dailyCommand.blockers[0] : "sin bloqueo dominante",
@@ -588,11 +585,11 @@ export function renderDashboardFeature(state, options = {}) {
         <p class="muted">Lo importante primero, el resto solo cuando haga falta.</p>
       </div>
 
-      ${sectionJumpNav([
-        { id: "home-capture", label: "Captura" },
-        { id: "home-closeout", label: "Cerrar" },
-        { id: "home-next", label: "Sigue" },
-        { id: "home-review", label: "Revisión" }
+      ${pageDock([
+        { id: "home-capture-panel", label: "Capturar" },
+        { id: "home-actions", label: "Cerrar hoy" },
+        { id: "home-guided", label: "Guiado" },
+        { id: "home-personal", label: "Personal" }
       ])}
 
       <section class="command-center section-block">
@@ -600,6 +597,12 @@ export function renderDashboardFeature(state, options = {}) {
           <p class="eyebrow">Centro de mando de hoy</p>
           <h2>${dailyCommand.focusHeadline}</h2>
           <p class="muted">${dailyCommand.topPriority ? dailyCommand.topPriority.detail : "No hay un frente dominante; toca ejecutar con normalidad y registrar bien."}</p>
+          <section class="hero-metrics">
+            ${summaryMetric("Comidas", dailyCommand.loggedMealsToday.length, "registro diario")}
+            ${summaryMetric("Plan comida", `${dailyCommand.mealProgress.done}/${dailyCommand.mealProgress.total}`, "hecho vs previsto")}
+            ${summaryMetric("Plan entreno", `${dailyCommand.sessionProgress.done}/${dailyCommand.sessionProgress.total}`, "ejecutado vs previsto")}
+            ${summaryMetric("Readiness", `${weeklyPreparation.readinessScore}/100`, weeklyPreparation.headline)}
+          </section>
           <div class="signal-row">
             ${focusPills.map(item => `<span class="signal-pill">${item}</span>`).join("")}
           </div>
@@ -619,7 +622,7 @@ export function renderDashboardFeature(state, options = {}) {
               <p class="entry-note">${formatCycleContextLabel(dailyCommand.weeklyHealth.cycleContext)}</p>
             </div>
             <div>
-              <p class="eyebrow">Friccion</p>
+              <p class="eyebrow">Fricción</p>
               <p class="entry-meta">${dailyCommand.blockers.length ? dailyCommand.blockers.join(" - ") : "sin bloqueos dominantes"}</p>
             </div>
             <div>
@@ -632,36 +635,30 @@ export function renderDashboardFeature(state, options = {}) {
 
       ${firstUse ? starterPanel() : ""}
 
-      <div id="home-capture" class="section-block"></div>
-      ${renderHomeCapture(currentCapture, today)}
-
-      <section class="dashboard-summary compact-metrics section-block">
-        ${summaryMetric("Comidas hoy", dailyCommand.loggedMealsToday.length, "registro diario")}
-        ${summaryMetric("Plan comida", `${dailyCommand.mealProgress.done}/${dailyCommand.mealProgress.total}`, "hecho vs previsto hoy")}
-        ${summaryMetric("Plan entreno", `${dailyCommand.sessionProgress.done}/${dailyCommand.sessionProgress.total}`, "ejecutado vs previsto hoy")}
-        ${summaryMetric("Readiness", `${weeklyPreparation.readinessScore}/100`, weeklyPreparation.headline)}
-      </section>
+      <div id="home-capture-panel" class="section-block">
+        ${renderHomeCapture(currentCapture, today)}
+      </div>
 
       ${collapsiblePanel(
-        "Senales del dia",
+        "Señales del día",
         "Agua, sueño, revisión y ciclo",
         `
           <section class="dashboard-summary compact-metrics">
             ${compactSignalCard("Agua hoy", `${dailyCommand.hydrationToday}/${dailyCommand.hydrationGoal}`, "hidratación")}
             ${compactSignalCard("Sueño", dailyCommand.sleepEntry ? `${Number(dailyCommand.sleepEntry.hours || 0).toFixed(1)} h` : "sin dato", "última noche")}
             ${compactSignalCard("Revisión semanal", `${weeklyReviewSummary.completion}%`, weeklyReviewSummary.nextStep?.title || "todo revisado")}
-            ${compactSignalCard("Ciclo", dailyCommand.weeklyHealth.cycleContext.label, dailyCommand.weeklyHealth.dominantSymptoms[0]?.name || "sin patron dominante")}
+            ${compactSignalCard("Ciclo", dailyCommand.weeklyHealth.cycleContext.label, dailyCommand.weeklyHealth.dominantSymptoms[0]?.name || "sin patrón dominante")}
           </section>
         `,
         false
       )}
 
-      <section id="home-closeout" class="home-rail-grid section-block">
+      <section id="home-actions" class="home-rail-grid home-rail-grid-dual section-block">
         <section class="subpanel stack rail-card">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Acciones rapidas</p>
-              <h4>Lo minimo para mover el dia</h4>
+              <p class="eyebrow">Acciones del día</p>
+              <h4>Lo mínimo para mover y cerrar hoy</h4>
             </div>
           </div>
           <div class="button-row button-row-start">
@@ -671,32 +668,29 @@ export function renderDashboardFeature(state, options = {}) {
             <button class="ghost compact" data-action="apply-suggested-sessions">Completar entrenos</button>
             <button class="ghost compact" data-action="apply-weekly-calibration-pack">Aplicar recalibración</button>
           </div>
-        </section>
-
-        <section class="subpanel stack rail-card">
-          <div class="section-head">
+          <article class="entry">
             <div>
-              <p class="eyebrow">Cerrar previsto vs real</p>
-              <h4>Lo que deberias marcar ya</h4>
+              <p class="entry-title">Cerrar previsto vs real</p>
               <p class="entry-note">Actualizar previsto vs real sin salir de home.</p>
             </div>
-          </div>
+          </article>
           <div class="stack">${todayExecutionItems(dailyCommand)}</div>
         </section>
 
         <section class="subpanel stack rail-card">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Cola operativa</p>
-              <h4>Que viene despues</h4>
+              <p class="eyebrow">Después</p>
+              <h4>Qué viene a continuación</h4>
             </div>
           </div>
           <div class="timeline-list">${operationalTimelineItems(operationalTimeline)}</div>
         </section>
       </section>
 
-      ${collapsiblePanel(
-        "Lectura del dia",
+      <div id="home-guided" class="section-block">
+        ${collapsiblePanel(
+        "Lectura del día",
         "Hacer, suavizar y capturar",
         `
           <div class="reading-grid">
@@ -715,18 +709,24 @@ export function renderDashboardFeature(state, options = {}) {
           </div>
         `,
         false
+        )}
+      </div>
+
+      ${collapsiblePanel(
+        "Más de hoy",
+        "Lectura semanal automática y detalles",
+        `
+          <div class="fold-grid">
+            ${collapsiblePanel("Resumen", "Lectura semanal automática", autoSummaryItems(autoSummary))}
+            ${collapsiblePanel("Checklist de prueba real", "Qué probar primero en esta V1", prototypeQaItems())}
+            ${collapsiblePanel("Hoy", "Lectura operativa", todayItems(dailyCommand))}
+            ${collapsiblePanel("Prioridades", "Dónde merece la pena mirar primero", priorityItems(dailyCommand.priorities))}
+            ${collapsiblePanel("Arrastres", "Lo que sigues cargando", carryoverItems(todayDecisionBoard.carryovers))}
+            ${collapsiblePanel("Bloques de soporte", "Meter ayuda real en agenda", supportBlockActions(todayDecisionBoard.supportBlocks))}
+          </div>
+        `
       )}
 
-      <section id="home-next" class="fold-grid section-block">
-        ${collapsiblePanel("Resumen", "Lectura semanal automatica", autoSummaryItems(autoSummary))}
-        ${collapsiblePanel("Checklist de prueba real", "Que probar primero en esta V1", prototypeQaItems())}
-        ${collapsiblePanel("Hoy", "Lectura operativa", todayItems(dailyCommand))}
-        ${collapsiblePanel("Prioridades", "Donde merece la pena mirar primero", priorityItems(dailyCommand.priorities))}
-        ${collapsiblePanel("Arrastres", "Lo que sigues cargando", carryoverItems(todayDecisionBoard.carryovers))}
-        ${collapsiblePanel("Bloques de soporte", "Meter ayuda real en agenda", supportBlockActions(todayDecisionBoard.supportBlocks))}
-      </section>
-
-      <div id="home-review" class="section-block"></div>
       ${collapsiblePanel(
         "Revisión guiada",
         "Secuencia semanal",
@@ -748,60 +748,68 @@ export function renderDashboardFeature(state, options = {}) {
         `
       )}
 
-      <section class="fold-grid">
+      <div id="home-personal" class="section-block">
         ${collapsiblePanel(
-          "Perfil",
-          "Ajustes rapidos",
-          `
-            <form id="profile-form" class="stack">
-              <div class="field-grid">
-                <label><span>Nombre visible</span><input name="displayName" placeholder="Como quieres verte aqui" value="${displayName}"></label>
-                <label><span>Autobloqueo (min)</span><input name="autoLockMinutes" type="number" min="1" max="120" value="${autoLockMinutes}" required></label>
-              </div>
-              <button class="primary" type="submit">Guardar ajustes</button>
-            </form>
-          `
+        "Personal",
+        "Ajustes, notas e insights",
+        `
+          <div class="fold-grid">
+            ${collapsiblePanel(
+              "Perfil",
+              "Ajustes rápidos",
+              `
+                <form id="profile-form" class="stack">
+                  <div class="field-grid">
+                    <label><span>Nombre visible</span><input name="displayName" placeholder="Cómo quieres verte aquí" value="${displayName}"></label>
+                    <label><span>Autobloqueo (min)</span><input name="autoLockMinutes" type="number" min="1" max="120" value="${autoLockMinutes}" required></label>
+                  </div>
+                  <button class="primary" type="submit">Guardar ajustes</button>
+                </form>
+              `
+            )}
+            ${collapsiblePanel(
+              "Notas",
+              "Nota rápida",
+              `
+                <form id="note-form" class="stack">
+                  <label><span>Clave</span><input name="key" placeholder="Ej. hoy, ideas, compras" required></label>
+                  <label><span>Contenido</span><textarea name="value" rows="4" placeholder="Escribe una nota corta" required></textarea></label>
+                  <button class="primary" type="submit">Guardar nota</button>
+                </form>
+              `
+            )}
+            ${collapsiblePanel("Insights semanales", "Señales a revisar", weeklySignalItems(dailyCommand.weeklyHealth.signals))}
+            ${collapsiblePanel(
+              "Notas guardadas",
+              "Últimas claves",
+              `
+                <div class="stack">
+                  ${
+                    Object.keys(state.notes).length === 0
+                      ? `<p class="muted">Aún no hay notas guardadas.</p>`
+                      : Object.entries(state.notes)
+                          .sort((left, right) => left[0].localeCompare(right[0]))
+                          .slice(0, 8)
+                          .map(
+                            ([key, value]) => `
+                              <article class="entry">
+                                <div>
+                                  <p class="entry-title">${key}</p>
+                                  <p class="entry-note">${String(value)}</p>
+                                </div>
+                                <button class="ghost compact" data-action="delete-note" data-key="${key}">Eliminar</button>
+                              </article>
+                            `
+                          )
+                          .join("")
+                  }
+                </div>
+              `
+            )}
+          </div>
+        `
         )}
-        ${collapsiblePanel(
-          "Notas",
-          "Nota rapida",
-          `
-            <form id="note-form" class="stack">
-              <label><span>Clave</span><input name="key" placeholder="Ej. hoy, ideas, compras" required></label>
-              <label><span>Contenido</span><textarea name="value" rows="4" placeholder="Escribe una nota corta" required></textarea></label>
-              <button class="primary" type="submit">Guardar nota</button>
-            </form>
-          `
-        )}
-        ${collapsiblePanel("Insights semanales", "Senales a revisar", weeklySignalItems(dailyCommand.weeklyHealth.signals))}
-        ${collapsiblePanel(
-          "Notas guardadas",
-          "Últimas claves",
-          `
-            <div class="stack">
-              ${
-                Object.keys(state.notes).length === 0
-                  ? `<p class="muted">Aún no hay notas guardadas.</p>`
-                  : Object.entries(state.notes)
-                      .sort((left, right) => left[0].localeCompare(right[0]))
-                      .slice(0, 8)
-                      .map(
-                        ([key, value]) => `
-                          <article class="entry">
-                            <div>
-                              <p class="entry-title">${key}</p>
-                              <p class="entry-note">${String(value)}</p>
-                            </div>
-                            <button class="ghost compact" data-action="delete-note" data-key="${key}">Eliminar</button>
-                          </article>
-                        `
-                      )
-                      .join("")
-              }
-            </div>
-          `
-        )}
-      </section>
+      </div>
     </section>
   `;
 }

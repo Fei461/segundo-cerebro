@@ -25,9 +25,9 @@ function collapsiblePanel(eyebrow, title, body, open = false) {
   `;
 }
 
-function sectionJumpNav(items) {
+function pageDock(items) {
   return `
-    <nav class="page-dock" aria-label="Atajos de salud">
+    <nav class="page-dock" aria-label="Navegación de salud">
       ${items.map(item => `<a class="page-anchor" href="#${item.id}">${item.label}</a>`).join("")}
     </nav>
   `;
@@ -142,13 +142,13 @@ export function renderWellbeingFeature(state) {
           <p class="eyebrow">Salud</p>
           <h3>Ciclo, síntomas y soporte diario</h3>
         </div>
-        <p class="muted">Síntomas, ciclo y medicación sin abrir un módulo pesado.</p>
+        <p class="muted">Captura rápida y lectura transversal sin convertirlo en un módulo pesado.</p>
       </div>
 
-      ${sectionJumpNav([
+      ${pageDock([
         { id: "wellbeing-summary", label: "Resumen" },
-        { id: "wellbeing-symptoms", label: "Síntomas" },
-        { id: "wellbeing-meds", label: "Medicación" },
+        { id: "wellbeing-capture", label: "Registrar" },
+        { id: "wellbeing-support", label: "Soporte" },
         { id: "wellbeing-history", label: "Historial" }
       ])}
 
@@ -171,57 +171,64 @@ export function renderWellbeingFeature(state) {
         <article class="summary-card">
           <p class="eyebrow">Fase actual</p>
           <p class="metric">${weeklyHealth.cycleContext.label}</p>
-          <p class="entry-meta">${weeklyHealth.dominantSymptoms[0]?.name || "sin patron dominante"}</p>
+          <p class="entry-meta">${weeklyHealth.dominantSymptoms[0]?.name || "sin patrón dominante"}</p>
         </article>
       </section>
 
-      <section class="subpanel stack panel-toned section-block">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Lectura transversal</p>
-            <h4>Como esta afectando a la semana</h4>
-          </div>
-        </div>
-        <div class="stack">
-          <article class="entry">
-            <div>
-              <p class="entry-title">Fase y contexto</p>
-              <p class="entry-meta">${weeklyHealth.cycleContext.label}</p>
-              <p class="entry-note">${cycleSignals.length ? cycleSignals.join(" - ") : "Sin señales dominantes esta semana."}</p>
-            </div>
-          </article>
-          <article class="entry">
-            <div>
-              <p class="entry-title">Digestión y energía</p>
-              <p class="entry-meta">${weeklyHealth.digestionHeavyCount} registros digestivos pesados - energía media ${weeklyHealth.avgEnergy ? weeklyHealth.avgEnergy.toFixed(1) : "-"}/5</p>
-              <p class="entry-note">${weeklyHealth.avgMood ? `Ánimo medio ${weeklyHealth.avgMood.toFixed(1)}/5` : "Aún faltan datos de ánimo."}</p>
-            </div>
-          </article>
-        </div>
-      </section>
+      <div id="wellbeing-support" class="section-block">
+        ${collapsiblePanel(
+          "Lectura y soporte",
+          "Ciclo, energía y sugerencias",
+          `
+            <section class="subpanel stack panel-toned">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Lectura transversal</p>
+                  <h4>Cómo está afectando a la semana</h4>
+                </div>
+              </div>
+              <div class="stack">
+                <article class="entry">
+                  <div>
+                    <p class="entry-title">Fase y contexto</p>
+                    <p class="entry-meta">${weeklyHealth.cycleContext.label}</p>
+                    <p class="entry-note">${cycleSignals.length ? cycleSignals.join(" - ") : "Sin señales dominantes esta semana."}</p>
+                  </div>
+                </article>
+                <article class="entry">
+                  <div>
+                    <p class="entry-title">Digestión y energía</p>
+                    <p class="entry-meta">${weeklyHealth.digestionHeavyCount} registros digestivos pesados - energía media ${weeklyHealth.avgEnergy ? weeklyHealth.avgEnergy.toFixed(1) : "-"}/5</p>
+                    <p class="entry-note">${weeklyHealth.avgMood ? `Ánimo medio ${weeklyHealth.avgMood.toFixed(1)}/5` : "Aún faltan datos de ánimo."}</p>
+                  </div>
+                </article>
+              </div>
+            </section>
+            <section class="subpanel stack panel-toned">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Soporte por fase</p>
+                  <h4>Sugerencias accionables para hoy y la semana</h4>
+                </div>
+              </div>
+              <div class="stack">${renderSupportSuggestions(supportSuggestions)}</div>
+            </section>
+          `
+        )}
+      </div>
 
-      <section class="subpanel stack panel-toned section-block">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Soporte por fase</p>
-            <h4>Sugerencias accionables para hoy y la semana</h4>
-          </div>
-        </div>
-        <div class="stack">${renderSupportSuggestions(supportSuggestions)}</div>
-      </section>
-
-      <div class="training-grid">
-        <section id="wellbeing-symptoms" class="subpanel stack section-block">
+      <div id="wellbeing-capture" class="training-grid section-block">
+        <section class="subpanel stack rail-card">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Síntomas del ciclo</p>
+              <p class="eyebrow">Síntomas</p>
               <h4>Registrar síntoma</h4>
             </div>
           </div>
           <form id="symptom-form" class="stack">
             <div class="field-grid">
               <label><span>Fecha</span><input name="date" type="date" value="${today}" required></label>
-              <label><span>Síntoma</span><input name="name" list="cycle-symptom-library" placeholder="Ej. Cólicos o dolor ovulatorio" required></label>
+              <label><span>Síntoma</span><input name="name" list="cycle-symptom-library" placeholder="Ej. cólicos o dolor ovulatorio" required></label>
             </div>
             <datalist id="cycle-symptom-library">${symptomOptions}</datalist>
             <div class="field-grid">
@@ -237,7 +244,7 @@ export function renderWellbeingFeature(state) {
           </form>
         </section>
 
-        <section id="wellbeing-meds" class="subpanel stack section-block">
+        <section class="subpanel stack rail-card">
           <div class="section-head">
             <div>
               <p class="eyebrow">Medicación</p>
@@ -247,17 +254,17 @@ export function renderWellbeingFeature(state) {
           <form id="med-form" class="stack">
             <div class="field-grid">
               <label><span>Nombre</span><input name="name" placeholder="Ej. Magnesio" required></label>
-              <label><span>Dosis</span><input name="dose" placeholder="Ej. 1 capsula"></label>
+              <label><span>Dosis</span><input name="dose" placeholder="Ej. 1 cápsula"></label>
             </div>
-            <label><span>Notas</span><input name="notes" placeholder="Horario, pauta o aclaracion"></label>
+            <label><span>Notas</span><input name="notes" placeholder="Horario, pauta o aclaración"></label>
             <button class="primary" type="submit">Guardar medicación</button>
           </form>
+          <div class="stack">${renderMedications(state.medication)}</div>
         </section>
       </div>
 
       <section id="wellbeing-history" class="fold-grid section-block">
         ${collapsiblePanel("Últimos síntomas", "Ver registros", `<div class="stack">${renderSymptoms(state.cycle.symptomLog)}</div>`)}
-        ${collapsiblePanel("Medicación", "Lista actual", `<div class="stack">${renderMedications(state.medication)}</div>`)}
         ${collapsiblePanel("Biblioteca V1", "Síntomas base y familias operativas", `<section class="dashboard-summary">${renderSymptomGroups()}</section>`)}
       </section>
     </section>

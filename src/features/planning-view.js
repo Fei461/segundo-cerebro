@@ -1,4 +1,4 @@
-import { getPlannedMeals, getPlannedSessions } from "../domain/plans.js";
+﻿import { getPlannedMeals, getPlannedSessions } from "../domain/plans.js";
 import { getWeeklyHealthInsights } from "../domain/insights.js";
 import { getWeeklyNutritionReview } from "../domain/personal-nutrition.js";
 import {
@@ -231,7 +231,7 @@ function suggestedChecklistItems(state) {
     return `<p class="muted">No hay sugerencias nuevas: el reset semanal ya esta bastante cubierto.</p>`;
   }
 
-  const addAllButton = `<button class="primary compact" data-action="add-all-weekly-suggestions">Anadir todas</button>`;
+  const addAllButton = `<button class="primary compact" data-action="add-all-weekly-suggestions">Añadir todas</button>`;
   const items = suggestions
     .slice(0, 6)
     .map(
@@ -241,7 +241,7 @@ function suggestedChecklistItems(state) {
             <p class="entry-title">${item.title}</p>
             <p class="entry-meta">${item.kind}</p>
           </div>
-          <button class="ghost compact" data-action="add-weekly-suggestion" data-title="${item.title.replace(/"/g, "&quot;")}">Anadir</button>
+          <button class="ghost compact" data-action="add-weekly-suggestion" data-title="${item.title.replace(/"/g, "&quot;")}">Añadir</button>
         </article>
       `
     )
@@ -284,7 +284,7 @@ function reviewStepActionLabel(step) {
   if (step.cta === "apply-suggested-meal-slots") return "Completar";
   if (step.cta === "apply-suggested-sessions") return "Programar";
   if (step.cta === "save-weekly-calibration-note") return "Guardar";
-  return "Accion";
+  return "Acción";
 }
 
 function gapFillItems(state, pack) {
@@ -368,7 +368,7 @@ function calibrationItems(calibration) {
     <article class="entry">
       <div>
         <p class="entry-title">Mapa de presión diaria</p>
-        <p class="entry-meta">${calibration.overloadedDays} dias sobrecargados - ${calibration.watchDays} en vigilancia</p>
+        <p class="entry-meta">${calibration.overloadedDays} días sobrecargados - ${calibration.watchDays} en vigilancia</p>
         <p class="entry-note">${pressureText}</p>
       </div>
     </article>
@@ -397,7 +397,7 @@ function reviewFlowItems(flow) {
 
 function operationalTimelineItems(entries) {
   if (entries.length === 0) {
-    return `<p class="muted">No hay una cola operativa clara para los proximos dias.</p>`;
+    return `<p class="muted">No hay una cola operativa clara para los próximos días.</p>`;
   }
 
   return entries
@@ -450,10 +450,12 @@ function collapsiblePanel(eyebrow, title, body, open = false) {
   `;
 }
 
-function sectionJumpNav(items) {
+function pageDock(items) {
   return `
-    <nav class="page-dock" aria-label="Atajos de planificacion">
-      ${items.map(item => `<a class="page-anchor" href="#${item.id}">${item.label}</a>`).join("")}
+    <nav class="page-dock" aria-label="Navegación de semana">
+      ${items
+        .map(item => `<a class="page-anchor" href="#${item.id}">${item.label}</a>`)
+        .join("")}
     </nav>
   `;
 }
@@ -486,79 +488,70 @@ export function renderPlanningFeature(state) {
         <p class="muted">Plan, huecos y reset en una sola vista.</p>
       </div>
 
-      ${sectionJumpNav([
+      ${pageDock([
         { id: "planning-summary", label: "Resumen" },
-        { id: "planning-reset", label: "Reset" },
-        { id: "planning-week", label: "7 dias" },
-        { id: "planning-checklist", label: "Checklist" },
-        { id: "planning-agenda", label: "Agenda" }
+        { id: "planning-week", label: "Centro" },
+        { id: "planning-workflows", label: "Flujo" },
+        { id: "planning-management", label: "Gestión" }
       ])}
 
-      <section id="planning-summary" class="planning-summary compact-metrics section-block">
-        <article class="summary-card">
-          <p class="eyebrow">Hoy</p>
-          <p class="metric">${eventsToday(state.calendar.events)} eventos</p>
-          <p class="entry-meta">agenda diaria</p>
-        </article>
-        <article class="summary-card">
-          <p class="eyebrow">Calendario</p>
-          <p class="metric">${state.calendar.events.length}</p>
-          <p class="entry-meta">eventos activos</p>
-        </article>
-        <article class="summary-card">
-          <p class="eyebrow">Horario</p>
-          <p class="metric">${state.schedule.blocks.length}</p>
-          <p class="entry-meta">bloques semanales</p>
-        </article>
-        <article class="summary-card">
-          <p class="eyebrow">Plan vs real</p>
-          <p class="metric">${summary.doneMeals}/${summary.plannedMeals} comidas</p>
-          <p class="entry-meta">${summary.doneSessions}/${summary.plannedSessions} sesiones hechas</p>
-        </article>
-      </section>
+      ${collapsiblePanel(
+        "Semana preparada",
+        "Secuencia de reset",
+        `
+          <section class="planning-summary compact-metrics">
+            <article class="summary-card">
+              <p class="eyebrow">Readiness</p>
+              <p class="metric">${preparationPack.readinessScore}</p>
+              <p class="entry-meta">${preparationPack.headline}</p>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Checklist</p>
+              <p class="metric">${preparationPack.checklist.done}/${preparationPack.checklist.total}</p>
+              <p class="entry-meta">tareas del reset actual</p>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Sugerencias</p>
+              <p class="metric">${preparationPack.suggestions.length}</p>
+              <p class="entry-meta">acciones nuevas detectadas</p>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Foco</p>
+              <p class="metric">${preparationPack.nutritionReview.variety.covered}/${preparationPack.nutritionReview.variety.total}</p>
+              <p class="entry-meta">familias cubiertas</p>
+            </article>
+          </section>
+          ${preparationPackActions()}
+          <div class="stack">${preparationPackItems(preparationPack)}</div>
+        `,
+        false
+      )}
 
-      <section id="planning-reset" class="subpanel stack panel-toned section-block">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Semana preparada</p>
-            <h4>Secuencia de reset</h4>
-          </div>
-        </div>
-        <section class="planning-summary compact-metrics">
-          <article class="summary-card">
-            <p class="eyebrow">Readiness</p>
-            <p class="metric">${preparationPack.readinessScore}</p>
-            <p class="entry-meta">${preparationPack.headline}</p>
-          </article>
-          <article class="summary-card">
-            <p class="eyebrow">Checklist</p>
-            <p class="metric">${preparationPack.checklist.done}/${preparationPack.checklist.total}</p>
-            <p class="entry-meta">tareas del reset actual</p>
-          </article>
-          <article class="summary-card">
-            <p class="eyebrow">Sugerencias</p>
-            <p class="metric">${preparationPack.suggestions.length}</p>
-            <p class="entry-meta">acciones nuevas detectadas</p>
-          </article>
-          <article class="summary-card">
-            <p class="eyebrow">Foco</p>
-            <p class="metric">${preparationPack.nutritionReview.variety.covered}/${preparationPack.nutritionReview.variety.total}</p>
-            <p class="entry-meta">familias cubiertas</p>
-          </article>
-        </section>
-        ${preparationPackActions()}
-        <div class="stack">${preparationPackItems(preparationPack)}</div>
-      </section>
-
-      <div id="planning-week" class="planning-grid section-block">
-        <section class="subpanel stack rail-card">
+      <div id="planning-week" class="planning-focus-grid section-block">
+        <section id="planning-summary" class="subpanel stack rail-card planning-hero-card">
           <div class="section-head">
             <div>
               <p class="eyebrow">Semana real</p>
               <h4>Centro operativo</h4>
+              <p class="entry-note">Plan, agenda y ejecución en una sola lectura.</p>
             </div>
           </div>
           <section class="planning-summary compact-metrics">
+            <article class="summary-card">
+              <p class="eyebrow">Hoy</p>
+              <p class="metric">${eventsToday(state.calendar.events)} eventos</p>
+              <p class="entry-meta">agenda diaria</p>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Calendario</p>
+              <p class="metric">${state.calendar.events.length}</p>
+              <p class="entry-meta">eventos activos</p>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Horario</p>
+              <p class="metric">${state.schedule.blocks.length}</p>
+              <p class="entry-meta">bloques semanales</p>
+            </article>
             <article class="summary-card">
               <p class="eyebrow">Planner comida</p>
               <p class="metric">${summary.plannedMeals}</p>
@@ -577,7 +570,7 @@ export function renderPlanningFeature(state) {
             <article class="summary-card">
               <p class="eyebrow">Tolerancia</p>
               <p class="metric">${tolerance.mealsWithReaction}/${tolerance.meals}</p>
-              <p class="entry-meta">comidas con sensacion postcomida registrada</p>
+              <p class="entry-meta">comidas con sensación postcomida registrada</p>
             </article>
           </section>
         </section>
@@ -593,10 +586,10 @@ export function renderPlanningFeature(state) {
         </section>
       </div>
 
-      <section class="fold-grid">
+      <section id="planning-workflows" class="fold-grid section-block">
         ${collapsiblePanel(
           "Tablero semanal",
-          "Ver los 7 dias",
+          "Ver los 7 días",
           `<div class="planner-grid">${weeklyBoard(state)}</div>`
         )}
 
@@ -613,7 +606,7 @@ export function renderPlanningFeature(state) {
         )}
 
         ${collapsiblePanel(
-          "Recalibracion",
+          "Recalibración",
           "Lo que la semana real te está pidiendo",
           `
             <div class="button-row">
@@ -624,7 +617,7 @@ export function renderPlanningFeature(state) {
           `
         )}
 
-        ${collapsiblePanel("Soporte", "Bloques rapidos para que la semana salga", `<div class="stack">${supportBlockItems(todayDecisionBoard.supportBlocks)}</div>`)}
+        ${collapsiblePanel("Soporte", "Bloques rápidos para que la semana salga", `<div class="stack">${supportBlockItems(todayDecisionBoard.supportBlocks)}</div>`)}
 
         ${collapsiblePanel(
           "Revisión semanal",
@@ -639,12 +632,12 @@ export function renderPlanningFeature(state) {
               <article class="summary-card">
                 <p class="eyebrow">Pendientes</p>
                 <p class="metric">${reviewSummary.pending}</p>
-                <p class="entry-meta">${reviewSummary.attention} con tension real</p>
+                <p class="entry-meta">${reviewSummary.attention} con tensión real</p>
               </article>
               <article class="summary-card">
                 <p class="eyebrow">Siguiente</p>
                 <p class="metric">${reviewSummary.nextStep?.title || "Cerrado"}</p>
-                <p class="entry-meta">${reviewSummary.nextStep?.status === "attention" ? "requiere decision" : reviewSummary.nextStep?.status || "sin pasos abiertos"}</p>
+                <p class="entry-meta">${reviewSummary.nextStep?.status === "attention" ? "requiere decisión" : reviewSummary.nextStep?.status || "sin pasos abiertos"}</p>
               </article>
             </section>
             <div class="stack">${reviewFlowItems(reviewFlow)}</div>
@@ -652,122 +645,128 @@ export function renderPlanningFeature(state) {
         )}
       </section>
 
-      <section id="planning-checklist" class="fold-grid section-block">
+      <div id="planning-management" class="section-block">
         ${collapsiblePanel(
-          "Reset semanal",
-          "Checklist de preparacion",
+          "Gestión semanal",
+          "Checklist, desajustes y agenda",
           `
-            <div class="stack">${weeklyPrepItems(state)}</div>
-            <form id="weekly-form" class="stack">
-              <div class="field-grid">
-                <label><span>Tarea</span><input name="title" placeholder="Ej. dejar 2 cenas preparadas" required></label>
-                <label><span>Día de reset</span><select name="resetDay"><option ${resetDay === "Domingo" ? "selected" : ""}>Domingo</option><option ${resetDay === "Lunes" ? "selected" : ""}>Lunes</option><option ${resetDay === "Sabado" ? "selected" : ""}>Sábado</option></select></label>
-              </div>
-              <button class="primary" type="submit">Guardar tarea semanal</button>
-            </form>
-            <div class="stack">${checklistItems(state)}</div>
-          `
-        )}
+            <div class="fold-grid">
+            ${collapsiblePanel(
+              "Reset semanal",
+              "Checklist de preparación",
+              `
+                <div class="stack">${weeklyPrepItems(state)}</div>
+                <form id="weekly-form" class="stack">
+                  <div class="field-grid">
+                    <label><span>Tarea</span><input name="title" placeholder="Ej. dejar 2 cenas preparadas" required></label>
+                    <label><span>Día de reset</span><select name="resetDay"><option ${resetDay === "Domingo" ? "selected" : ""}>Domingo</option><option ${resetDay === "Lunes" ? "selected" : ""}>Lunes</option><option ${resetDay === "Sábado" ? "selected" : ""}>Sábado</option></select></label>
+                  </div>
+                  <button class="primary" type="submit">Guardar tarea semanal</button>
+                </form>
+                <div class="stack">${checklistItems(state)}</div>
+              `
+            )}
 
-        ${collapsiblePanel(
-          "Reset sugerido",
-          "Tareas automaticas",
-          `<div class="stack">${suggestedChecklistItems(state)}</div>`
-        )}
+            ${collapsiblePanel(
+              "Reset sugerido",
+              "Tareas automáticas",
+              `<div class="stack">${suggestedChecklistItems(state)}</div>`
+            )}
 
-        ${collapsiblePanel(
-          "Lectura rapida",
-          "Desajustes visibles",
-          `
-            <div class="stack">
-              <article class="entry">
-                <div>
-                  <p class="entry-title">Comidas planificadas vs registradas</p>
-                  <p class="entry-meta">${summary.plannedMeals} previstas - ${summary.loggedMeals} registradas</p>
+            ${collapsiblePanel(
+              "Lectura rápida",
+              "Desajustes visibles",
+              `
+                <div class="stack">
+                  <article class="entry">
+                    <div>
+                      <p class="entry-title">Comidas planificadas vs registradas</p>
+                      <p class="entry-meta">${summary.plannedMeals} previstas - ${summary.loggedMeals} registradas</p>
+                    </div>
+                  </article>
+                  <article class="entry">
+                    <div>
+                      <p class="entry-title">Entrenos previstos vs ejecutados</p>
+                      <p class="entry-meta">${summary.plannedSessions} previstos - ${summary.executedSessions} registrados</p>
+                    </div>
+                  </article>
+                  <article class="entry">
+                    <div>
+                      <p class="entry-title">Siguiente paso útil</p>
+                      <p class="entry-meta">Cerrar adherencia semanal y luego conectar energía, síntomas y descanso.</p>
+                    </div>
+                  </article>
+                  <article class="entry">
+                    <div>
+                      <p class="entry-title">Siguiente acción en nutrición</p>
+                      <p class="entry-meta">${nutritionReview.nextAction}</p>
+                    </div>
+                  </article>
+                  <article class="entry">
+                    <div>
+                      <p class="entry-title">Lectura salud</p>
+                      <p class="entry-meta">${weeklyHealth.signals.length ? weeklyHealth.signals.map(signal => signal.title).join(" - ") : "Sin señales destacadas esta semana"}</p>
+                    </div>
+                  </article>
                 </div>
-              </article>
-              <article class="entry">
-                <div>
-                  <p class="entry-title">Entrenos previstos vs ejecutados</p>
-                  <p class="entry-meta">${summary.plannedSessions} previstos - ${summary.executedSessions} registrados</p>
+              `
+            )}
+
+            ${collapsiblePanel(
+              "Agenda",
+              "Calendario y bloques",
+              `
+                <div class="planning-grid">
+                  <section class="subpanel stack">
+                    <div class="section-head">
+                      <div>
+                        <p class="eyebrow">Calendario</p>
+                        <h4>Nuevo evento</h4>
+                      </div>
+                    </div>
+                    <form id="event-form" class="stack">
+                      <div class="field-grid">
+                        <label><span>Titulo</span><input name="title" placeholder="Ej. Cita gine" required></label>
+                        <label><span>Categoria</span><input name="category" placeholder="Salud, trabajo, personal..."></label>
+                      </div>
+                      <div class="field-grid">
+                        <label><span>Fecha</span><input name="date" type="date" value="${todayKey()}" required></label>
+                        <label><span>Hora</span><input name="time" type="time"></label>
+                      </div>
+                      <label><span>Nota</span><textarea name="note" rows="3" placeholder="Detalles o recordatorios"></textarea></label>
+                      <button class="primary" type="submit">Guardar evento</button>
+                    </form>
+                    <div class="stack">${eventItems(state.calendar.events)}</div>
+                  </section>
+
+                  <section class="subpanel stack">
+                    <div class="section-head">
+                      <div>
+                        <p class="eyebrow">Horario</p>
+                        <h4>Nuevo bloque</h4>
+                      </div>
+                    </div>
+                    <form id="block-form" class="stack">
+                      <div class="field-grid">
+                        <label><span>Titulo</span><input name="title" placeholder="Ej. Deep work o meal prep" required></label>
+                        <label><span>Dia</span><input name="day" placeholder="Ej. Lunes" required></label>
+                      </div>
+                      <div class="field-grid">
+                        <label><span>Inicio</span><input name="start" type="time" required></label>
+                        <label><span>Fin</span><input name="end" type="time" required></label>
+                      </div>
+                      <label><span>Categoria</span><input name="category" placeholder="Trabajo, salud, descanso..."></label>
+                      <button class="primary" type="submit">Guardar bloque</button>
+                    </form>
+                    <div class="stack">${blockItems(state.schedule.blocks)}</div>
+                  </section>
                 </div>
-              </article>
-              <article class="entry">
-                <div>
-                  <p class="entry-title">Siguiente paso util</p>
-                  <p class="entry-meta">Cerrar adherencia semanal y luego conectar energía, síntomas y descanso.</p>
-                </div>
-              </article>
-              <article class="entry">
-                <div>
-                  <p class="entry-title">Siguiente accion en nutricion</p>
-                  <p class="entry-meta">${nutritionReview.nextAction}</p>
-                </div>
-              </article>
-              <article class="entry">
-                <div>
-                  <p class="entry-title">Lectura salud</p>
-                  <p class="entry-meta">${weeklyHealth.signals.length ? weeklyHealth.signals.map(signal => signal.title).join(" - ") : "Sin señales destacadas esta semana"}</p>
-                </div>
-              </article>
+              `
+            )}
             </div>
           `
         )}
-      </section>
-
-      <section id="planning-agenda" class="fold-grid section-block">
-        ${collapsiblePanel(
-          "Agenda",
-          "Calendario y bloques",
-          `
-            <div class="planning-grid">
-              <section class="subpanel stack">
-                <div class="section-head">
-                  <div>
-                    <p class="eyebrow">Calendario</p>
-                    <h4>Nuevo evento</h4>
-                  </div>
-                </div>
-                <form id="event-form" class="stack">
-                  <div class="field-grid">
-                    <label><span>Titulo</span><input name="title" placeholder="Ej. Cita gine" required></label>
-                    <label><span>Categoria</span><input name="category" placeholder="Salud, trabajo, personal..."></label>
-                  </div>
-                  <div class="field-grid">
-                    <label><span>Fecha</span><input name="date" type="date" value="${todayKey()}" required></label>
-                    <label><span>Hora</span><input name="time" type="time"></label>
-                  </div>
-                  <label><span>Nota</span><textarea name="note" rows="3" placeholder="Detalles o recordatorios"></textarea></label>
-                  <button class="primary" type="submit">Guardar evento</button>
-                </form>
-                <div class="stack">${eventItems(state.calendar.events)}</div>
-              </section>
-
-              <section class="subpanel stack">
-                <div class="section-head">
-                  <div>
-                    <p class="eyebrow">Horario</p>
-                    <h4>Nuevo bloque</h4>
-                  </div>
-                </div>
-                <form id="block-form" class="stack">
-                  <div class="field-grid">
-                    <label><span>Titulo</span><input name="title" placeholder="Ej. Deep work o meal prep" required></label>
-                    <label><span>Dia</span><input name="day" placeholder="Ej. Lunes" required></label>
-                  </div>
-                  <div class="field-grid">
-                    <label><span>Inicio</span><input name="start" type="time" required></label>
-                    <label><span>Fin</span><input name="end" type="time" required></label>
-                  </div>
-                  <label><span>Categoria</span><input name="category" placeholder="Trabajo, salud, descanso..."></label>
-                  <button class="primary" type="submit">Guardar bloque</button>
-                </form>
-                <div class="stack">${blockItems(state.schedule.blocks)}</div>
-              </section>
-            </div>
-          `
-        )}
-      </section>
+      </div>
     </section>
   `;
 }
