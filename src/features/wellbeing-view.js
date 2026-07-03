@@ -199,7 +199,18 @@ export function renderWellbeingFeature(state, options = {}) {
           `,
           "section-card-hero section-card-wellbeing"
         )}
-        ${sectionCard("Soporte", "Lo que conviene mirar", `<div class="stack stack-tight">${supportPreview(suggestions)}</div>`, "section-card-glass section-card-wellbeing-light")}
+        ${sectionCard(
+          "Soporte",
+          "Lo que conviene mirar",
+          `
+            <div class="stack stack-tight">${supportPreview(suggestions)}</div>
+            <div class="button-row button-row-start button-row-soft">
+              <button class="ghost compact" type="button" data-action="create-support-block" data-kind="recovery">Bloque recuperación</button>
+              <button class="ghost compact" type="button" data-action="create-support-block" data-kind="focus">Ajuste agenda</button>
+            </div>
+          `,
+          "section-card-glass section-card-wellbeing-light"
+        )}
       </div>
       <div class="planning-focus-grid planning-focus-grid-compact">
         ${sectionCard("Patrón", "Síntomas que más se repiten", `<div class="stack stack-tight">${dominantSymptomPreview(health)}</div>`, "section-card-glass section-card-wellbeing-light")}

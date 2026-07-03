@@ -155,32 +155,38 @@ function pantrySummaryCards(pantryStatus) {
 }
 
 function pantryCards(pantryStatus) {
-  return PERSONAL_PANTRY.map(
+  return `
+    <div class="pantry-groups-grid">
+      ${PERSONAL_PANTRY.map(
     group => `
-      <article class="summary-card summary-card-soft pantry-card">
-        <p class="eyebrow">${group.family}</p>
-        <div class="pantry-chip-grid">
-          ${group.items
-            .map(item => {
-              const status = pantryStatus?.[item] || "";
-              const label = status === "have" ? "Tengo" : status === "need" ? "Falta" : "Neutro";
-              return `
-                <button
-                  class="pantry-chip${status ? ` is-${status}` : ""}"
-                  type="button"
-                  data-action="toggle-pantry-item"
-                  data-item="${item}"
-                  aria-label="${item}: ${label}"
-                >
-                  ${item}
-                </button>
-              `;
-            })
-            .join("")}
+      <details class="panel panel-toned disclosure-panel compact-disclosure pantry-group-card">
+        <summary class="disclosure-summary"><div><p class="eyebrow">${group.family}</p><h4>${group.items.length} básicos</h4></div></summary>
+        <div class="stack disclosure-body">
+          <div class="pantry-chip-grid">
+            ${group.items
+              .map(item => {
+                const status = pantryStatus?.[item] || "";
+                const label = status === "have" ? "Tengo" : status === "need" ? "Falta" : "Neutro";
+                return `
+                  <button
+                    class="pantry-chip${status ? ` is-${status}` : ""}"
+                    type="button"
+                    data-action="toggle-pantry-item"
+                    data-item="${item}"
+                    aria-label="${item}: ${label}"
+                  >
+                    ${item}
+                  </button>
+                `;
+              })
+              .join("")}
+          </div>
         </div>
-      </article>
+      </details>
     `
-  ).join("");
+  ).join("")}
+    </div>
+  `;
 }
 
 function pantryNeedList(pantryStatus) {
@@ -218,6 +224,19 @@ function templateCards(limit = 4) {
       `)
     )
     .slice(0, limit)
+    .join("");
+}
+
+function quickTemplateButtons() {
+  return Object.entries(PERSONAL_MEAL_TEMPLATES)
+    .flatMap(([slot, items]) =>
+      items.slice(0, 1).map(template => `
+        <button class="ghost compact" type="button" data-action="log-meal-template" data-slot="${slot}" data-name="${template.name.replace(/"/g, "&quot;")}">
+          ${template.name}
+        </button>
+      `)
+    )
+    .slice(0, 4)
     .join("");
 }
 
@@ -270,6 +289,39 @@ function familyFocusList(review, coveredToday) {
     .join("");
 }
 
+function shoppingGroupCards(groups) {
+  if (!groups.length) return emptyState("Todavía no hay compra derivada suficiente.");
+  return groups
+    .slice(0, 4)
+    .map(
+      group => `
+        <article class="summary-card summary-card-soft pantry-shopping-card">
+          <p class="eyebrow">${group.family}</p>
+          <div class="stack stack-tight">
+            ${group.items
+              .slice(0, 4)
+              .map(
+                item => `
+                  <div class="shopping-item-row">
+                    <div>
+                      <p class="entry-title">${item.name}</p>
+                      <p class="entry-meta">${item.count} uso(s)</p>
+                    </div>
+                    <div class="button-row button-row-tight">
+                      <button class="ghost compact" type="button" data-action="mark-pantry-have" data-item="${item.name}">Tengo</button>
+                      <button class="ghost compact" type="button" data-action="mark-pantry-need" data-item="${item.name}">Falta</button>
+                    </div>
+                  </div>
+                `
+              )
+              .join("")}
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
 export function renderNutritionFeature(state, options = {}) {
   const currentView = options.currentView || "today";
   const today = todayKey();
@@ -286,36 +338,48 @@ export function renderNutritionFeature(state, options = {}) {
 
   if (currentView === "log") {
     body = `
-      ${sectionCard(
-        "Registrar",
-        "Comida manual",
-        `
-          <form id="meal-form" class="stack">
-            <div class="field-grid">
-              <label><span>Tipo</span><select name="type"><option>Desayuno</option><option>Comida</option><option>Cena</option><option>Snack</option></select></label>
-              <label><span>Nombre</span><input name="name" placeholder="Ej. pasta con pollo, yogur con fruta..." required></label>
+      <div class="nutrition-secondary-grid">
+        ${sectionCard(
+          "Registrar",
+          "Comida manual",
+          `
+            <form id="meal-form" class="stack">
+              <div class="field-grid">
+                <label><span>Tipo</span><select name="type"><option>Desayuno</option><option>Comida</option><option>Cena</option><option>Snack</option></select></label>
+                <label><span>Nombre</span><input name="name" placeholder="Ej. pasta con pollo, yogur con fruta..." required></label>
+              </div>
+              <div class="field-grid">
+                <label><span>Grupo principal</span><select name="primaryFamily">${familyOptions()}</select></label>
+                <label><span>Grupo secundario</span><select name="secondaryFamily">${familyOptions()}</select></label>
+              </div>
+              <label><span>Ingredientes base</span><input name="ingredientsText" placeholder="Ej. arroz, pollo, zanahoria"></label>
+              <label><span>Postcomida</span><input name="reaction" placeholder="Ej. ligera, pesada, hinchazón"></label>
+              <button class="primary" type="submit">Guardar comida</button>
+            </form>
+            <details class="panel panel-toned disclosure-panel compact-disclosure">
+              <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Peso</h4></div></summary>
+              <div class="stack disclosure-body">
+                <form id="weight-form" class="inline-form inline-form-soft">
+                  <label><span>Peso</span><input name="weight" type="number" step="0.1" min="0" placeholder="kg"></label>
+                  <button class="ghost compact" type="submit">Guardar</button>
+                </form>
+              </div>
+            </details>
+          `,
+          "section-card-tinted section-card-nutrition"
+        )}
+        ${sectionCard(
+          "Plantillas",
+          "Usar sin pensar",
+          `
+            <div class="button-row button-row-start button-row-wrap">
+              ${quickTemplateButtons()}
             </div>
-            <div class="field-grid">
-              <label><span>Grupo principal</span><select name="primaryFamily">${familyOptions()}</select></label>
-              <label><span>Grupo secundario</span><select name="secondaryFamily">${familyOptions()}</select></label>
-            </div>
-            <label><span>Ingredientes base</span><input name="ingredientsText" placeholder="Ej. arroz, pollo, zanahoria"></label>
-            <label><span>Postcomida</span><input name="reaction" placeholder="Ej. ligera, pesada, hinchazón"></label>
-            <button class="primary" type="submit">Guardar comida</button>
-          </form>
-          <details class="panel panel-toned disclosure-panel compact-disclosure">
-            <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Peso</h4></div></summary>
-            <div class="stack disclosure-body">
-              <form id="weight-form" class="inline-form inline-form-soft">
-                <label><span>Peso</span><input name="weight" type="number" step="0.1" min="0" placeholder="kg"></label>
-                <button class="ghost compact" type="submit">Guardar</button>
-              </form>
-            </div>
-          </details>
-        `,
-        "section-card-tinted section-card-nutrition"
-      )}
-      ${sectionCard("Hoy", "Comidas registradas", `<div class="stack stack-tight">${mealItems(mealsToday)}</div>`, "section-card-glass section-card-nutrition-light")}
+            <div class="stack stack-tight">${mealItems(mealsToday)}</div>
+          `,
+          "section-card-glass section-card-nutrition-light"
+        )}
+      </div>
     `;
   } else if (currentView === "plan") {
     body = `
@@ -364,6 +428,7 @@ export function renderNutritionFeature(state, options = {}) {
           "section-card-glass section-card-nutrition-light"
         )}
       </div>
+      ${sectionCard("Compra derivada", "Marcar fondo y faltas", `<section class="dashboard-summary compact-metrics pantry-shopping-grid">${shoppingGroupCards(groupedShoppingList)}</section>`, "section-card-glass section-card-nutrition-light")}
     `;
   } else if (currentView === "pantry") {
     body = `
@@ -384,6 +449,7 @@ export function renderNutritionFeature(state, options = {}) {
         ${sectionCard("Falta", "Lista viva", `<div class="stack stack-tight">${pantryNeedList(pantryStatus)}</div>`, "section-card-glass section-card-nutrition-light")}
         ${sectionCard("Tengo", "Base real", `<div class="stack stack-tight">${pantryHaveList(pantryStatus)}</div>`, "section-card-glass section-card-nutrition-light")}
       </div>
+      ${sectionCard("Compra", "Convertir planner en despensa", `<section class="dashboard-summary compact-metrics pantry-shopping-grid">${shoppingGroupCards(groupedShoppingList)}</section>`, "section-card-glass section-card-nutrition-light")}
       <div class="nutrition-secondary-grid">
         ${sectionCard("Plantillas", "Usar sin pensar", `<section class="dashboard-summary compact-metrics template-grid">${templateCards(6)}</section>`, "section-card-glass section-card-nutrition-light")}
         ${sectionCard(
@@ -443,24 +509,44 @@ export function renderNutritionFeature(state, options = {}) {
           `,
           "section-card-glass section-card-nutrition-light"
         )}
-        ${sectionCard("Registro", "Comidas de hoy", `<div class="stack stack-tight">${mealItems(mealsToday)}</div>`, "section-card-glass section-card-nutrition-light")}
-      </div>
-      <div class="nutrition-secondary-grid">
         ${sectionCard(
-          "Despensa viva",
-          "Lo que ya tienes y lo que falta",
+          "Registro",
+          "Comidas de hoy",
           `
-            <div class="stack stack-tight">
-              ${Object.values(pantryStatus || {}).some(value => value === "need") ? pantryNeedList(pantryStatus) : pantryHaveList(pantryStatus)}
-            </div>
             <div class="button-row button-row-start button-row-soft">
-              <button class="ghost compact" type="button" data-action="open-module-view" data-tab="nutrition" data-view="pantry">Abrir despensa</button>
+              <button class="ghost compact" type="button" data-action="open-module-view" data-tab="nutrition" data-view="log">Abrir registro</button>
             </div>
+            <div class="stack stack-tight">${mealItems(mealsToday)}</div>
           `,
           "section-card-glass section-card-nutrition-light"
         )}
-        ${sectionCard("Lectura", "Variedad y tolerancia", `<div class="stack stack-tight">${signalItems(state)}${prepSuggestionPreview(review)}</div>`, "section-card-glass section-card-nutrition-light")}
       </div>
+      <details class="panel panel-toned compact-vault-bar disclosure-panel">
+        <summary class="disclosure-summary">
+          <div>
+            <p class="eyebrow">Más nutrición</p>
+            <h4>Despensa y tolerancia</h4>
+          </div>
+        </summary>
+        <div class="stack disclosure-body">
+          <div class="nutrition-secondary-grid">
+            ${sectionCard(
+              "Despensa viva",
+              "Lo que ya tienes y lo que falta",
+              `
+                <div class="stack stack-tight">
+                  ${Object.values(pantryStatus || {}).some(value => value === "need") ? pantryNeedList(pantryStatus) : pantryHaveList(pantryStatus)}
+                </div>
+                <div class="button-row button-row-start button-row-soft">
+                  <button class="ghost compact" type="button" data-action="open-module-view" data-tab="nutrition" data-view="pantry">Abrir despensa</button>
+                </div>
+              `,
+              "section-card-glass section-card-nutrition-light"
+            )}
+            ${sectionCard("Lectura", "Variedad y tolerancia", `<div class="stack stack-tight">${signalItems(state)}</div>`, "section-card-glass section-card-nutrition-light")}
+          </div>
+        </div>
+      </details>
     `;
   }
 

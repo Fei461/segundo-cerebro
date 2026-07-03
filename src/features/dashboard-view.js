@@ -85,11 +85,16 @@ function quickMealCapture() {
         <label><span>Tipo</span><select name="type"><option>Desayuno</option><option selected>Comida</option><option>Cena</option><option>Snack</option></select></label>
         <label><span>Nombre</span><input name="name" placeholder="Ej. bowl, tortilla, yogur" required></label>
       </div>
-      <div class="field-grid">
-        <label><span>Grupo principal</span><select name="primaryFamily">${familyOptions()}</select></label>
-        <label><span>Grupo secundario</span><select name="secondaryFamily">${familyOptions()}</select></label>
-      </div>
-      <label><span>Postcomida</span><input name="reaction" placeholder="Sensación rápida"></label>
+      <details class="panel panel-toned disclosure-panel compact-disclosure">
+        <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Grupos y postcomida</h4></div></summary>
+        <div class="stack disclosure-body">
+          <div class="field-grid">
+            <label><span>Grupo principal</span><select name="primaryFamily">${familyOptions()}</select></label>
+            <label><span>Grupo secundario</span><select name="secondaryFamily">${familyOptions()}</select></label>
+          </div>
+          <label><span>Postcomida</span><input name="reaction" placeholder="Sensación rápida"></label>
+        </div>
+      </details>
       <button class="primary" type="submit">Guardar comida rápida</button>
     </form>
   `;
@@ -278,6 +283,15 @@ function compactBulletList(items, emptyText) {
   `;
 }
 
+function compactSignalColumn(title, items, emptyText) {
+  return `
+    <section class="subpanel stack summary-card-soft">
+      <p class="eyebrow">${title}</p>
+      ${compactBulletList(items, emptyText)}
+    </section>
+  `;
+}
+
 function operationalQueue(decisionBoard) {
   const queue = [
     ...decisionBoard.doNow.slice(0, 2),
@@ -376,6 +390,24 @@ export function renderDashboardFeature(state, options = {}) {
         "section-card-hero section-card-home"
       )}
       ${sectionCard(
+        "Lectura",
+        "Qué está diciendo la semana",
+        `
+          <div class="reading-grid reading-grid-triple">
+            ${compactSignalColumn("Va bien", autoSummary.highlights, "Aún faltan más registros para una señal positiva clara.")}
+            ${compactSignalColumn("Vigilar", autoSummary.watchouts, "No hay alertas fuertes ahora mismo.")}
+            ${compactSignalColumn("Revisar", autoSummary.reviewItems, "Todavía no hay un punto de revisión principal.")}
+          </div>
+          <article class="entry">
+            <div>
+              <p class="entry-title">Lectura semanal automática</p>
+              <p class="entry-note">${autoSummary.headline}</p>
+            </div>
+          </article>
+        `,
+        "section-card-glass section-card-home-light"
+      )}
+      ${sectionCard(
         "Guiado",
         "Hacer, suavizar y capturar",
         `
@@ -384,12 +416,6 @@ export function renderDashboardFeature(state, options = {}) {
             <section class="subpanel stack summary-card-soft"><p class="eyebrow">Suavizar</p>${reviewItems(decisionBoard.lighten)}</section>
             <section class="subpanel stack summary-card-soft"><p class="eyebrow">Capturar</p>${reviewItems(decisionBoard.captureNow)}</section>
           </div>
-          <article class="entry">
-            <div>
-              <p class="entry-title">Lectura semanal automática</p>
-              <p class="entry-note">${autoSummary.headline}</p>
-            </div>
-          </article>
         `,
         "section-card-glass section-card-home-light"
       )}
@@ -421,6 +447,7 @@ export function renderDashboardFeature(state, options = {}) {
             ${statCard("Último backup", lastBackup, "exportado")}
             ${statCard("Última importación", lastImport, "base")}
           </section>
+          <article class="entry"><div><p class="entry-title">${lastBackup === "Aún no" ? "Backup pendiente" : "Backup disponible"}</p><p class="entry-note">${lastBackup === "Aún no" ? "Conviene exportar uno antes de cambiar de contexto o publicar una build nueva." : "Ya existe una copia de seguridad exportada desde este contexto."}</p></div></article>
           <article class="entry"><div><p class="entry-title">Cambio de passphrase</p><p class="entry-note">Último cambio: ${lastPassphraseChange}</p></div></article>
           <form id="change-passphrase-form" class="stack inline-form-soft">
             <div class="field-grid">
@@ -530,10 +557,14 @@ export function renderDashboardFeature(state, options = {}) {
         `,
         "section-card-glass section-card-home-light"
       )}
-      ${sectionCard(
-        "Arrastres y lectura",
-        "Lo mínimo que conviene mirar",
-        `
+      <details class="panel panel-toned compact-vault-bar disclosure-panel">
+        <summary class="disclosure-summary">
+          <div>
+            <p class="eyebrow">Más lectura</p>
+            <h4>Arrastres y revisión</h4>
+          </div>
+        </summary>
+        <div class="stack disclosure-body">
           <div class="home-reading-grid">
             <section class="subpanel stack summary-card-soft">
               <p class="eyebrow">Arrastres</p>
@@ -544,9 +575,8 @@ export function renderDashboardFeature(state, options = {}) {
               ${compactBulletList(autoSummary.reviewItems, "Todavía no hay una revisión prioritaria clara.")}
             </section>
           </div>
-        `,
-        "section-card-glass section-card-home-light"
-      )}
+        </div>
+      </details>
     `;
   }
 

@@ -285,6 +285,10 @@ export function renderTrainingFeature(state, options = {}) {
             <article class="entry"><div><p class="entry-title">Ciclo</p><p class="entry-meta">${formatCycleContextLabel(health.cycleContext)}</p></div></article>
             <article class="entry"><div><p class="entry-title">Energía media</p><p class="entry-meta">${health.avgEnergy ? health.avgEnergy.toFixed(1) : "-"} / 5</p></div></article>
             <div class="stack stack-tight">${signalPreview(health)}</div>
+            <div class="button-row button-row-start button-row-soft">
+              <button class="ghost compact" type="button" data-action="open-module-view" data-tab="recovery" data-view="overview">Ver sueño</button>
+              <button class="ghost compact" type="button" data-action="create-support-block" data-kind="recovery">Bloque suave</button>
+            </div>
           `,
           "section-card-glass section-card-training-light"
         )}

@@ -1,6 +1,7 @@
 import { getPlannedMeals, getPlannedSessions } from "../domain/plans.js";
 import {
   currentWeekStartKey,
+  getOperationalTimeline,
   getSuggestedWeeklyTasks,
   getWeeklyChecklist,
   getWeeklyPreparationPack,
@@ -145,7 +146,7 @@ function weekStrip(state) {
   const sessions = getPlannedSessions(state);
   const events = state.calendar.events || [];
   return `
-    <div class="week-strip">
+    <div class="week-strip week-strip-scroll">
       ${days
         .map(date => {
           const dateObj = new Date(date);
@@ -154,7 +155,7 @@ function weekStrip(state) {
           const sessionCount = sessions.filter(item => item.date === date).length;
           const eventCount = events.filter(item => item.date === date).length;
           return `
-            <article class="week-strip-day">
+            <article class="week-strip-day week-strip-day-compact">
               <p class="eyebrow">${label}</p>
               <p class="metric metric-small">${date.slice(-2)}</p>
               <p class="entry-meta">${mealCount} c · ${sessionCount} e · ${eventCount} a</p>
@@ -171,6 +172,24 @@ function summaryPreview(items, emptyText) {
   return items.slice(0, 3).map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`).join("");
 }
 
+function timelinePreview(items) {
+  if (!items.length) return emptyState("Todavía no hay una secuencia operativa clara para los próximos días.");
+  return items
+    .slice(0, 6)
+    .map(
+      item => `
+        <article class="entry">
+          <div>
+            <p class="entry-title">${item.date} · ${item.title}</p>
+            <p class="entry-meta">${item.kind}${item.time ? ` · ${item.time}` : ""}</p>
+            ${item.detail ? `<p class="entry-note">${item.detail}</p>` : ""}
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
 export function renderPlanningFeature(state, options = {}) {
   const currentView = options.currentView || "overview";
   const prep = getWeeklyPreparationPack(state);
@@ -179,6 +198,7 @@ export function renderPlanningFeature(state, options = {}) {
   const weeklySuggestions = getSuggestedWeeklyTasks(state).slice(0, 3);
   const reviewFlow = getWeeklyReviewFlow(state).slice(0, 4);
   const autoSummary = getWeeklyAutoSummary(state);
+  const timeline = getOperationalTimeline(state);
 
   let body = "";
 
@@ -189,7 +209,7 @@ export function renderPlanningFeature(state, options = {}) {
           "Agenda",
           "Evento",
           `
-            <details class="panel panel-toned disclosure-panel compact-disclosure" open>
+            <details class="panel panel-toned disclosure-panel compact-disclosure">
               <summary class="disclosure-summary"><div><p class="eyebrow">Añadir</p><h4>Evento</h4></div></summary>
               <div class="stack disclosure-body">
                 <form id="event-form" class="stack">
@@ -212,7 +232,7 @@ export function renderPlanningFeature(state, options = {}) {
           "Bloque",
           "Apoyo semanal",
           `
-            <details class="panel panel-toned disclosure-panel compact-disclosure" open>
+            <details class="panel panel-toned disclosure-panel compact-disclosure">
               <summary class="disclosure-summary"><div><p class="eyebrow">Añadir</p><h4>Bloque</h4></div></summary>
               <div class="stack disclosure-body">
                 <form id="block-form" class="stack">
@@ -236,6 +256,7 @@ export function renderPlanningFeature(state, options = {}) {
         ${sectionCard("Eventos", "Lo guardado", `<div class="stack stack-tight">${eventItems(state.calendar.events)}</div>`, "section-card-glass section-card-planning-light")}
         ${sectionCard("Bloques", "Apoyos suaves", `<div class="stack stack-tight">${blockItems(state.schedule.blocks)}</div>`, "section-card-glass section-card-planning-light")}
       </div>
+      ${sectionCard("Próximos días", "Línea operativa", `<div class="stack stack-tight">${timelinePreview(timeline)}</div>`, "section-card-glass section-card-planning-light")}
     `;
   } else if (currentView === "reset") {
     body = `
@@ -272,6 +293,7 @@ export function renderPlanningFeature(state, options = {}) {
         `,
         "section-card-glass section-card-planning-light"
       )}
+      ${sectionCard("Bajada real", "Lo que tocaría después", `<div class="stack stack-tight">${timelinePreview(timeline)}</div>`, "section-card-glass section-card-planning-light")}
     `;
   } else {
     body = `
@@ -305,6 +327,7 @@ export function renderPlanningFeature(state, options = {}) {
               ${statCard("Reset", reviewFlow.length, "gestos")}
             </section>
             <article class="entry"><div><p class="entry-title">${autoSummary.headline}</p></div></article>
+            <div class="stack stack-tight">${summaryPreview(autoSummary.highlights, "Aún no hay highlights suficientes esta semana.")}</div>
           `,
           "section-card-glass section-card-planning-light"
         )}
@@ -328,10 +351,21 @@ export function renderPlanningFeature(state, options = {}) {
         `,
         "section-card-glass section-card-planning-light"
       )}
-      <div class="planning-focus-grid planning-focus-grid-compact">
-        ${sectionCard("Checklist", "Lo que merece quedar hecho", `<div class="stack stack-tight">${summaryPreview(getWeeklyChecklist(state, currentWeekStartKey()).filter(item => !item.done).map(item => item.title), "Sin checklist pendiente ahora mismo.")}</div>`, "section-card-glass section-card-planning-light")}
-        ${sectionCard("Revisión", "Qué mirar al final de semana", `<div class="stack stack-tight">${summaryPreview(autoSummary.reviewItems, "Aún faltan más datos para una revisión clara.")}</div>`, "section-card-glass section-card-planning-light")}
-      </div>
+      <details class="panel panel-toned compact-vault-bar disclosure-panel">
+        <summary class="disclosure-summary">
+          <div>
+            <p class="eyebrow">Más semana</p>
+            <h4>Próximos días, checklist y revisión</h4>
+          </div>
+        </summary>
+        <div class="stack disclosure-body">
+          ${sectionCard("Próximos días", "Cómo baja a agenda real", `<div class="stack stack-tight">${timelinePreview(timeline)}</div>`, "section-card-glass section-card-planning-light")}
+          <div class="planning-focus-grid planning-focus-grid-compact">
+            ${sectionCard("Checklist", "Lo que merece quedar hecho", `<div class="stack stack-tight">${summaryPreview(getWeeklyChecklist(state, currentWeekStartKey()).filter(item => !item.done).map(item => item.title), "Sin checklist pendiente ahora mismo.")}</div>`, "section-card-glass section-card-planning-light")}
+            ${sectionCard("Revisión", "Qué mirar al final de semana", `<div class="stack stack-tight">${summaryPreview(autoSummary.reviewItems, "Aún faltan más datos para una revisión clara.")}</div>`, "section-card-glass section-card-planning-light")}
+          </div>
+        </div>
+      </details>
     `;
   }
 

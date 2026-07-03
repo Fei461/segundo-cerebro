@@ -129,6 +129,7 @@ export function renderRecoveryFeature(state, options = {}) {
           <div class="button-row button-row-start button-row-soft">
             <button class="ghost compact" type="button" data-action="open-module-view" data-tab="recovery" data-view="sleep">Registrar</button>
             <button class="primary compact" data-action="apply-weekly-calibration-pack">Ajustar semana</button>
+            <button class="ghost compact" type="button" data-action="create-support-block" data-kind="recovery">Bloque suave</button>
           </div>
         `,
         "section-card-hero section-card-recovery"
