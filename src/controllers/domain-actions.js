@@ -61,6 +61,11 @@ export function wireDomainActions(options) {
   appElement.querySelectorAll("[data-action='set-home-capture']").forEach(button => {
     button.addEventListener("click", () => {
       viewModel.homeCapture = String(button.dataset.capture || "meal");
+      viewModel.currentTab = "home";
+      viewModel.moduleViews = {
+        ...viewModel.moduleViews,
+        home: "capture"
+      };
       saveUiState();
       paint();
     });
@@ -91,6 +96,42 @@ export function wireDomainActions(options) {
   appElement.querySelectorAll("[data-action='clear-pantry-status']").forEach(button => {
     button.addEventListener("click", async () => {
       await clearPantryStatus();
+    });
+  });
+
+  appElement.querySelectorAll("[data-action='mark-pantry-need']").forEach(button => {
+    button.addEventListener("click", async () => {
+      const itemName = String(button.dataset.item || "").trim();
+      if (!itemName) return;
+      const nextState = {
+        ...viewModel.state,
+        nutrition: {
+          ...viewModel.state.nutrition,
+          pantryStatus: {
+            ...viewModel.state.nutrition.pantryStatus,
+            [itemName]: "need"
+          }
+        }
+      };
+      await persistState(nextState, `${itemName} marcado como falta.`);
+    });
+  });
+
+  appElement.querySelectorAll("[data-action='mark-pantry-have']").forEach(button => {
+    button.addEventListener("click", async () => {
+      const itemName = String(button.dataset.item || "").trim();
+      if (!itemName) return;
+      const nextState = {
+        ...viewModel.state,
+        nutrition: {
+          ...viewModel.state.nutrition,
+          pantryStatus: {
+            ...viewModel.state.nutrition.pantryStatus,
+            [itemName]: "have"
+          }
+        }
+      };
+      await persistState(nextState, `${itemName} marcado como disponible.`);
     });
   });
 
