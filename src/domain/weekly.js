@@ -1,28 +1,16 @@
 ﻿import { getPlannedMeals, getPlannedSessions, replacePlannedMeals, replacePlannedSessions } from "./plans.js";
 import { getSuggestedWeeklyMealSlots, getWeeklyNutritionPrepBoard, getWeeklyNutritionReview } from "./personal-nutrition.js";
 import { getWeeklyHealthInsights } from "./insights.js";
+import { addDaysToDateKey, localDateKey, parseLocalDateKey, weekKeysFromLocalDate, weekStartKeyFromLocalDate } from "./date.js";
 
 const DAY_LABELS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
 export function weekStartKeyFromDate(input = new Date()) {
-  const date = input instanceof Date ? new Date(input) : new Date(input);
-  const mondayOffset = (date.getDay() + 6) % 7;
-  date.setDate(date.getDate() - mondayOffset);
-  return date.toISOString().slice(0, 10);
+  return weekStartKeyFromLocalDate(input);
 }
 
 export function weekKeysFromDate(input = new Date()) {
-  const startKey = weekStartKeyFromDate(input);
-  const start = new Date(startKey);
-  const keys = [];
-
-  for (let index = 0; index < 7; index += 1) {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    keys.push(date.toISOString().slice(0, 10));
-  }
-
-  return keys;
+  return weekKeysFromLocalDate(input);
 }
 
 export function currentWeekStartKey() {
@@ -30,7 +18,7 @@ export function currentWeekStartKey() {
 }
 
 export function getDailyCommandCenter(state, inputDate = new Date()) {
-  const dateKey = inputDate instanceof Date ? inputDate.toISOString().slice(0, 10) : String(inputDate || "");
+  const dateKey = inputDate instanceof Date ? localDateKey(inputDate) : String(inputDate || "");
   const plannedMealsToday = getPlannedMeals(state).filter(meal => meal.date === dateKey);
   const plannedSessionsToday = getPlannedSessions(state).filter(session => session.date === dateKey);
   const eventsToday = (state.calendar?.events || [])
@@ -109,7 +97,7 @@ export function getDailyCommandCenter(state, inputDate = new Date()) {
 export function getTodayDecisionBoard(state, inputDate = new Date()) {
   const dailyCommand = getDailyCommandCenter(state, inputDate);
   const dateKey = dailyCommand.date;
-  const baseDate = new Date(dateKey);
+  const baseDate = parseLocalDateKey(dateKey);
   const plannedMeals = getPlannedMeals(state);
   const plannedSessions = getPlannedSessions(state);
   const carryovers = [];
@@ -117,7 +105,7 @@ export function getTodayDecisionBoard(state, inputDate = new Date()) {
   for (let index = 1; index <= 2; index += 1) {
     const date = new Date(baseDate);
     date.setDate(baseDate.getDate() - index);
-    const key = date.toISOString().slice(0, 10);
+    const key = localDateKey(date);
 
     plannedMeals
       .filter(meal => meal.date === key && meal.status !== "done")
@@ -208,13 +196,11 @@ export function getTodayDecisionBoard(state, inputDate = new Date()) {
 }
 
 export function getOperationalTimeline(state, inputDate = new Date()) {
-  const startDate = inputDate instanceof Date ? new Date(inputDate) : new Date(inputDate);
-  const startKey = startDate.toISOString().slice(0, 10);
+  const startDate = inputDate instanceof Date ? new Date(inputDate) : parseLocalDateKey(inputDate);
+  const startKey = localDateKey(startDate);
   const dateWindow = [];
   for (let index = 0; index < 4; index += 1) {
-    const date = new Date(startDate);
-    date.setDate(startDate.getDate() + index);
-    dateWindow.push(date.toISOString().slice(0, 10));
+    dateWindow.push(addDaysToDateKey(startKey, index));
   }
   const plannedMeals = getPlannedMeals(state);
   const plannedSessions = getPlannedSessions(state);
@@ -325,12 +311,12 @@ function dayIndexFromResetDay(resetDay) {
 
 export function dateKeyForResetDay(inputDate = new Date(), resetDay = "Domingo") {
   const startKey = weekStartKeyFromDate(inputDate);
-  const start = new Date(startKey);
+  const start = parseLocalDateKey(startKey);
   const targetDay = dayIndexFromResetDay(resetDay);
   const mondayIndex = 1;
   const offset = targetDay === 0 ? 6 : targetDay - mondayIndex;
   start.setDate(start.getDate() + offset);
-  return start.toISOString().slice(0, 10);
+  return localDateKey(start);
 }
 
 export function getWeeklyChecklist(state, weekKey = currentWeekStartKey()) {

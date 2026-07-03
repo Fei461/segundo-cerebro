@@ -1,19 +1,13 @@
 ﻿import { getPlannedSessions } from "./plans.js";
 import { mealReactionSignals } from "./personal-nutrition.js";
+import { addDaysToDateKey, localDateKey, parseLocalDateKey } from "./date.js";
 
 function currentWeekKeys(inputDate = new Date()) {
-  const keys = [];
-  const start = inputDate instanceof Date ? new Date(inputDate) : new Date(inputDate);
+  const start = inputDate instanceof Date ? new Date(inputDate) : parseLocalDateKey(inputDate);
   const mondayOffset = (start.getDay() + 6) % 7;
   start.setDate(start.getDate() - mondayOffset);
-
-  for (let index = 0; index < 7; index += 1) {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    keys.push(date.toISOString().slice(0, 10));
-  }
-
-  return keys;
+  const startKey = localDateKey(start);
+  return Array.from({ length: 7 }, (_, index) => addDaysToDateKey(startKey, index));
 }
 
 function sortedIsoDates(values = []) {
@@ -36,7 +30,7 @@ function contiguousPeriodBlocks(periodDays = []) {
     const previous = blocks[blocks.length - 1];
     const previousDate = new Date(previous.end);
     previousDate.setDate(previousDate.getDate() + 1);
-    const nextExpected = previousDate.toISOString().slice(0, 10);
+    const nextExpected = localDateKey(previousDate);
 
     if (nextExpected === dateKey) {
       previous.end = dateKey;
@@ -51,7 +45,7 @@ function contiguousPeriodBlocks(periodDays = []) {
 }
 
 export function getCycleContext(state, inputDate = new Date()) {
-  const dateKey = inputDate instanceof Date ? inputDate.toISOString().slice(0, 10) : String(inputDate || "");
+  const dateKey = inputDate instanceof Date ? localDateKey(inputDate) : String(inputDate || "");
   const blocks = contiguousPeriodBlocks(state.cycle?.periodDays || []);
   const currentBlock = blocks.find(block => block.days.includes(dateKey)) || null;
   const latestBlock = currentBlock || blocks.filter(block => block.start <= dateKey).slice(-1)[0] || null;
@@ -66,7 +60,7 @@ export function getCycleContext(state, inputDate = new Date()) {
   }
 
   const start = new Date(latestBlock.start);
-  const target = new Date(dateKey);
+  const target = parseLocalDateKey(dateKey);
   const diffDays = Math.floor((target.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
   const cycleDay = diffDays + 1;
   const periodActive = Boolean(currentBlock);
@@ -295,7 +289,9 @@ export function getWeeklyAutoSummary(state, inputDate = new Date()) {
   const health = getWeeklyHealthInsights(state, inputDate);
   const plannedSessions = getPlannedSessions(state).filter(session => weekKeySet.has(session.date));
   const donePlannedSessions = plannedSessions.filter(session => session.status === "done").length;
-  const plannedMeals = Object.values(state.mealPlan || {}).length;
+  const plannedMeals = Array.isArray(state.plans?.meals)
+    ? state.plans.meals.filter(meal => weekKeySet.has(String(meal.date || ""))).length
+    : 0;
   const loggedMeals = state.nutrition.meals.filter(meal => weekKeySet.has(meal.date)).length;
   const adherenceTraining = plannedSessions.length > 0 ? donePlannedSessions / plannedSessions.length : 0;
 

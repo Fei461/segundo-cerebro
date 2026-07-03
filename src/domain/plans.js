@@ -17,6 +17,11 @@ function normalizeNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function normalizeFamilies(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map(item => normalizeText(item)).filter(Boolean);
+}
+
 function normalizeMatchText(value) {
   return String(value || "")
     .normalize("NFD")
@@ -36,6 +41,7 @@ export function buildLegacyMealPlan(plannedMeals = []) {
       id: meal.id,
       name: meal.name,
       recipeId: meal.recipeId || null,
+      families: normalizeFamilies(meal.families),
       calories: normalizeNumber(meal.calories),
       protein: normalizeNumber(meal.protein),
       carbs: normalizeNumber(meal.carbs),
@@ -45,6 +51,25 @@ export function buildLegacyMealPlan(plannedMeals = []) {
     accumulator[meal.date] = dayPlan;
     return accumulator;
   }, {});
+}
+
+export function legacyMealPlanToPlannedMeals(legacyMealPlan = {}) {
+  return Object.entries(legacyMealPlan || {}).flatMap(([date, slots]) =>
+    Object.entries(slots || {}).map(([slot, item]) => ({
+      id: item.id ?? `${date}-${slot}`,
+      date,
+      slot,
+      name: normalizeText(item.name),
+      recipeId: item.recipeId ?? null,
+      families: normalizeFamilies(item.families),
+      calories: normalizeNumber(item.calories),
+      protein: normalizeNumber(item.protein),
+      carbs: normalizeNumber(item.carbs),
+      fat: normalizeNumber(item.fat),
+      status: normalizeStatus(item.status),
+      notes: normalizeText(item.notes)
+    }))
+  ).filter(meal => meal.date && meal.slot && meal.name);
 }
 
 export function getPlannedMeals(state) {
@@ -57,6 +82,7 @@ export function getPlannedMeals(state) {
         slot: normalizeText(meal.slot),
         name: normalizeText(meal.name),
         recipeId: meal.recipeId ?? null,
+        families: normalizeFamilies(meal.families),
         calories: normalizeNumber(meal.calories),
         protein: normalizeNumber(meal.protein),
         carbs: normalizeNumber(meal.carbs),
@@ -67,21 +93,7 @@ export function getPlannedMeals(state) {
       .filter(meal => meal.date && meal.slot && meal.name);
   }
 
-  return Object.entries(state?.mealPlan || {}).flatMap(([date, slots]) =>
-    Object.entries(slots || {}).map(([slot, item]) => ({
-      id: item.id ?? `${date}-${slot}`,
-      date,
-      slot,
-      name: normalizeText(item.name),
-      recipeId: item.recipeId ?? null,
-      calories: normalizeNumber(item.calories),
-      protein: normalizeNumber(item.protein),
-      carbs: normalizeNumber(item.carbs),
-      fat: normalizeNumber(item.fat),
-      status: normalizeStatus(item.status),
-      notes: normalizeText(item.notes)
-    }))
-  );
+  return legacyMealPlanToPlannedMeals(state?.mealPlan || {});
 }
 
 export function getPlannedMealsForDate(state, date) {
@@ -118,11 +130,11 @@ export function replacePlannedMeal(state, nextMeal) {
 
   return {
     ...state,
+    mealPlan: {},
     plans: {
       ...(state.plans || {}),
       meals: plannedMeals
-    },
-    mealPlan: buildLegacyMealPlan(plannedMeals)
+    }
   };
 }
 
@@ -134,11 +146,11 @@ export function removePlannedMeal(state, mealId) {
   const plannedMeals = getPlannedMeals(state).filter(meal => String(meal.id) !== String(mealId));
   return {
     ...state,
+    mealPlan: {},
     plans: {
       ...(state.plans || {}),
       meals: plannedMeals
-    },
-    mealPlan: buildLegacyMealPlan(plannedMeals)
+    }
   };
 }
 

@@ -17,6 +17,7 @@ export const DEFAULT_STATE = {
     savedMeals: [],
     waterLog: {},
     weightLog: {},
+    pantryStatus: {},
     supplements: [],
     supplementLog: {},
     profile: {
@@ -66,6 +67,8 @@ export const DEFAULT_STATE = {
   appMeta: {
     migratedFromLegacy: false,
     lastImportAt: null,
+    lastBackupExportAt: null,
+    lastPassphraseChangeAt: null,
     autoLockMinutes: 5,
     lastUnlockedAt: null
   }
@@ -92,6 +95,7 @@ export function mergeState(partialState = {}) {
       ...(partialState.nutrition || {}),
       waterLog: { ...(partialState.nutrition?.waterLog || {}) },
       weightLog: { ...(partialState.nutrition?.weightLog || {}) },
+      pantryStatus: { ...(partialState.nutrition?.pantryStatus || {}) },
       supplementLog: { ...(partialState.nutrition?.supplementLog || {}) },
       profile: {
         ...base.nutrition.profile,

@@ -38,6 +38,7 @@ export function normalizeStateShape(state) {
       savedMeals: ensureArray(nutrition.savedMeals),
       waterLog: ensureObject(nutrition.waterLog),
       weightLog: ensureObject(nutrition.weightLog),
+      pantryStatus: ensureObject(nutrition.pantryStatus),
       supplements: ensureArray(nutrition.supplements),
       supplementLog: ensureObject(nutrition.supplementLog),
       waterGoal: ensureNumber(nutrition.waterGoal, 8),
@@ -93,7 +94,9 @@ export function normalizeStateShape(state) {
     appMeta: {
       migratedFromLegacy: Boolean(appMeta.migratedFromLegacy),
       lastImportAt: appMeta.lastImportAt ?? null,
-      autoLockMinutes: Math.min(120, Math.max(1, ensureNumber(appMeta.autoLockMinutes, 5))),
+      lastBackupExportAt: appMeta.lastBackupExportAt ?? null,
+      lastPassphraseChangeAt: appMeta.lastPassphraseChangeAt ?? null,
+      autoLockMinutes: Math.min(120, Math.max(0, ensureNumber(appMeta.autoLockMinutes, 5))),
       lastUnlockedAt: appMeta.lastUnlockedAt ?? null
     }
   };

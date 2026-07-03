@@ -310,7 +310,7 @@ export function mealReactionSignals(meals) {
     if (!hasNegativeReaction) return;
 
     const sourceNames = (Array.isArray(meal.items) ? meal.items : []).flatMap(item =>
-      String(item.name || "")
+      `${String(item.name || "")}, ${String(item.ingredientsText || "")}`
         .split(/,| con | y /i)
         .map(part => canonicalizeIngredientName(part))
         .filter(Boolean)
@@ -369,7 +369,9 @@ export function getWeeklyNutritionReview({ plannedMeals = [], loggedMeals = [], 
 
   loggedMeals.forEach(meal => {
     (Array.isArray(meal.items) ? meal.items : []).forEach(item => {
-      varietyFamiliesFromText(item.name || "").forEach(family => coveredFamilies.add(family));
+      const directFamilies = Array.isArray(item.families) ? item.families.filter(Boolean) : [];
+      const inferredFamilies = varietyFamiliesFromText(item.name || "");
+      [...directFamilies, ...inferredFamilies].forEach(family => coveredFamilies.add(family));
     });
   });
 
