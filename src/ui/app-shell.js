@@ -52,6 +52,25 @@ function renderResetVaultButton(label = "Restablecer este contexto") {
   return `<button id="reset-vault-button" class="ghost compact" type="button">${label}</button>`;
 }
 
+function renderPasswordField({
+  name,
+  label,
+  placeholder = "",
+  minlength = 8,
+  autocomplete = "current-password",
+  required = true
+}) {
+  return `
+    <label class="secret-field">
+      <span>${label}</span>
+      <div class="secret-field-row">
+        <input name="${name}" type="password" minlength="${minlength}"${required ? " required" : ""} autocomplete="${autocomplete}" placeholder="${placeholder}">
+        <button class="ghost compact secret-toggle" type="button" data-action="toggle-secret" aria-label="Mostrar u ocultar ${label.toLowerCase()}">Ver</button>
+      </div>
+    </label>
+  `;
+}
+
 function renderAuthSecondaryActions(content) {
   return `
     <details class="panel panel-toned disclosure-panel auth-secondary-panel">
@@ -153,27 +172,22 @@ export function renderApp(container, viewModel) {
           <p class="eyebrow">Acceso local</p>
           <h1>Crear acceso</h1>
           <p class="muted">Tus datos quedan cifrados en este dispositivo.</p>
+          <p class="shell-note">Si no bloqueas ni limpias este contexto, la app puede reanudar la sesión por ti.</p>
           <p class="shell-note">${renderContextHint(viewModel)}</p>
           <form id="setup-form" class="stack">
-            <label>
-              <span>Clave local</span>
-              <input name="passphrase" type="password" minlength="8" required autocomplete="new-password" placeholder="Mínimo 8 caracteres">
-            </label>
-            <label>
-              <span>Confirmar clave local</span>
-              <input name="passphraseConfirm" type="password" minlength="8" required autocomplete="new-password" placeholder="Repite la clave">
-            </label>
+            ${renderPasswordField({ name: "passphrase", label: "Clave local", placeholder: "Mínimo 8 caracteres", autocomplete: "new-password" })}
+            ${renderPasswordField({ name: "passphraseConfirm", label: "Confirmar clave local", placeholder: "Repite la clave", autocomplete: "new-password" })}
             <button class="primary" type="submit">Crear acceso</button>
           </form>
           ${renderAuthSecondaryActions(`
             <p class="muted">Si vienes de otro contexto, importa un backup cifrado.</p>
             <form id="setup-import-form" class="stack inline-form-soft">
               <div class="field-grid">
-                <label><span>Passphrase backup</span><input name="backupImportPassphrase" type="password" minlength="8" autocomplete="current-password" placeholder="Clave del archivo" required></label>
-                <label><span>Nueva clave local</span><input name="newVaultPassphrase" type="password" minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres" required></label>
+                ${renderPasswordField({ name: "backupImportPassphrase", label: "Passphrase backup", placeholder: "Clave del archivo" })}
+                ${renderPasswordField({ name: "newVaultPassphrase", label: "Nueva clave local", placeholder: "Mínimo 8 caracteres", autocomplete: "new-password" })}
               </div>
               <div class="field-grid">
-                <label><span>Confirmar clave local</span><input name="newVaultPassphraseConfirm" type="password" minlength="8" autocomplete="new-password" placeholder="Repite la clave" required></label>
+                ${renderPasswordField({ name: "newVaultPassphraseConfirm", label: "Confirmar clave local", placeholder: "Repite la clave", autocomplete: "new-password" })}
                 <label class="file-button compact-file auth-file"><input name="backupFile" type="file" accept=".json,application/json" required>Elegir archivo</label>
               </div>
               <button class="ghost compact" type="submit">Importar backup aquí</button>
@@ -194,20 +208,18 @@ export function renderApp(container, viewModel) {
           <p class="eyebrow">${hasVault ? "Vault bloqueado" : "Acceso requerido"}</p>
           <h1>Desbloquear</h1>
           <p class="muted">${lockSummary(lockMinutes)}</p>
+          <p class="shell-note">Si mantienes este mismo contexto abierto, no deberías tener que repetir la clave constantemente.</p>
           <p class="shell-note">${renderContextHint(viewModel)}</p>
           <form id="unlock-form" class="stack">
-            <label>
-              <span>Clave local</span>
-              <input name="passphrase" type="password" required autocomplete="current-password" placeholder="Tu clave local">
-            </label>
+            ${renderPasswordField({ name: "passphrase", label: "Clave local", placeholder: "Tu clave local" })}
             <button class="primary" type="submit">Desbloquear</button>
           </form>
           ${renderAuthSecondaryActions(`
             <p class="muted">Tus datos siguen cifrados hasta que abras tu espacio. Si recargas dentro de este mismo contexto, la app intentará mantener la sesión.</p>
             <form id="locked-import-form" class="stack inline-form-soft">
               <div class="field-grid">
-                <label><span>Passphrase backup</span><input name="backupImportPassphrase" type="password" minlength="8" autocomplete="current-password" placeholder="Clave del archivo" required></label>
-                <label><span>Clave vault actual</span><input name="vaultPassphrase" type="password" minlength="8" autocomplete="current-password" placeholder="Clave de este contexto" required></label>
+                ${renderPasswordField({ name: "backupImportPassphrase", label: "Passphrase backup", placeholder: "Clave del archivo" })}
+                ${renderPasswordField({ name: "vaultPassphrase", label: "Clave vault actual", placeholder: "Clave de este contexto" })}
               </div>
               <label class="file-button compact-file auth-file"><input name="backupFile" type="file" accept=".json,application/json" required>Elegir archivo</label>
               <button class="ghost compact" type="submit">Importar y reemplazar</button>
