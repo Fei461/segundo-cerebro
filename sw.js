@@ -1,4 +1,4 @@
-const CACHE_NAME = "segundo-cerebro-app-v5";
+const CACHE_NAME = "segundo-cerebro-app-v14";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -9,12 +9,23 @@ const APP_SHELL = [
   "./icons/maskable-icon-512.png",
   "./icons/apple-touch-icon-180.png",
   "./src/main.js",
-  "./src/styles/app.css",
+  "./src/app.css",
+  "./src/controllers/app-runtime.js",
+  "./src/controllers/auth-vault.js",
+  "./src/controllers/domain-actions.js",
+  "./src/controllers/domain-forms.js",
+  "./src/controllers/form-helpers.js",
+  "./src/controllers/settings.js",
+  "./src/controllers/session-ui.js",
+  "./src/controllers/vault-session.js",
   "./src/domain/catalogs.js",
+  "./src/domain/date.js",
   "./src/domain/insights.js",
+  "./src/domain/migrate.js",
   "./src/domain/personal-nutrition.js",
   "./src/domain/plans.js",
   "./src/domain/schema.js",
+  "./src/domain/validate.js",
   "./src/domain/weekly.js",
   "./src/features/dashboard-view.js",
   "./src/features/nutrition-view.js",
@@ -27,13 +38,14 @@ const APP_SHELL = [
   "./src/storage/indexeddb.js",
   "./src/storage/legacy-import.js",
   "./src/storage/secure-store.js",
+  "./src/storage/vault-health.js",
   "./src/ui/app-shell.js",
+  "./src/ui/feature-layout.js",
   "./src/ui/formatters.js"
 ];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", event => {
