@@ -1,13 +1,43 @@
 ﻿import { createDefaultState } from "./domain/schema.js";
 import {
   canonicalizeIngredientName,
+  PERSONAL_MEAL_TEMPLATES,
   getWeeklyNutritionPrepBoard,
   varietyFamiliesFromText
 } from "./domain/personal-nutrition.js";
 import {
+  bindFamilyAutofill,
+  bindPlannerRecipeAutofill,
+  resolveSleepHoursFromValues,
+  uniqueFamilies
+} from "./controllers/form-helpers.js";
+import { wireDomainForms } from "./controllers/domain-forms.js";
+import { wireDomainActions } from "./controllers/domain-actions.js";
+import { wireSettingsForm } from "./controllers/settings.js";
+import { bootstrapApp, updateRuntimeStatus as updateRuntimeStatusController, wireRuntimeEnvironment } from "./controllers/app-runtime.js";
+import {
+  getLockMinutesFromState,
+  loadUiState as loadUiStateSnapshot,
+  saveUiState as saveUiStateSnapshot
+} from "./controllers/session-ui.js";
+import {
+  changeVaultPassphrase as changeVaultPassphraseInStore,
+  importIntoNewVault,
+  triggerDownload,
+  wireAuthVaultForms
+} from "./controllers/auth-vault.js";
+import {
+  clearSessionResume as clearSessionResumeToken,
+  exportEncryptedBackupWithPassphrase as exportEncryptedBackupWithPassphraseInVault,
+  importBackupIntoCurrentSession,
+  persistSessionResume as persistSessionResumeToken,
+  readSessionResume as readSessionResumeToken,
+  resetVaultContext as resetVaultContextInStore,
+  scheduleAutolockTimer
+} from "./controllers/vault-session.js";
+import {
   applyLoggedMealToPlans,
   applyLoggedSessionToPlans,
-  buildLegacyMealPlan,
   getPlannedMeals,
   getPlannedMealsForDate,
   getPlannedSessions,
@@ -31,13 +61,13 @@ import {
   toggleWeeklyReviewStep,
   replaceWeeklyChecklist
 } from "./domain/weekly.js";
-import { createEncryptedBackup, importEncryptedBackup } from "./storage/backup.js";
-import { importLegacyPayload } from "./storage/legacy-import.js";
+import { addDaysToDateKey, localDateKey } from "./domain/date.js";
 import { SecureStore } from "./storage/secure-store.js";
 import { renderApp } from "./ui/app-shell.js";
 
 const AUTOLOCK_MINUTES = 5;
 const UI_STATE_KEY = "segundo-cerebro-ui-state-v1";
+const SESSION_RESUME_KEY = "segundo-cerebro-session-resume-v1";
 const secureStore = new SecureStore();
 const appElement = document.getElementById("app");
 
@@ -70,46 +100,33 @@ let autolockTimer = null;
 let statusTimer = null;
 
 function loadUiState() {
-  try {
-    const raw = window.sessionStorage.getItem(UI_STATE_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object") {
-      if (typeof parsed.currentTab === "string" && parsed.currentTab) {
-        viewModel.currentTab = parsed.currentTab;
-      }
-      if (typeof parsed.homeCapture === "string" && parsed.homeCapture) {
-        viewModel.homeCapture = parsed.homeCapture;
-      }
-      if (parsed.moduleViews && typeof parsed.moduleViews === "object") {
-        viewModel.moduleViews = {
-          ...viewModel.moduleViews,
-          ...parsed.moduleViews
-        };
-      }
+  const snapshot = loadUiStateSnapshot(window.sessionStorage, {
+    key: UI_STATE_KEY,
+    fallback: {
+      currentTab: viewModel.currentTab,
+      homeCapture: viewModel.homeCapture,
+      moduleViews: viewModel.moduleViews
     }
-  } catch {}
+  });
+  viewModel.currentTab = snapshot.currentTab;
+  viewModel.homeCapture = snapshot.homeCapture;
+  viewModel.moduleViews = snapshot.moduleViews;
 }
 
 function saveUiState() {
-  try {
-    window.sessionStorage.setItem(
-      UI_STATE_KEY,
-      JSON.stringify({
-        currentTab: viewModel.currentTab,
-        homeCapture: viewModel.homeCapture,
-        moduleViews: viewModel.moduleViews
-      })
-    );
-  } catch {}
+  saveUiStateSnapshot(window.sessionStorage, UI_STATE_KEY, {
+    currentTab: viewModel.currentTab,
+    homeCapture: viewModel.homeCapture,
+    moduleViews: viewModel.moduleViews
+  });
 }
 
 function setLockMinutesFromState(state) {
-  viewModel.lockMinutes = Number(state?.appMeta?.autoLockMinutes || AUTOLOCK_MINUTES);
+  viewModel.lockMinutes = getLockMinutesFromState(state, AUTOLOCK_MINUTES);
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateKey(new Date());
 }
 
 function todayDayLabel() {
@@ -117,13 +134,7 @@ function todayDayLabel() {
 }
 
 function updateRuntimeStatus() {
-  viewModel.runtime = {
-    isStandalone:
-      window.matchMedia?.("(display-mode: standalone)")?.matches ||
-      window.navigator?.standalone === true,
-    isOnline: navigator.onLine,
-    hasServiceWorker: "serviceWorker" in navigator
-  };
+  updateRuntimeStatusController(viewModel, window, navigator);
 }
 
 async function persistState(nextState, successMessage = "") {
@@ -143,22 +154,36 @@ function numberValue(value) {
   return Number(value || 0);
 }
 
+function resolveSleepHours(formData) {
+  return resolveSleepHoursFromValues(
+    {
+      rawHours: formData.get("hours"),
+      sleepStart: formData.get("sleepStart"),
+      sleepEnd: formData.get("sleepEnd")
+    },
+    requireNumberInRange
+  );
+}
+
 function parseRecipeIngredients(rawText) {
   return rawText
     .split(/\r?\n/)
     .map(line => line.trim())
     .filter(Boolean)
     .map(line => {
-      const [name, calories, protein, carbs, fat] = line.split("|").map(part => part.trim());
+      const [rawName = "", rawSecond = "", rawThird = "", rawFourth = "", rawFifth = ""] = line.split("|").map(part => part.trim());
+      const name = rawName;
       const canonicalName = canonicalizeIngredientName(name);
+      const hasLegacyMacros = [rawSecond, rawThird, rawFourth, rawFifth].some(part => part !== "" && !Number.isNaN(Number(part)));
+      const explicitFamilies = hasLegacyMacros ? [] : uniqueFamilies(rawSecond.split(","));
       return {
         name,
         canonicalName,
-        families: varietyFamiliesFromText(canonicalName || name),
-        calories: numberValue(calories),
-        protein: numberValue(protein),
-        carbs: numberValue(carbs),
-        fat: numberValue(fat)
+        families: explicitFamilies.length ? explicitFamilies : varietyFamiliesFromText(canonicalName || name),
+        calories: hasLegacyMacros ? numberValue(rawSecond) : 0,
+        protein: hasLegacyMacros ? numberValue(rawThird) : 0,
+        carbs: hasLegacyMacros ? numberValue(rawFourth) : 0,
+        fat: hasLegacyMacros ? numberValue(rawFifth) : 0
       };
     });
 }
@@ -207,6 +232,17 @@ function findRecipe(recipeId) {
   return viewModel.state.recipes.find(recipe => String(recipe.id) === String(recipeId));
 }
 
+function findMealTemplate(slotKey, templateName) {
+  const templates = PERSONAL_MEAL_TEMPLATES[String(slotKey || "").trim()] || [];
+  return templates.find(template => String(template.name || "").trim() === String(templateName || "").trim()) || null;
+}
+
+function familiesFromTemplate(template) {
+  if (!template) return [];
+  const text = [template.name, ...(Array.isArray(template.ingredients) ? template.ingredients : [])].join(" ");
+  return uniqueFamilies(varietyFamiliesFromText(text));
+}
+
 async function addMealEntry(payload) {
   const reaction = Array.isArray(payload.reaction)
     ? payload.reaction.filter(Boolean)
@@ -250,8 +286,39 @@ async function logRecipeToToday(recipeId) {
 
   await addMealEntry({
     type: "Receta",
-    item: { name: recipe.name, ...perServing, recipeId: recipe.id },
+    item: { name: recipe.name, ...perServing, recipeId: recipe.id, families: Array.isArray(recipe.familyCoverage) ? recipe.familyCoverage : [] },
     totals: perServing
+  });
+}
+
+async function logMealTemplateToToday(slotKey, templateName) {
+  const template = findMealTemplate(slotKey, templateName);
+  if (!template) {
+    setStatus("No se encontró la plantilla elegida.");
+    return;
+  }
+
+  const families = familiesFromTemplate(template);
+  const ingredientsText = Array.isArray(template.ingredients) ? template.ingredients.join(", ") : "";
+  const slotLabels = {
+    breakfasts: "Desayuno",
+    lunches: "Comida",
+    dinners: "Cena",
+    snacks: "Snack"
+  };
+
+  await addMealEntry({
+    type: slotLabels[String(slotKey || "").trim()] || "Comida",
+    item: {
+      name: template.name,
+      ingredientsText,
+      families,
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0
+    },
+    totals: { calories: 0, protein: 0, carbs: 0, fat: 0 }
   });
 }
 
@@ -310,7 +377,6 @@ async function logPlannedDay(date) {
         ...(viewModel.state.plans || {}),
         meals: updatedPlanMeals
       },
-      mealPlan: buildLegacyMealPlan(updatedPlanMeals),
       nutrition: {
         ...viewModel.state.nutrition,
         meals: [...viewModel.state.nutrition.meals, ...newMeals]
@@ -611,24 +677,30 @@ function requireNumberInRange(value, label, { min = -Infinity, max = Infinity } 
   return parsed;
 }
 
-function parseImportedFile(rawText) {
-  const parsed = JSON.parse(rawText);
-  return parsed;
-}
-
 function mealPayloadFromFormData(formData) {
+  const rawFamilies = uniqueFamilies([
+    formData.get("primaryFamily"),
+    formData.get("secondaryFamily"),
+    formData.get("extraFamily")
+  ]);
+  const mealName = requireText(formData.get("name"), "nombre de la comida");
+  const ingredientsText = String(formData.get("ingredientsText") || "").trim();
+  const families = rawFamilies.length ? rawFamilies : varietyFamiliesFromText(`${mealName} ${ingredientsText}`.trim());
+
   const item = {
-    name: requireText(formData.get("name"), "nombre de la comida"),
-    calories: requireNumberInRange(formData.get("calories"), "calorias", { min: 0 }),
-    protein: requireNumberInRange(formData.get("protein"), "proteina", { min: 0 }),
-    carbs: requireNumberInRange(formData.get("carbs"), "carbohidratos", { min: 0 }),
-    fat: requireNumberInRange(formData.get("fat"), "grasas", { min: 0 })
+    name: mealName,
+    ingredientsText,
+    families,
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0
   };
 
   return {
     type: requireText(formData.get("type"), "tipo de comida"),
     item,
-    totals: { ...item },
+    totals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
     reaction: String(formData.get("reaction") || "")
   };
 }
@@ -720,6 +792,42 @@ async function addSleepEntry(payload) {
   );
 }
 
+async function cyclePantryItem(itemName) {
+  const current = viewModel.state.nutrition.pantryStatus?.[itemName] || "";
+  const next = current === "" ? "have" : current === "have" ? "need" : "";
+  const nextStatus = { ...(viewModel.state.nutrition.pantryStatus || {}) };
+
+  if (next) {
+    nextStatus[itemName] = next;
+  } else {
+    delete nextStatus[itemName];
+  }
+
+  await persistState(
+    {
+      ...viewModel.state,
+      nutrition: {
+        ...viewModel.state.nutrition,
+        pantryStatus: nextStatus
+      }
+    },
+    next === "have" ? "Marcado como disponible." : next === "need" ? "Marcado como pendiente." : "Item quitado de la lista."
+  );
+}
+
+async function clearPantryStatus() {
+  await persistState(
+    {
+      ...viewModel.state,
+      nutrition: {
+        ...viewModel.state.nutrition,
+        pantryStatus: {}
+      }
+    },
+    "Despensa reiniciada."
+  );
+}
+
 async function saveNoteEntry(key, value) {
   await persistState(
     {
@@ -735,12 +843,9 @@ async function saveNoteEntry(key, value) {
 
 function weeklyNutritionPrepState(state) {
   const startKey = currentWeekStartKey();
-  const start = new Date(startKey);
   const weekKeys = new Set();
   for (let index = 0; index < 7; index += 1) {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    weekKeys.add(date.toISOString().slice(0, 10));
+    weekKeys.add(addDaysToDateKey(startKey, index));
   }
   return getWeeklyNutritionPrepBoard({
     plannedMeals: getPlannedMeals(state).filter(meal => weekKeys.has(meal.date)),
@@ -855,10 +960,30 @@ function renderFatalApp(message) {
         </div>
       </article>
       <div class="button-row">
+        <button class="ghost" type="button" data-action="recover-home">Volver a Hoy</button>
         <button class="primary" type="button" data-action="reload-app">Recargar app</button>
       </div>
     </section>
   `;
+
+  const recoverButton = appElement.querySelector("[data-action='recover-home']");
+  if (recoverButton) {
+    recoverButton.addEventListener("click", () => {
+      viewModel.mode = secureStore.isUnlocked() ? "ready" : "locked";
+      viewModel.currentTab = "home";
+      viewModel.moduleViews.home = "overview";
+      viewModel.homeCapture = "meal";
+      viewModel.status = "Se ha intentado recuperar la app desde Home.";
+      viewModel.fatalError = "";
+      try {
+        paint();
+      } catch (error) {
+        viewModel.mode = "fatal";
+        viewModel.fatalError = formatRuntimeError(error);
+        renderFatalApp(viewModel.fatalError);
+      }
+    });
+  }
 
   const reloadButton = appElement.querySelector("[data-action='reload-app']");
   if (reloadButton) {
@@ -877,17 +1002,42 @@ function paint() {
     renderFatalApp(viewModel.fatalError || "Error desconocido al arrancar la app.");
     return;
   }
-  renderApp(appElement, viewModel);
-  wireUi();
+  try {
+    renderApp(appElement, viewModel);
+    wireUi();
+  } catch (error) {
+    showFatalError(error);
+  }
+}
+
+function clearSessionResume() {
+  clearSessionResumeToken(window.sessionStorage, SESSION_RESUME_KEY);
+}
+
+async function persistSessionResume() {
+  await persistSessionResumeToken({
+    secureStore,
+    sessionStorageRef: window.sessionStorage,
+    sessionKey: SESSION_RESUME_KEY
+  });
+}
+
+function readSessionResume() {
+  return readSessionResumeToken(window.sessionStorage, SESSION_RESUME_KEY);
 }
 
 function scheduleAutolock() {
-  if (autolockTimer) window.clearTimeout(autolockTimer);
-  autolockTimer = window.setTimeout(() => {
-    secureStore.lock();
-    viewModel.mode = "locked";
-    setStatus("La sesión se ha bloqueado por inactividad.");
-  }, viewModel.lockMinutes * 60 * 1000);
+  autolockTimer = scheduleAutolockTimer({
+    windowRef: window,
+    currentTimer: autolockTimer,
+    lockMinutes: viewModel.lockMinutes,
+    onLock: () => {
+      secureStore.lock();
+      clearSessionResume();
+      viewModel.mode = "locked";
+      setStatus("La sesión se ha bloqueado por inactividad.");
+    }
+  });
 }
 
 function resetActivityClock() {
@@ -896,65 +1046,20 @@ function resetActivityClock() {
   }
 }
 
-async function exportEncryptedBackup() {
-  const state = secureStore.getSessionState();
-  if (!state) return;
-
-  const passphrase = window.prompt("Introduce una passphrase para cifrar este backup:");
-  if (!passphrase) {
-    setStatus("Exportación cancelada.");
-    return;
-  }
-
-  const backup = await createEncryptedBackup(state, passphrase);
-  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = "segundo-cerebro-backup.json";
-  anchor.click();
-  URL.revokeObjectURL(url);
-  setStatus("Backup cifrado generado.");
+async function exportEncryptedBackupWithPassphrase(passphrase) {
+  viewModel.state = await exportEncryptedBackupWithPassphraseInVault({
+    secureStore,
+    passphrase,
+    triggerDownload
+  });
 }
 
-async function handleLegacyFile(file) {
-  const rawText = await file.text();
-  const parsed = parseImportedFile(rawText);
-  let importedState;
-
-  if (parsed.kind === "encrypted-backup-v1") {
-    const passphrase = window.prompt("Introduce la passphrase del backup cifrado:");
-    if (!passphrase) {
-      throw new Error("Importación cancelada.");
-    }
-    importedState = await importEncryptedBackup(rawText, passphrase);
-  } else {
-    importedState = importLegacyPayload(rawText);
-  }
-
-  if (secureStore.isUnlocked()) {
-    viewModel.state = await secureStore.saveState(importedState);
-  } else if (viewModel.hasVault) {
-    const vaultPassphrase = window.prompt("Introduce la passphrase del vault actual para reemplazar su contenido:");
-    if (!vaultPassphrase) {
-      throw new Error("Importación cancelada.");
-    }
-    await secureStore.unlock(vaultPassphrase);
-    viewModel.state = await secureStore.saveState(importedState);
-    viewModel.mode = "ready";
-  } else {
-    const newPassphrase = window.prompt("Crea una passphrase local para este contexto antes de importar:");
-    if (!newPassphrase) {
-      throw new Error("Importación cancelada.");
-    }
-    viewModel.state = await secureStore.initializeVault(newPassphrase, importedState);
-    viewModel.mode = "ready";
-    viewModel.hasVault = true;
-    viewModel.vaultHealth = "ready";
-  }
-  setLockMinutesFromState(viewModel.state);
+async function changeVaultPassphrase(nextPassphrase) {
+  const state = await changeVaultPassphraseInStore(secureStore, nextPassphrase);
+  viewModel.state = state;
+  setLockMinutesFromState(state);
+  await persistSessionResume();
   scheduleAutolock();
-  setStatus("Datos importados a la nueva base.");
 }
 
 async function resetVaultContext() {
@@ -963,7 +1068,8 @@ async function resetVaultContext() {
   );
   if (!confirmed) return;
 
-  await secureStore.resetVault();
+  await resetVaultContextInStore(secureStore);
+  clearSessionResume();
   viewModel.state = createDefaultState();
   viewModel.hasVault = false;
   viewModel.vaultHealth = "empty";
@@ -982,96 +1088,28 @@ function openTab(tab) {
 }
 
 function wireUi() {
-  const setupForm = document.getElementById("setup-form");
-  if (setupForm) {
-    setupForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      const formData = new FormData(setupForm);
-      const passphrase = String(formData.get("passphrase") || "");
-      const passphraseConfirm = String(formData.get("passphraseConfirm") || "");
-
-      try {
-        if (passphrase !== passphraseConfirm) {
-          throw new Error("La confirmación de passphrase no coincide.");
-        }
-        const state = await secureStore.initializeVault(passphrase);
-        viewModel.state = state;
-        viewModel.hasVault = true;
-        viewModel.vaultHealth = "ready";
-        setLockMinutesFromState(state);
-        viewModel.mode = "ready";
-        clearStatus();
-        scheduleAutolock();
-        paint();
-      } catch (error) {
-        setStatus(error.message || "No se pudo crear el vault.");
-      }
-    });
-  }
-
-  const unlockForm = document.getElementById("unlock-form");
-  if (unlockForm) {
-    unlockForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      const formData = new FormData(unlockForm);
-      const passphrase = String(formData.get("passphrase") || "");
-
-      try {
-        const state = await secureStore.unlock(passphrase);
-        viewModel.state = state;
-        viewModel.hasVault = true;
-        viewModel.vaultHealth = "ready";
-        setLockMinutesFromState(state);
-        viewModel.mode = "ready";
-        clearStatus();
-        scheduleAutolock();
-        paint();
-      } catch (error) {
-        setStatus(error.message || "No se pudo desbloquear. Revisa la clave local.");
-      }
-    });
-  }
-
-  const resetVaultButton = document.getElementById("reset-vault-button");
-  if (resetVaultButton) {
-    resetVaultButton.addEventListener("click", async () => {
-      try {
-        await resetVaultContext();
-      } catch (error) {
-        setStatus(error.message || "No se pudo restablecer este contexto.");
-      }
-    });
-  }
-
-  const lockButton = document.getElementById("lock-button");
-  if (lockButton) {
-    lockButton.addEventListener("click", () => {
-      secureStore.lock();
-      viewModel.mode = "locked";
-      setStatus("Sesión bloqueada manualmente.");
-    });
-  }
-
-  const exportButton = document.getElementById("export-button");
-  if (exportButton) {
-    exportButton.addEventListener("click", exportEncryptedBackup);
-  }
-
-  const importFile = document.getElementById("import-file");
-  if (importFile) {
-    importFile.addEventListener("change", async event => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      try {
-        await handleLegacyFile(file);
-      } catch (error) {
-        setStatus(error.message || "No se pudo importar el archivo.");
-      } finally {
-        event.target.value = "";
-      }
-    });
-  }
+  wireAuthVaultForms({
+    documentRef: document,
+    secureStore,
+    viewModel,
+    setStatus,
+    clearStatus,
+    setLockMinutesFromState,
+    persistSessionResume,
+    scheduleAutolock,
+    paint,
+    clearSessionResume,
+    createVault: passphrase => secureStore.initializeVault(passphrase),
+    unlockVault: passphrase => secureStore.unlock(passphrase),
+    importNewVault: ({ file, backupPassphrase, newVaultPassphrase }) =>
+      importIntoNewVault({ file, backupPassphrase, newVaultPassphrase, secureStore }),
+    importExistingVault: ({ file, backupPassphrase, vaultPassphrase }) =>
+      importIntoExistingVault({ file, backupPassphrase, vaultPassphrase, secureStore }),
+    resetVault: resetVaultContext,
+    exportBackupWithPassphrase: exportEncryptedBackupWithPassphrase,
+    changePassphrase: changeVaultPassphrase,
+    importCurrentSession: ({ file, backupPassphrase }) => importBackupIntoCurrentSession({ file, backupPassphrase, secureStore })
+  });
 
   appElement.querySelectorAll("[data-action='open-tab']").forEach(button => {
     button.addEventListener("click", () => {
@@ -1093,900 +1131,108 @@ function wireUi() {
     });
   });
 
-  const mealForm = document.getElementById("meal-form");
-  if (mealForm) {
-    mealForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(mealForm);
-        await addMealEntry(mealPayloadFromFormData(formData));
-        mealForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar la comida.");
-      }
-    });
-  }
-
-  const quickMealForm = document.getElementById("quick-meal-form");
-  if (quickMealForm) {
-    quickMealForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(quickMealForm);
-        await addMealEntry(mealPayloadFromFormData(formData));
-        quickMealForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar la comida rápida.");
-      }
-    });
-  }
-
-  const weightForm = document.getElementById("weight-form");
-  if (weightForm) {
-    weightForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(weightForm);
-        const weight = requireNumberInRange(formData.get("weight"), "peso", { min: 20, max: 400 });
-        const nextState = {
-          ...viewModel.state,
-          nutrition: {
-            ...viewModel.state.nutrition,
-            weightLog: {
-              ...viewModel.state.nutrition.weightLog,
-              [todayKey()]: weight
-            }
-          }
-        };
-
-        await persistState(nextState, "Peso guardado.");
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar el peso.");
-      }
-    });
-  }
-
-  const recipeForm = document.getElementById("recipe-form");
-  if (recipeForm) {
-    recipeForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(recipeForm);
-        const ingredients = parseRecipeIngredients(String(formData.get("ingredients") || ""));
-        if (ingredients.length === 0) {
-          throw new Error("La receta necesita al menos un ingrediente.");
-        }
-        const totals = totalsFromIngredients(ingredients);
-        const recipe = {
-          id: Date.now(),
-          servings: Math.max(1, requireNumberInRange(formData.get("servings"), "raciones", { min: 1, max: 20 })),
-          name: requireText(formData.get("name"), "nombre de la receta"),
-          ingredients,
-          totals,
-          createdAt: new Date().toISOString()
-        };
-        Object.assign(recipe, recipeMetaFromIngredients(ingredients, recipe.servings));
-
-        const nextState = {
-          ...viewModel.state,
-          recipes: [...viewModel.state.recipes, recipe]
-        };
-
-        await persistState(nextState, "Receta guardada.");
-        recipeForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar la receta.");
-      }
-    });
-  }
-
-  const plannerForm = document.getElementById("planner-form");
-  if (plannerForm) {
-    plannerForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(plannerForm);
-        const date = requireText(formData.get("date"), "fecha del planner");
-        const slot = requireText(formData.get("slot"), "slot del planner");
-        const recipeId = String(formData.get("recipeId") || "").trim();
-        const recipe = recipeId ? findRecipe(recipeId) : null;
-        const plannedItem = recipe
-          ? {
-              id: Date.now() + Math.random(),
-              date,
-              slot,
-              name: recipe.name,
-              recipeId: recipe.id,
-              calories: Math.round(recipe.totals.calories / recipe.servings),
-              protein: Math.round(recipe.totals.protein / recipe.servings),
-              carbs: Math.round(recipe.totals.carbs / recipe.servings),
-              fat: Math.round(recipe.totals.fat / recipe.servings),
-              status: "planned",
-              notes: ""
-            }
-          : {
-              id: Date.now() + Math.random(),
-              date,
-              slot,
-              name: requireText(formData.get("name"), "nombre del item planificado"),
-              calories: requireNumberInRange(formData.get("calories"), "calorias del item", { min: 0 }),
-              protein: 0,
-              carbs: 0,
-              fat: 0,
-              status: "planned",
-              notes: ""
-            };
-        await persistState(replacePlannedMeal(viewModel.state, plannedItem), "Planner actualizado.");
-        plannerForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar el planner.");
-      }
-    });
-  }
-
-  const trainingForm = document.getElementById("training-form");
-  if (trainingForm) {
-    trainingForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(trainingForm);
-        await addTrainingSession(trainingPayloadFromFormData(formData));
-        trainingForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar la sesión.");
-      }
-    });
-  }
-
-  const quickTrainingForm = document.getElementById("quick-training-form");
-  if (quickTrainingForm) {
-    quickTrainingForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(quickTrainingForm);
-        await addTrainingSession(trainingPayloadFromFormData(formData));
-        quickTrainingForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar el entreno rápido.");
-      }
-    });
-  }
-
-  const plannedSessionForm = document.getElementById("planned-session-form");
-  if (plannedSessionForm) {
-    plannedSessionForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(plannedSessionForm);
-        await addPlannedSession({
-          date: requireText(formData.get("date"), "fecha de la sesión programada"),
-          type: requireText(formData.get("type"), "tipo de sesión"),
-          activity: requireText(formData.get("activity"), "actividad programada"),
-          duration: requireNumberInRange(formData.get("duration"), "duracion programada", { min: 1, max: 600 }),
-          routineName: String(formData.get("routineName") || "").trim(),
-          status: requireText(formData.get("status"), "estado"),
-          notes: String(formData.get("notes") || "").trim()
-        });
-        plannedSessionForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo programar la sesión.");
-      }
-    });
-  }
-
-  const routineForm = document.getElementById("routine-form");
-  if (routineForm) {
-    routineForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(routineForm);
-        await addRoutine({
-          name: requireText(formData.get("name"), "nombre de la rutina"),
-          focus: requireText(formData.get("focus"), "foco de la rutina"),
-          exercises: String(formData.get("exercises") || "").trim()
-        });
-        routineForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar la rutina.");
-      }
-    });
-  }
-
-  const symptomForm = document.getElementById("symptom-form");
-  if (symptomForm) {
-    symptomForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(symptomForm);
-        await addSymptom({
-          id: Date.now() + Math.random(),
-          date: requireText(formData.get("date"), "fecha del síntoma"),
-          name: requireText(formData.get("name"), "nombre del síntoma"),
-          intensity: requireNumberInRange(formData.get("intensity"), "intensidad", { min: 1, max: 5 }),
-          digestion: String(formData.get("digestion") || "").trim(),
-          energy: String(formData.get("energy") || "").trim() ? requireNumberInRange(formData.get("energy"), "energía", { min: 1, max: 5 }) : null,
-          mood: String(formData.get("mood") || "").trim() ? requireNumberInRange(formData.get("mood"), "ánimo", { min: 1, max: 5 }) : null,
-          note: String(formData.get("note") || "").trim()
-        });
-        symptomForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar el síntoma.");
-      }
-    });
-  }
-
-  const quickCheckinForm = document.getElementById("quick-checkin-form");
-  if (quickCheckinForm) {
-    quickCheckinForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(quickCheckinForm);
-        await addSymptom({
-          id: Date.now() + Math.random(),
-          date: todayKey(),
-          name: requireText(formData.get("name"), "nombre del síntoma"),
-          intensity: requireNumberInRange(formData.get("intensity"), "intensidad", { min: 1, max: 5 }),
-          digestion: String(formData.get("digestion") || "").trim(),
-          energy: String(formData.get("energy") || "").trim() ? requireNumberInRange(formData.get("energy"), "energía", { min: 1, max: 5 }) : null,
-          mood: String(formData.get("mood") || "").trim() ? requireNumberInRange(formData.get("mood"), "ánimo", { min: 1, max: 5 }) : null,
-          note: String(formData.get("note") || "").trim()
-        });
-        quickCheckinForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar el check-in rápido.");
-      }
-    });
-  }
-
-  const quickSleepForm = document.getElementById("quick-sleep-form");
-  if (quickSleepForm) {
-    quickSleepForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(quickSleepForm);
-        await addSleepEntry({
-          date: requireText(formData.get("date"), "fecha del sueño"),
-          hours: requireNumberInRange(formData.get("hours"), "horas de sueño", { min: 0, max: 24 }),
-          quality: requireNumberInRange(formData.get("quality"), "calidad del sueño", { min: 1, max: 5 }),
-          sleepStart: "",
-          sleepEnd: "",
-          notes: String(formData.get("notes") || "").trim()
-        });
-        quickSleepForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar el sueño rápido.");
-      }
-    });
-  }
-
-  const quickEventForm = document.getElementById("quick-event-form");
-  if (quickEventForm) {
-    quickEventForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(quickEventForm);
-        await addEvent({
-          title: requireText(formData.get("title"), "titulo del evento"),
-          category: String(formData.get("category") || "").trim(),
-          date: requireText(formData.get("date"), "fecha del evento"),
-          time: String(formData.get("time") || "").trim(),
-          note: String(formData.get("note") || "").trim()
-        });
-        quickEventForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar el evento rápido.");
-      }
-    });
-  }
-
-  const quickNoteForm = document.getElementById("quick-note-form");
-  if (quickNoteForm) {
-    quickNoteForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(quickNoteForm);
-        const key = requireText(formData.get("key"), "clave de la nota");
-        const value = requireText(formData.get("value"), "contenido de la nota");
-        await saveNoteEntry(key, value);
-        quickNoteForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar la nota rápida.");
-      }
-    });
-  }
-
-  const medForm = document.getElementById("med-form");
-  if (medForm) {
-    medForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(medForm);
-        await addMedication({
-          name: requireText(formData.get("name"), "nombre de la medicación"),
-          dose: String(formData.get("dose") || "").trim(),
-          notes: String(formData.get("notes") || "").trim()
-        });
-        medForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar la medicación.");
-      }
-    });
-  }
-
-  const eventForm = document.getElementById("event-form");
-  if (eventForm) {
-    eventForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(eventForm);
-        await addEvent({
-          title: requireText(formData.get("title"), "titulo del evento"),
-          category: String(formData.get("category") || "").trim(),
-          date: requireText(formData.get("date"), "fecha del evento"),
-          time: String(formData.get("time") || "").trim(),
-          note: String(formData.get("note") || "").trim()
-        });
-        eventForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar el evento.");
-      }
-    });
-  }
-
-  const blockForm = document.getElementById("block-form");
-  if (blockForm) {
-    blockForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(blockForm);
-        const start = requireText(formData.get("start"), "hora de inicio");
-        const end = requireText(formData.get("end"), "hora de fin");
-        if (end <= start) {
-          throw new Error("La hora de fin debe ser posterior al inicio.");
-        }
-        await addScheduleBlock({
-          title: requireText(formData.get("title"), "titulo del bloque"),
-          day: requireText(formData.get("day"), "día del bloque"),
-          start,
-          end,
-          category: String(formData.get("category") || "").trim()
-        });
-        blockForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar el bloque.");
-      }
-    });
-  }
-
-  const sleepForm = document.getElementById("sleep-form");
-  if (sleepForm) {
-    sleepForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(sleepForm);
-        await addSleepEntry({
-          date: requireText(formData.get("date"), "fecha del sueño"),
-          hours: requireNumberInRange(formData.get("hours"), "horas de sueño", { min: 0, max: 24 }),
-          quality: requireNumberInRange(formData.get("quality"), "calidad del sueño", { min: 1, max: 5 }),
-          sleepStart: String(formData.get("sleepStart") || "").trim(),
-          sleepEnd: String(formData.get("sleepEnd") || "").trim(),
-          notes: String(formData.get("notes") || "").trim()
-        });
-        sleepForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar el sueño.");
-      }
-    });
-  }
-
-  const noteForm = document.getElementById("note-form");
-  if (noteForm) {
-    noteForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(noteForm);
-        const key = requireText(formData.get("key"), "clave de la nota");
-        const value = requireText(formData.get("value"), "contenido de la nota");
-        await saveNoteEntry(key, value);
-        noteForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar la nota.");
-      }
-    });
-  }
-
-  const profileForm = document.getElementById("profile-form");
-  if (profileForm) {
-    profileForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(profileForm);
-        const displayName = String(formData.get("displayName") || "").trim();
-        const autoLockMinutes = requireNumberInRange(formData.get("autoLockMinutes"), "autobloqueo", { min: 1, max: 120 });
-        await persistState(
-          {
-            ...viewModel.state,
-            profile: {
-              ...viewModel.state.profile,
-              displayName
-            },
-            appMeta: {
-              ...viewModel.state.appMeta,
-              autoLockMinutes
-            }
-          },
-          "Ajustes guardados."
-        );
-      } catch (error) {
-        setStatus(error.message || "No se pudieron guardar los ajustes.");
-      }
-    });
-  }
-
-  const weeklyForm = document.getElementById("weekly-form");
-  if (weeklyForm) {
-    weeklyForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      try {
-        const formData = new FormData(weeklyForm);
-        await addWeeklyTask({
-          title: requireText(formData.get("title"), "tarea semanal"),
-          resetDay: requireText(formData.get("resetDay"), "día de reset")
-        });
-        weeklyForm.reset();
-      } catch (error) {
-        setStatus(error.message || "No se pudo guardar la checklist semanal.");
-      }
-    });
-  }
-
-  appElement.querySelectorAll("[data-action='add-water']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const key = todayKey();
-      const current = numberValue(viewModel.state.nutrition.waterLog[key]);
-      const nextState = {
-        ...viewModel.state,
-        nutrition: {
-          ...viewModel.state.nutrition,
-          waterLog: {
-            ...viewModel.state.nutrition.waterLog,
-            [key]: current + 1
-          }
-        }
-      };
-      await persistState(nextState, "Agua registrada.");
-    });
+  wireDomainForms({
+    documentRef: document,
+    bindFamilyAutofill,
+    bindPlannerRecipeAutofill,
+    findRecipe,
+    requireNumberInRange,
+    requireText,
+    uniqueFamilies,
+    resolveSleepHours,
+    setStatus,
+    todayKey,
+    mealPayloadFromFormData,
+    trainingPayloadFromFormData,
+    addMealEntry,
+    persistState,
+    viewModel,
+    parseRecipeIngredients,
+    totalsFromIngredients,
+    recipeMetaFromIngredients,
+    replacePlannedMeal,
+    addTrainingSession,
+    addPlannedSession,
+    addRoutine,
+    addSymptom,
+    addEvent,
+    addScheduleBlock,
+    addSleepEntry,
+    saveNoteEntry,
+    addMedication,
+    addWeeklyTask
   });
 
-  appElement.querySelectorAll("[data-action='set-home-capture']").forEach(button => {
-    button.addEventListener("click", () => {
-      viewModel.homeCapture = String(button.dataset.capture || "meal");
-      saveUiState();
-      paint();
-    });
+  wireSettingsForm({
+    documentRef: document,
+    requireNumberInRange,
+    persistState,
+    viewModel,
+    setStatus
   });
 
-  appElement.querySelectorAll("[data-action='delete-meal']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const mealId = Number(button.dataset.id);
-      const nextState = {
-        ...viewModel.state,
-        nutrition: {
-          ...viewModel.state.nutrition,
-          meals: viewModel.state.nutrition.meals.filter(meal => meal.id !== mealId)
-        }
-      };
-      await persistState(nextState, "Comida eliminada.");
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='log-recipe']").forEach(button => {
-    button.addEventListener("click", async () => {
-      await logRecipeToToday(button.dataset.id);
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='log-day-plan']").forEach(button => {
-    button.addEventListener("click", async () => {
-      await logPlannedDay(button.dataset.date);
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='cycle-planned-meal-status']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const mealId = String(button.dataset.id || "");
-      const meal = getPlannedMeals(viewModel.state).find(entry => String(entry.id) === mealId);
-      if (!meal) return;
-      await persistState(
-        replacePlannedMeal(viewModel.state, {
-          ...meal,
-          status: cyclePlanStatus(meal.status)
-        }),
-        "Estado del meal planner actualizado."
-      );
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='set-planned-status']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const itemId = String(button.dataset.id || "");
-      const status = String(button.dataset.status || "planned");
-      const kind = String(button.dataset.kind || "");
-      if (!itemId || !kind) return;
-
-      if (kind === "meal") {
-        await setPlannedMealStatus(itemId, status);
-        return;
-      }
-
-      if (kind === "session") {
-        await setPlannedSessionStatus(itemId, status);
-      }
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='delete-planned-meal']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const mealId = String(button.dataset.id || "");
-      await persistState(removePlannedMeal(viewModel.state, mealId), "Slot planificado eliminado.");
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='add-weekly-suggestion']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const title = String(button.dataset.title || "").trim();
-      if (!title) return;
-      await addSuggestedWeeklyTasks([title]);
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='add-all-weekly-suggestions']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const suggestions = getSuggestedWeeklyTasks(viewModel.state).map(item => item.title);
-      await addSuggestedWeeklyTasks(suggestions);
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='create-weekly-reset-block']").forEach(button => {
-    button.addEventListener("click", async () => {
-      await ensureResetBlockForWeek();
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='apply-weekly-reset-routine']").forEach(button => {
-    button.addEventListener("click", async () => {
-      await applyResetRoutine();
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='apply-suggested-meal-slots']").forEach(button => {
-    button.addEventListener("click", async () => {
-      await applySuggestedMealSlots();
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='apply-suggested-sessions']").forEach(button => {
-    button.addEventListener("click", async () => {
-      await applySuggestedSessions();
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='save-weekly-nutrition-notes']").forEach(button => {
-    button.addEventListener("click", async () => {
-      await saveWeeklyNutritionNotes();
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='apply-weekly-nutrition-pack']").forEach(button => {
-    button.addEventListener("click", async () => {
-      await applyNutritionPrepPack();
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='save-weekly-calibration-note']").forEach(button => {
-    button.addEventListener("click", async () => {
-      await saveWeeklyCalibrationNote();
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='apply-weekly-calibration-pack']").forEach(button => {
-    button.addEventListener("click", async () => {
-      await applyWeeklyCalibrationPack();
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='toggle-weekly-review-step']").forEach(button => {
-    button.addEventListener("click", async () => {
-      await toggleReviewStep(String(button.dataset.step || ""));
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='delete-session']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const id = Number(button.dataset.id);
-      await persistState(
-        {
-          ...viewModel.state,
-          training: {
-            ...viewModel.state.training,
-            sessions: viewModel.state.training.sessions.filter(session => session.id !== id)
-          }
-        },
-        "Sesión eliminada."
-      );
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='delete-routine']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const id = Number(button.dataset.id);
-      await persistState(
-        {
-          ...viewModel.state,
-          training: {
-            ...viewModel.state.training,
-            routines: viewModel.state.training.routines.filter(routine => routine.id !== id)
-          }
-        },
-        "Rutina eliminada."
-      );
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='complete-planned-session']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const sessionId = String(button.dataset.id || "");
-      const session = getPlannedSessions(viewModel.state).find(entry => String(entry.id) === sessionId);
-      if (!session) return;
-
-      const nextState = replacePlannedSession(
-        {
-          ...viewModel.state,
-          training: {
-            ...viewModel.state.training,
-            sessions: [
-              ...viewModel.state.training.sessions,
-              {
-                id: Date.now() + Math.random(),
-                date: session.date,
-                type: session.type,
-                activity: session.activity,
-                duration: session.duration,
-                rpe: 0,
-                loadKg: 0,
-                distanceKm: 0,
-                routineName: session.routineName,
-                notes: session.notes
-              }
-            ]
-          }
-        },
-        {
-          ...session,
-          status: "done"
-        }
-      );
-
-      await persistState(nextState, "Sesión programada pasada a ejecutada.");
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='cycle-planned-session-status']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const sessionId = String(button.dataset.id || "");
-      const session = getPlannedSessions(viewModel.state).find(entry => String(entry.id) === sessionId);
-      if (!session) return;
-      await persistState(
-        replacePlannedSession(viewModel.state, {
-          ...session,
-          status: cyclePlanStatus(session.status)
-        }),
-        "Estado de la sesión programada actualizado."
-      );
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='delete-planned-session']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const sessionId = String(button.dataset.id || "");
-      await persistState(removePlannedSession(viewModel.state, sessionId), "Sesión programada eliminada.");
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='toggle-period']").forEach(button => {
-    button.addEventListener("click", togglePeriodToday);
-  });
-
-  appElement.querySelectorAll("[data-action='create-support-block']").forEach(button => {
-    button.addEventListener("click", async () => {
-      await createSupportBlock(String(button.dataset.kind || ""));
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='toggle-med']").forEach(button => {
-    button.addEventListener("click", async () => {
-      await toggleMedicationToday(Number(button.dataset.id));
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='delete-med']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const id = Number(button.dataset.id);
-      const nextMeds = viewModel.state.medication.meds.filter(med => med.id !== id);
-      const nextLog = Object.fromEntries(
-        Object.entries(viewModel.state.medication.log).map(([date, ids]) => [
-          date,
-          ids.filter(entryId => entryId !== id)
-        ])
-      );
-      await persistState(
-        {
-          ...viewModel.state,
-          medication: {
-            ...viewModel.state.medication,
-            meds: nextMeds,
-            log: nextLog
-          }
-        },
-        "Medicación eliminada."
-      );
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='delete-event']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const id = Number(button.dataset.id);
-      await persistState(
-        {
-          ...viewModel.state,
-          calendar: {
-            ...viewModel.state.calendar,
-            events: viewModel.state.calendar.events.filter(event => event.id !== id)
-          }
-        },
-        "Evento eliminado."
-      );
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='delete-block']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const id = Number(button.dataset.id);
-      await persistState(
-        {
-          ...viewModel.state,
-          schedule: {
-            ...viewModel.state.schedule,
-            blocks: viewModel.state.schedule.blocks.filter(block => block.id !== id)
-          }
-        },
-        "Bloque eliminado."
-      );
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='delete-sleep']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const date = String(button.dataset.date || "");
-      const nextEntries = { ...viewModel.state.sleepEntries };
-      delete nextEntries[date];
-      await persistState(
-        {
-          ...viewModel.state,
-          sleepEntries: nextEntries
-        },
-        "Registro de sueño eliminado."
-      );
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='delete-note']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const key = String(button.dataset.key || "");
-      const nextNotes = { ...viewModel.state.notes };
-      delete nextNotes[key];
-      await persistState(
-        {
-          ...viewModel.state,
-          notes: nextNotes
-        },
-        "Nota eliminada."
-      );
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='toggle-weekly-task']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const taskId = String(button.dataset.id || "");
-      const weekKey = currentWeekStartKey();
-      const checklist = getWeeklyChecklist(viewModel.state, weekKey);
-      const nextChecklist = checklist.map(item =>
-        String(item.id) === taskId ? { ...item, done: !item.done } : item
-      );
-      await persistState(replaceWeeklyChecklist(viewModel.state, weekKey, nextChecklist), "Checklist semanal actualizada.");
-    });
-  });
-
-  appElement.querySelectorAll("[data-action='delete-weekly-task']").forEach(button => {
-    button.addEventListener("click", async () => {
-      const taskId = String(button.dataset.id || "");
-      const weekKey = currentWeekStartKey();
-      const checklist = getWeeklyChecklist(viewModel.state, weekKey);
-      const nextChecklist = checklist.filter(item => String(item.id) !== taskId);
-      await persistState(replaceWeeklyChecklist(viewModel.state, weekKey, nextChecklist), "Tarea semanal eliminada.");
-    });
+  wireDomainActions({
+    appElement,
+    viewModel,
+    persistState,
+    saveUiState,
+    paint,
+    todayKey,
+    numberValue,
+    cyclePantryItem,
+    clearPantryStatus,
+    logRecipeToToday,
+    logMealTemplateToToday,
+    logPlannedDay,
+    getPlannedMeals,
+    replacePlannedMeal,
+    cyclePlanStatus,
+    setPlannedMealStatus,
+    setPlannedSessionStatus,
+    removePlannedMeal,
+    addSuggestedWeeklyTasks,
+    getSuggestedWeeklyTasks,
+    ensureResetBlockForWeek,
+    applyResetRoutine,
+    applySuggestedMealSlots,
+    applySuggestedSessions,
+    saveWeeklyNutritionNotes,
+    applyNutritionPrepPack,
+    saveWeeklyCalibrationNote,
+    applyWeeklyCalibrationPack,
+    toggleReviewStep,
+    getPlannedSessions,
+    replacePlannedSession,
+    removePlannedSession,
+    togglePeriodToday,
+    createSupportBlock,
+    toggleMedicationToday,
+    currentWeekStartKey,
+    getWeeklyChecklist,
+    replaceWeeklyChecklist
   });
 }
 
-async function bootstrap() {
-  loadUiState();
-  updateRuntimeStatus();
-  const vaultStatus = await secureStore.getVaultStatus();
-  viewModel.hasVault = vaultStatus.canUnlock;
-  viewModel.vaultHealth = vaultStatus.status;
-  viewModel.mode = viewModel.hasVault ? "locked" : "setup";
-  viewModel.lockMinutes = AUTOLOCK_MINUTES;
-  if (vaultStatus.needsRepair) {
-    viewModel.status = "He encontrado un vault incompleto en este contexto. Puedes limpiarlo y crear uno nuevo o importar un backup.";
-  }
-  paint();
-}
-
-["click", "keydown", "touchstart"].forEach(eventName => {
-  window.addEventListener(eventName, resetActivityClock, { passive: true });
+wireRuntimeEnvironment({
+  windowRef: window,
+  navigatorRef: navigator,
+  resetActivityClock,
+  updateRuntime: updateRuntimeStatus,
+  viewModel,
+  paint,
+  setStatus,
+  showFatalError
 });
 
-window.addEventListener("online", () => {
-  updateRuntimeStatus();
-  if (viewModel.mode !== "fatal") paint();
-});
-
-window.addEventListener("offline", () => {
-  updateRuntimeStatus();
-  if (viewModel.mode !== "fatal") paint();
-});
-
-window.matchMedia?.("(display-mode: standalone)")?.addEventListener?.("change", () => {
-  updateRuntimeStatus();
-  if (viewModel.mode !== "fatal") paint();
-});
-
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("./sw.js")
-      .then(registration => {
-        if (registration.waiting) {
-          registration.waiting.postMessage({ type: "SKIP_WAITING" });
-        }
-
-        registration.addEventListener("updatefound", () => {
-          const worker = registration.installing;
-          if (!worker) return;
-          worker.addEventListener("statechange", () => {
-            if (worker.state === "installed" && navigator.serviceWorker.controller) {
-              worker.postMessage({ type: "SKIP_WAITING" });
-            }
-          });
-        });
-      })
-      .catch(() => {});
-  });
-
-  let reloadingForServiceWorker = false;
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (reloadingForServiceWorker) return;
-    reloadingForServiceWorker = true;
-    window.location.reload();
-  });
-}
-
-window.addEventListener("error", event => {
-  showFatalError(event.error || event.message || "Error de runtime no controlado.");
-});
-
-window.addEventListener("unhandledrejection", event => {
-  showFatalError(event.reason || "Promesa rechazada sin control.");
-});
-
-bootstrap().catch(showFatalError);
+bootstrapApp({
+  loadUiState,
+  updateRuntime: updateRuntimeStatus,
+  secureStore,
+  viewModel,
+  readSessionResume,
+  setLockMinutesFromState,
+  persistSessionResume,
+  scheduleAutolock,
+  clearSessionResume,
+  paint
+}).catch(showFatalError);
