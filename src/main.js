@@ -1117,6 +1117,18 @@ function wireUi() {
     });
   });
 
+  appElement.querySelectorAll("[data-action='toggle-secret']").forEach(button => {
+    button.addEventListener("click", () => {
+      const fieldRow = button.closest(".secret-field-row");
+      const input = fieldRow?.querySelector("input");
+      if (!input) return;
+      const visible = input.type === "text";
+      input.type = visible ? "password" : "text";
+      button.textContent = visible ? "Ver" : "Ocultar";
+      button.setAttribute("aria-pressed", visible ? "false" : "true");
+    });
+  });
+
   appElement.querySelectorAll("[data-action='open-module-view']").forEach(button => {
     button.addEventListener("click", () => {
       const tab = String(button.dataset.tab || viewModel.currentTab || "home");

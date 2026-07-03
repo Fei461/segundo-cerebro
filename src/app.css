@@ -186,6 +186,23 @@ select {
   background: rgba(255, 255, 255, 0.8);
 }
 
+.secret-field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: end;
+}
+
+.secret-field-row input {
+  margin-top: 0.4rem;
+}
+
+.secret-toggle {
+  min-width: 78px;
+  min-height: 46px;
+  align-self: end;
+}
+
 .screen {
   width: min(100%, 920px);
   margin: 0 auto;
@@ -611,6 +628,31 @@ select {
   gap: 0.62rem;
 }
 
+.pantry-shopping-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.pantry-shopping-card {
+  gap: 0.55rem;
+}
+
+.pantry-group-card {
+  margin: 0;
+}
+
+.pantry-groups-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.shopping-item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+}
+
 .pantry-chip-grid,
 .family-chip-row {
   display: flex;
@@ -733,12 +775,28 @@ select {
   gap: 0.42rem;
 }
 
+.week-strip-scroll {
+  display: flex;
+  overflow-x: auto;
+  gap: 0.42rem;
+  padding-bottom: 0.12rem;
+  scrollbar-width: none;
+}
+
+.week-strip-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 .week-strip-day {
   border: 1px solid rgba(var(--accent-rgb), 0.14);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.72);
   padding: 0.55rem 0.45rem;
   text-align: center;
+}
+
+.week-strip-day-compact {
+  min-width: 84px;
 }
 
 .metric-small {
@@ -1509,6 +1567,14 @@ h4 {
   gap: 0.42rem;
 }
 
+.button-row-tight {
+  gap: 0.32rem;
+}
+
+.button-row-wrap {
+  flex-wrap: wrap;
+}
+
 .inline-form-soft {
   align-items: end;
 }
@@ -1833,6 +1899,11 @@ h4 {
   .home-reading-grid,
   .week-strip {
     grid-template-columns: 1fr;
+  }
+
+  .week-strip-scroll {
+    display: flex;
+    grid-template-columns: none;
   }
 
   .home-rail-grid .planning-summary,
