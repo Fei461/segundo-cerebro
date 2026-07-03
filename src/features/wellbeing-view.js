@@ -5,11 +5,12 @@ import {
   ENERGY_LEVELS,
   MOOD_LEVELS
 } from "../domain/catalogs.js";
+import { localDateKey } from "../domain/date.js";
 import { getCycleSupportSuggestions, getWeeklyHealthInsights } from "../domain/insights.js";
 import { featureHeader, sectionCard, viewSwitcher, emptyState } from "../ui/feature-layout.js";
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateKey(new Date());
 }
 
 function statCard(label, value, detail) {
@@ -22,10 +23,10 @@ function statCard(label, value, detail) {
   `;
 }
 
-function recentSymptoms(symptomLog) {
+function recentSymptoms(symptomLog, limit = 5) {
   return Object.entries(symptomLog || {})
     .sort((left, right) => right[0].localeCompare(left[0]))
-    .slice(0, 6);
+    .slice(0, limit);
 }
 
 function medicationToday(medication, date) {
@@ -84,6 +85,22 @@ function renderSymptomGroups() {
   ).join("");
 }
 
+function supportPreview(suggestions) {
+  if (!suggestions.length) return emptyState("Aún faltan datos para sugerencias por fase.");
+  return suggestions
+    .slice(0, 3)
+    .map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`)
+    .join("");
+}
+
+function dominantSymptomPreview(health) {
+  if (!health.dominantSymptoms.length) return emptyState("Todavía no hay un síntoma dominante claro.");
+  return health.dominantSymptoms
+    .slice(0, 3)
+    .map(item => `<article class="entry"><div><p class="entry-title">${item.name}</p><p class="entry-meta">${item.count} registro(s)</p></div></article>`)
+    .join("");
+}
+
 export function renderWellbeingFeature(state, options = {}) {
   const currentView = options.currentView || "overview";
   const today = todayKey();
@@ -98,91 +115,106 @@ export function renderWellbeingFeature(state, options = {}) {
 
   let body = "";
 
-  if (currentView === "log") {
+  if (currentView === "symptom") {
     body = `
-      ${sectionCard(
-        "Síntoma",
-        "Registrar lo que notas",
-        `
-          <datalist id="cycle-symptom-library">${symptomOptions}</datalist>
-          <form id="symptom-form" class="stack">
-            <div class="field-grid">
-              <label><span>Fecha</span><input name="date" type="date" value="${today}" required></label>
-              <label><span>Síntoma</span><input name="name" list="cycle-symptom-library" placeholder="Ej. cólicos o dolor ovulatorio" required></label>
-            </div>
-            <div class="field-grid">
-              <label><span>Intensidad</span><input name="intensity" type="number" min="1" max="5" value="3" required></label>
-              <label><span>Digestión</span><select name="digestion"><option value="">Opcional</option>${digestionOptions}</select></label>
-            </div>
-            <div class="field-grid">
-              <label><span>Energía</span><select name="energy"><option value="">Opcional</option>${energyOptions}</select></label>
-              <label><span>Ánimo</span><select name="mood"><option value="">Opcional</option>${moodOptions}</select></label>
-            </div>
-            <label><span>Nota</span><input name="note" placeholder="Opcional"></label>
-            <button class="primary" type="submit">Guardar síntoma</button>
-          </form>
-        `
-      )}
-      ${sectionCard(
-        "Medicación",
-        "Recordatorio diario",
-        `
-          <form id="med-form" class="stack">
-            <div class="field-grid">
-              <label><span>Nombre</span><input name="name" placeholder="Ej. Magnesio" required></label>
-              <label><span>Dosis</span><input name="dose" placeholder="Ej. 1 cápsula"></label>
-            </div>
-            <label><span>Notas</span><input name="notes" placeholder="Horario o aclaración"></label>
-            <button class="primary" type="submit">Guardar medicación</button>
-          </form>
-          <div class="stack stack-tight">${renderMedications(state.medication)}</div>
-        `
-      )}
+      <div class="planning-focus-grid">
+        ${sectionCard(
+          "Síntoma",
+          "Registrar lo que notas",
+          `
+            <datalist id="cycle-symptom-library">${symptomOptions}</datalist>
+            <form id="symptom-form" class="stack">
+              <div class="field-grid">
+                <label><span>Fecha</span><input name="date" type="date" value="${today}" required></label>
+                <label><span>Síntoma</span><input name="name" list="cycle-symptom-library" placeholder="Ej. cólicos o dolor ovulatorio" required></label>
+              </div>
+              <div class="field-grid">
+                <label><span>Intensidad</span><input name="intensity" type="number" min="1" max="5" value="3" required></label>
+                <label><span>Digestión</span><select name="digestion"><option value="">Opcional</option>${digestionOptions}</select></label>
+              </div>
+              <details class="panel panel-toned disclosure-panel compact-disclosure">
+                <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Energía, ánimo y nota</h4></div></summary>
+                <div class="stack disclosure-body">
+                  <div class="field-grid">
+                    <label><span>Energía</span><select name="energy"><option value="">Opcional</option>${energyOptions}</select></label>
+                    <label><span>Ánimo</span><select name="mood"><option value="">Opcional</option>${moodOptions}</select></label>
+                  </div>
+                  <label><span>Nota</span><input name="note" placeholder="Opcional"></label>
+                </div>
+              </details>
+              <button class="primary" type="submit">Guardar síntoma</button>
+            </form>
+          `,
+          "section-card-tinted section-card-wellbeing"
+        )}
+        ${sectionCard("Reciente", "Últimos síntomas", `<div class="stack stack-tight">${renderSymptoms(state.cycle.symptomLog)}</div>`, "section-card-glass section-card-wellbeing-light")}
+      </div>
+    `;
+  } else if (currentView === "medication") {
+    body = `
+      <div class="planning-focus-grid">
+        ${sectionCard(
+          "Medicación",
+          "Recordatorio diario",
+          `
+            <form id="med-form" class="stack">
+              <div class="field-grid">
+                <label><span>Nombre</span><input name="name" placeholder="Ej. Magnesio" required></label>
+                <label><span>Dosis</span><input name="dose" placeholder="Ej. 1 cápsula"></label>
+              </div>
+              <label><span>Notas</span><input name="notes" placeholder="Horario o aclaración"></label>
+              <button class="primary" type="submit">Guardar medicación</button>
+            </form>
+          `,
+          "section-card-tinted section-card-wellbeing"
+        )}
+        ${sectionCard("Hoy", "Tomas activas", `<div class="stack stack-tight">${renderMedications(state.medication)}</div>`, "section-card-glass section-card-wellbeing-light")}
+      </div>
     `;
   } else if (currentView === "library") {
     body = `
-      ${sectionCard("Historial", "Últimos síntomas", `<div class="stack stack-tight">${renderSymptoms(state.cycle.symptomLog)}</div>`)}
-      ${sectionCard("Biblioteca", "Síntomas y familias", `<section class="dashboard-summary compact-metrics">${renderSymptomGroups()}</section>`)}
+      <div class="planning-focus-grid">
+        ${sectionCard("Historial", "Últimos síntomas", `<div class="stack stack-tight">${renderSymptoms(state.cycle.symptomLog)}</div>`, "section-card-glass section-card-wellbeing-light")}
+        ${sectionCard("Biblioteca", "Síntomas y familias", `<section class="dashboard-summary compact-metrics">${renderSymptomGroups()}</section>`, "section-card-glass section-card-wellbeing-light")}
+      </div>
     `;
   } else {
     body = `
-      ${sectionCard(
-        "Ciclo",
-        "Lectura breve",
-        `
-          <section class="dashboard-summary compact-metrics feature-metrics-soft">
-            ${statCard("Ciclo", state.cycle.periodDays.length, "días")}
-            ${statCard("Síntomas", symptomCount, "registros")}
-            ${statCard("Medicación", state.medication.meds.length, "items")}
-            ${statCard("Fase", health.cycleContext.label, health.dominantSymptoms[0]?.name || "sin patrón")}
-          </section>
-          <div class="button-row button-row-start button-row-soft">
-            <button class="${periodToday ? "primary" : "ghost"} compact" data-action="toggle-period">${periodToday ? "Quitar hoy" : "Marcar hoy"}</button>
-          </div>
-        `
-      )}
-      ${sectionCard(
-        "Soporte",
-        "Lo que conviene mirar",
-        `
-          <div class="stack stack-tight">
-            ${
-              suggestions.length
-                ? suggestions.map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`).join("")
-                : emptyState("Aún faltan datos para sugerencias por fase.")
-            }
-          </div>
-        `
-      )}
+      <div class="planning-focus-grid">
+        ${sectionCard(
+          "Ciclo",
+          "Lectura breve",
+          `
+            <section class="dashboard-summary compact-metrics feature-metrics-soft">
+              ${statCard("Ciclo", state.cycle.periodDays.length, "días")}
+              ${statCard("Síntomas", symptomCount, "registros")}
+              ${statCard("Medicación", state.medication.meds.length, "items")}
+              ${statCard("Fase", health.cycleContext.label, health.dominantSymptoms[0]?.name || "sin patrón")}
+            </section>
+            <div class="button-row button-row-start button-row-soft">
+              <button class="${periodToday ? "primary" : "ghost"} compact" data-action="toggle-period">${periodToday ? "Quitar hoy" : "Marcar hoy"}</button>
+              <button class="ghost compact" type="button" data-action="open-module-view" data-tab="wellbeing" data-view="symptom">Síntoma</button>
+              <button class="ghost compact" type="button" data-action="open-module-view" data-tab="wellbeing" data-view="medication">Medicación</button>
+            </div>
+          `,
+          "section-card-hero section-card-wellbeing"
+        )}
+        ${sectionCard("Soporte", "Lo que conviene mirar", `<div class="stack stack-tight">${supportPreview(suggestions)}</div>`, "section-card-glass section-card-wellbeing-light")}
+      </div>
+      <div class="planning-focus-grid planning-focus-grid-compact">
+        ${sectionCard("Patrón", "Síntomas que más se repiten", `<div class="stack stack-tight">${dominantSymptomPreview(health)}</div>`, "section-card-glass section-card-wellbeing-light")}
+        ${sectionCard("Hoy", "Tomas activas", `<div class="stack stack-tight">${renderMedications(state.medication)}</div>`, "section-card-glass section-card-wellbeing-light")}
+      </div>
     `;
   }
 
   return `
     <section id="wellbeing-panel" class="panel stack app-feature-shell">
-      ${featureHeader("Salud", "Ciclo y síntomas")}
+      ${featureHeader("Salud", "Ciclo y síntomas", "", { emblem: "✳", emblemTone: "wellbeing" })}
       ${viewSwitcher("wellbeing", currentView, [
         { id: "overview", label: "Resumen" },
-        { id: "log", label: "Registrar" },
+        { id: "symptom", label: "Síntoma" },
+        { id: "medication", label: "Medicación" },
         { id: "library", label: "Biblioteca" }
       ])}
       <div class="sr-only">

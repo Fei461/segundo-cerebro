@@ -5,10 +5,12 @@ import {
   getWeeklyPreparationPack,
   getWeeklyReviewSummary
 } from "../domain/weekly.js";
+import { localDateKey } from "../domain/date.js";
 import { emptyState, featureHeader, sectionCard, viewSwitcher } from "../ui/feature-layout.js";
+import { VARIETY_FAMILY_RULES, varietyFamiliesFromText } from "../domain/personal-nutrition.js";
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateKey(new Date());
 }
 
 function todayHeadline() {
@@ -32,10 +34,9 @@ function quickAction(label, action, tone = "") {
   return `<button class="quick-action-button ${tone}" type="button" data-action="${action.type}"${action.capture ? ` data-capture="${action.capture}"` : ""}>${label}</button>`;
 }
 
-function shortcutButton(label, emoji, tab, view) {
+function shortcutButton(label, tab, view) {
   return `
     <button class="shortcut-pill" type="button" data-action="open-module-view" data-tab="${tab}" data-view="${view}">
-      <span class="module-card-emoji">${emoji}</span>
       <span class="module-card-label">${label}</span>
     </button>
   `;
@@ -70,18 +71,23 @@ function captureSwitcher(current) {
   `;
 }
 
+function familyOptions() {
+  return `
+    <option value="">Sin definir</option>
+    ${VARIETY_FAMILY_RULES.map(rule => `<option value="${rule.family}">${rule.family}</option>`).join("")}
+  `;
+}
+
 function quickMealCapture() {
   return `
     <form id="quick-meal-form" class="stack">
       <div class="field-grid">
-        <label><span>Tipo</span><input name="type" value="Comida" required></label>
+        <label><span>Tipo</span><select name="type"><option>Desayuno</option><option selected>Comida</option><option>Cena</option><option>Snack</option></select></label>
         <label><span>Nombre</span><input name="name" placeholder="Ej. bowl, tortilla, yogur" required></label>
       </div>
-      <div class="field-grid four">
-        <label><span>Kcal</span><input name="calories" type="number" step="1" min="0" value="0" required></label>
-        <label><span>P</span><input name="protein" type="number" step="0.1" min="0" value="0"></label>
-        <label><span>C</span><input name="carbs" type="number" step="0.1" min="0" value="0"></label>
-        <label><span>G</span><input name="fat" type="number" step="0.1" min="0" value="0"></label>
+      <div class="field-grid">
+        <label><span>Grupo principal</span><select name="primaryFamily">${familyOptions()}</select></label>
+        <label><span>Grupo secundario</span><select name="secondaryFamily">${familyOptions()}</select></label>
       </div>
       <label><span>Postcomida</span><input name="reaction" placeholder="Sensación rápida"></label>
       <button class="primary" type="submit">Guardar comida rápida</button>
@@ -100,12 +106,17 @@ function quickTrainingCapture(today) {
         <label><span>Actividad</span><input name="activity" placeholder="Ej. upper o caminar" required></label>
         <label><span>Duración</span><input name="duration" type="number" min="1" value="45" required></label>
       </div>
-      <div class="field-grid four">
-        <label><span>RPE</span><input name="rpe" type="number" min="1" max="10" value="6"></label>
-        <label><span>Carga</span><input name="loadKg" type="number" min="0" value="0"></label>
-        <label><span>Distancia</span><input name="distanceKm" type="number" step="0.1" min="0" value="0"></label>
-        <label><span>Rutina</span><input name="routineName" placeholder="Opcional"></label>
-      </div>
+      <details class="panel panel-toned disclosure-panel compact-disclosure">
+        <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Métricas extra</h4></div></summary>
+        <div class="stack disclosure-body">
+          <div class="field-grid four">
+            <label><span>RPE</span><input name="rpe" type="number" min="1" max="10" value="6"></label>
+            <label><span>Carga</span><input name="loadKg" type="number" min="0" value="0"></label>
+            <label><span>Distancia</span><input name="distanceKm" type="number" step="0.1" min="0" value="0"></label>
+            <label><span>Rutina</span><input name="routineName" placeholder="Opcional"></label>
+          </div>
+        </div>
+      </details>
       <button class="primary" type="submit">Guardar entreno rápido</button>
     </form>
   `;
@@ -118,11 +129,16 @@ function quickCheckinCapture() {
         <label><span>Síntoma</span><input name="name" placeholder="Ej. fatiga o hinchazón" required></label>
         <label><span>Intensidad</span><input name="intensity" type="number" min="1" max="5" value="3" required></label>
       </div>
-      <div class="field-grid">
-        <label><span>Energía</span><input name="energy" type="number" min="1" max="5" value="3"></label>
-        <label><span>Ánimo</span><input name="mood" type="number" min="1" max="5" value="3"></label>
-      </div>
-      <label><span>Nota</span><input name="note" placeholder="Contexto rápido"></label>
+      <details class="panel panel-toned disclosure-panel compact-disclosure">
+        <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Energía y nota</h4></div></summary>
+        <div class="stack disclosure-body">
+          <div class="field-grid">
+            <label><span>Energía</span><input name="energy" type="number" min="1" max="5" value="3"></label>
+            <label><span>Ánimo</span><input name="mood" type="number" min="1" max="5" value="3"></label>
+          </div>
+          <label><span>Nota</span><input name="note" placeholder="Contexto rápido"></label>
+        </div>
+      </details>
       <button class="primary" type="submit">Guardar check-in</button>
     </form>
   `;
@@ -133,7 +149,11 @@ function quickSleepCapture(today) {
     <form id="quick-sleep-form" class="stack">
       <div class="field-grid">
         <label><span>Fecha</span><input name="date" type="date" value="${today}" required></label>
-        <label><span>Horas</span><input name="hours" type="number" step="0.1" min="0" value="7.5" required></label>
+        <label><span>Horas</span><input name="hours" type="number" step="0.1" min="0" placeholder="Opcional si rellenas horario"></label>
+      </div>
+      <div class="field-grid">
+        <label><span>Hora de acostarte</span><input name="sleepStart" type="time"></label>
+        <label><span>Hora de levantarte</span><input name="sleepEnd" type="time"></label>
       </div>
       <div class="field-grid">
         <label><span>Calidad</span><input name="quality" type="number" min="1" max="5" value="3" required></label>
@@ -142,6 +162,37 @@ function quickSleepCapture(today) {
       <button class="primary" type="submit">Guardar sueño</button>
     </form>
   `;
+}
+
+function todayFoodFamilies(state, today) {
+  return Array.from(
+    new Set(
+      state.nutrition.meals
+        .filter(meal => meal.date === today)
+        .flatMap(meal =>
+          (Array.isArray(meal.items) ? meal.items : []).flatMap(item => {
+            const direct = Array.isArray(item.families) ? item.families.filter(Boolean) : [];
+            const inferred = varietyFamiliesFromText(`${item.name || ""} ${item.ingredientsText || ""}`.trim());
+            return [...direct, ...inferred];
+          })
+        )
+    )
+  );
+}
+
+function latestSleepContext(state) {
+  const entries = Object.entries(state.sleepEntries || {}).sort((left, right) => right[0].localeCompare(left[0]));
+  const latest = entries[0]?.[1];
+  if (!latest) return "";
+  const span = latest.sleepStart && latest.sleepEnd ? ` · ${latest.sleepStart} → ${latest.sleepEnd}` : "";
+  return `${Number(latest.hours || 0).toFixed(1)} h${span}`;
+}
+
+function captureContext(currentCapture) {
+  if (currentCapture === "training") return "Registrar una sesión rápida con lo justo.";
+  if (currentCapture === "checkin") return "Guardar un síntoma sin salir de hoy.";
+  if (currentCapture === "sleep") return "Apuntar la noche con horario y calidad.";
+  return "Guardar una comida por grupos de alimentos.";
 }
 
 function renderCaptureBody(currentCapture, today) {
@@ -155,7 +206,7 @@ function compactFocusTitle(dailyCommand) {
   const plannedCount = dailyCommand.mealProgress.total + dailyCommand.sessionProgress.total;
   if (dailyCommand.blockers.length > 0) return "Bajar fricción hoy";
   if (plannedCount > 0) return "Ejecutar lo previsto";
-  if (dailyCommand.loggedMealsToday.length > 0 || dailyCommand.executedSessionsToday.length > 0) return "Cerrar el día con calma";
+  if (dailyCommand.loggedMealsToday.length > 0 || dailyCommand.executedSessionsToday.length > 0) return "Cerrar con calma";
   return "Registrar lo mínimo útil";
 }
 
@@ -171,15 +222,100 @@ function reviewItems(items) {
   return items.map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`).join("");
 }
 
-function prototypeQaItems() {
-  const items = [
-    "Cambiar tu nombre visible",
-    "Guardar una nota breve",
-    "Ajustar el autobloqueo",
-    "Registrar una idea o recordatorio",
-    "Dejar una base cómoda para mañana"
+function noteItems(notes) {
+  const entries = Object.entries(notes || {})
+    .filter(([, value]) => String(value || "").trim())
+    .slice(0, 4);
+  if (!entries.length) return emptyState("Todavía no has guardado notas rápidas.");
+  return entries
+    .map(
+      ([key, value]) => `
+        <article class="entry">
+          <div>
+            <p class="entry-title">${key}</p>
+            <p class="entry-note">${String(value).trim()}</p>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function nextActionCard(dailyCommand, autoSummary) {
+  const primary = dailyCommand.topPriority?.title || dailyCommand.focusAreas[0] || "Mantener el día simple";
+  const note = autoSummary.watchouts[0] || dailyCommand.blockers[0] || "Sin alertas prioritarias ahora mismo.";
+  return `
+    <article class="summary-card summary-card-soft rail-card">
+      <p class="eyebrow">Siguiente</p>
+      <p class="entry-title">${primary}</p>
+      <p class="entry-note">${note}</p>
+    </article>
+  `;
+}
+
+function supportShortcuts() {
+  return `
+    <div class="shortcut-row shortcut-row-scroll">
+      ${shortcutButton("Registrar comida", "nutrition", "log")}
+      ${shortcutButton("Planner", "nutrition", "plan")}
+      ${shortcutButton("Síntoma", "wellbeing", "symptom")}
+      ${shortcutButton("Programar entreno", "training", "plan")}
+      ${shortcutButton("Registrar sueño", "recovery", "sleep")}
+      ${shortcutButton("Reset semanal", "planning", "reset")}
+    </div>
+  `;
+}
+
+function compactBulletList(items, emptyText) {
+  if (!items.length) return emptyState(emptyText);
+  return `
+    <div class="mini-list">
+      ${items
+        .slice(0, 4)
+        .map(item => `<article class="mini-list-item"><span class="mini-list-dot"></span><p class="entry-title">${item}</p></article>`)
+        .join("")}
+    </div>
+  `;
+}
+
+function operationalQueue(decisionBoard) {
+  const queue = [
+    ...decisionBoard.doNow.slice(0, 2),
+    ...decisionBoard.captureNow.slice(0, 1),
+    ...decisionBoard.lighten.slice(0, 1)
   ];
-  return items.map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`).join("");
+  return compactBulletList(queue, "Hoy no hay una cola operativa especialmente cargada.");
+}
+
+function carryoverPreview(carryovers) {
+  if (!carryovers.length) return emptyState("Sin arrastres cercanos. Mejor así.");
+  return carryovers
+    .slice(0, 3)
+    .map(
+      item => `
+        <article class="entry">
+          <div>
+            <p class="entry-title">${item.kind} · ${item.title}</p>
+            <p class="entry-meta">${item.date} · ${item.status}</p>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function formatDateTimeLabel(value) {
+  if (!value) return "Aún no";
+  try {
+    return new Intl.DateTimeFormat("es-ES", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(new Date(value));
+  } catch {
+    return "Aún no";
+  }
 }
 
 export function renderDashboardFeature(state, options = {}) {
@@ -192,7 +328,14 @@ export function renderDashboardFeature(state, options = {}) {
   const weeklyReviewSummary = getWeeklyReviewSummary(state);
   const autoSummary = getWeeklyAutoSummary(state, today);
   const displayName = state.profile.displayName || "";
-  const autoLockMinutes = state.appMeta.autoLockMinutes || 5;
+  const autoLockMinutes = Number(state.appMeta.autoLockMinutes || 0);
+  const familiesToday = todayFoodFamilies(state, today);
+  const latestSleep = latestSleepContext(state);
+  const lockLabel = autoLockMinutes > 0 ? `${autoLockMinutes} min` : "manual";
+  const lastUnlock = formatDateTimeLabel(state.appMeta.lastUnlockedAt);
+  const lastImport = formatDateTimeLabel(state.appMeta.lastImportAt);
+  const lastBackup = formatDateTimeLabel(state.appMeta.lastBackupExportAt);
+  const lastPassphraseChange = formatDateTimeLabel(state.appMeta.lastPassphraseChangeAt);
 
   let body = "";
 
@@ -203,6 +346,7 @@ export function renderDashboardFeature(state, options = {}) {
         "Registrar sin fricción",
         `
           ${captureSwitcher(currentCapture)}
+          <p class="muted">${captureContext(currentCapture)}</p>
           <div class="capture-surface compact-surface">
             ${renderCaptureBody(currentCapture, today)}
           </div>
@@ -259,61 +403,146 @@ export function renderDashboardFeature(state, options = {}) {
           <form id="profile-form" class="stack inline-form-soft">
             <div class="field-grid">
               <label><span>Nombre visible</span><input name="displayName" placeholder="Cómo quieres verte aquí" value="${displayName}"></label>
-              <label><span>Autobloqueo (min)</span><input name="autoLockMinutes" type="number" min="1" max="120" value="${autoLockMinutes}" required></label>
+              <label><span>Autobloqueo (min)</span><input name="autoLockMinutes" type="number" min="0" max="120" value="${autoLockMinutes}" required></label>
             </div>
+            <p class="muted">Usa 0 para bloquear solo manualmente. Mientras este mismo contexto siga abierto, la app intentará recordarte sin pedir la clave otra vez.</p>
             <button class="primary" type="submit">Guardar ajustes</button>
           </form>
         `,
         "section-card-tinted section-card-home"
       )}
       ${sectionCard(
+        "Seguridad",
+        "Vault y backup",
+        `
+          <section class="dashboard-summary compact-metrics feature-metrics-soft">
+            ${statCard("Bloqueo", lockLabel, "actual")}
+            ${statCard("Último acceso", lastUnlock, "vault")}
+            ${statCard("Último backup", lastBackup, "exportado")}
+            ${statCard("Última importación", lastImport, "base")}
+          </section>
+          <article class="entry"><div><p class="entry-title">Cambio de passphrase</p><p class="entry-note">Último cambio: ${lastPassphraseChange}</p></div></article>
+          <form id="change-passphrase-form" class="stack inline-form-soft">
+            <div class="field-grid">
+              <label><span>Nueva passphrase</span><input name="nextPassphrase" type="password" minlength="8" placeholder="Mínimo 8 caracteres" required></label>
+              <label><span>Confirmar</span><input name="nextPassphraseConfirm" type="password" minlength="8" placeholder="Repite la clave" required></label>
+            </div>
+            <button class="primary" type="submit">Cambiar passphrase</button>
+          </form>
+          <details class="panel panel-toned disclosure-panel compact-disclosure">
+            <summary class="disclosure-summary"><div><p class="eyebrow">Backup</p><h4>Exportar o importar</h4></div></summary>
+            <div class="stack disclosure-body">
+              <form id="backup-export-form" class="stack inline-form-soft">
+                <div class="field-grid">
+                  <label><span>Passphrase backup</span><input name="backupPassphrase" type="password" minlength="8" placeholder="Clave del archivo" required></label>
+                  <label><span>Confirmar</span><input name="backupPassphraseConfirm" type="password" minlength="8" placeholder="Repite la clave" required></label>
+                </div>
+                <button class="ghost compact" type="submit">Exportar backup cifrado</button>
+              </form>
+              <form id="backup-import-form" class="stack inline-form-soft">
+                <div class="field-grid">
+                  <label><span>Passphrase backup</span><input name="backupImportPassphrase" type="password" minlength="8" placeholder="Clave del archivo" required></label>
+                  <label class="file-button compact-file auth-file"><input id="import-file-settings" name="backupFile" type="file" accept=".json,application/json" required>Elegir archivo</label>
+                </div>
+                <p class="muted">La importación reemplaza el contenido actual de este contexto local.</p>
+                <button class="ghost compact" type="submit">Importar backup</button>
+              </form>
+              <button id="reset-vault-button" class="ghost compact" type="button">Restablecer este contexto</button>
+            </div>
+          </details>
+        `,
+        "section-card-glass section-card-home-light"
+      )}
+      ${sectionCard(
         "Notas",
-        "Recordatorios cortos",
+        "Recordatorios rápidos",
         `
           <form id="note-form" class="stack inline-form-soft">
             <label><span>Clave</span><input name="key" placeholder="Ej. hoy o ideas" required></label>
             <label><span>Contenido</span><textarea name="value" rows="4" placeholder="Escribe una nota corta" required></textarea></label>
             <button class="primary" type="submit">Guardar nota</button>
           </form>
-          <article class="entry"><div><p class="entry-title">Atajos de cuidado</p></div></article>
-          <div class="stack">${prototypeQaItems()}</div>
+          <div class="stack">${noteItems(state.notes)}</div>
         `,
         "section-card-glass section-card-home-light"
       )}
     `;
   } else {
     body = `
+      <div class="home-rail-grid home-rail-grid-dual">
+        ${sectionCard(
+          "Ahora",
+          compactFocusTitle(dailyCommand),
+          `
+            <div class="home-hero-stack">
+              <p class="muted">${compactFocusDetail(dailyCommand, weeklyPreparation)}</p>
+              <section class="dashboard-summary compact-metrics feature-metrics-soft">
+                ${statCard("Comidas", dailyCommand.loggedMealsToday.length, "registradas")}
+                ${statCard("Agua", `${dailyCommand.hydrationToday}/${dailyCommand.hydrationGoal}`, "vasos")}
+                ${statCard("Entreno", dailyCommand.executedSessionsToday.length, "sesiones")}
+                ${statCard("Grupos", familiesToday.length, "cubiertos hoy")}
+              </section>
+              ${latestSleep ? `<p class="muted">Último sueño: ${latestSleep}</p>` : ""}
+              <div class="button-row button-row-start button-row-soft">
+                <button class="primary compact" data-action="add-water">+1 vaso</button>
+                <button class="ghost compact" type="button" data-action="open-module-view" data-tab="home" data-view="capture">Capturar</button>
+                <button class="ghost compact" type="button" data-action="open-module-view" data-tab="home" data-view="review">Cerrar hoy</button>
+              </div>
+            </div>
+          `,
+          "section-card-hero section-card-home rail-card"
+        )}
+        <div class="stack stack-tight home-side-stack">
+          ${nextActionCard(dailyCommand, autoSummary)}
+          <article class="summary-card summary-card-soft rail-card">
+            <p class="eyebrow">Semana</p>
+            <p class="entry-title">${weeklyPreparation.headline}</p>
+            <p class="entry-note">${autoSummary.reviewItems[0] || "Sigue registrando para afinar la lectura semanal."}</p>
+          </article>
+        </div>
+      </div>
       ${sectionCard(
-        "Centro de mando de hoy",
-        compactFocusTitle(dailyCommand),
+        "Siguiente",
+        "Lo que toca sin ruido",
         `
-          <p class="muted">${compactFocusDetail(dailyCommand, weeklyPreparation)}</p>
-          <section class="dashboard-summary compact-metrics feature-metrics-soft">
-            ${statCard("Comidas", dailyCommand.loggedMealsToday.length, "registradas")}
-            ${statCard("Agua", `${dailyCommand.hydrationToday}/${dailyCommand.hydrationGoal}`, "vasos")}
-            ${statCard("Entreno", dailyCommand.executedSessionsToday.length, "sesiones")}
-            ${statCard("Semana", `${weeklyPreparation.readinessScore}/100`, "ritmo")}
-          </section>
+          ${operationalQueue(decisionBoard)}
+          <div class="button-row button-row-start button-row-soft">
+            <button class="ghost compact" data-action="apply-suggested-meal-slots">Completar comidas</button>
+            <button class="ghost compact" data-action="apply-suggested-sessions">Completar entrenos</button>
+          </div>
         `,
-        "section-card-hero section-card-home"
+        "section-card-glass section-card-home-light"
       )}
       ${sectionCard(
         "Captura rápida",
-        "Lo útil al instante",
+        "Entrar y registrar",
         `
           <div class="quick-actions-grid">
-            ${quickAction("💧 Agua", { type: "add-water" }, "quick-action-water")}
-            ${quickAction("🍽️ Comida", { type: "set-home-capture", capture: "meal" }, "quick-action-food")}
-            ${quickAction("🏋️ Entreno", { type: "set-home-capture", capture: "training" }, "quick-action-train")}
-            ${quickAction("🩺 Síntoma", { type: "set-home-capture", capture: "checkin" }, "quick-action-health")}
+            ${quickAction("Agua", { type: "add-water" }, "quick-action-water")}
+            ${quickAction("Comida", { type: "set-home-capture", capture: "meal" }, "quick-action-food")}
+            ${quickAction("Entreno", { type: "set-home-capture", capture: "training" }, "quick-action-train")}
+            ${quickAction("Síntoma", { type: "set-home-capture", capture: "checkin" }, "quick-action-health")}
           </div>
-          <div class="shortcut-row shortcut-row-scroll">
-            ${shortcutButton("Registrar comida", "🍎", "nutrition", "log")}
-            ${shortcutButton("Planner", "🗓️", "nutrition", "plan")}
-            ${shortcutButton("Síntoma", "💊", "wellbeing", "log")}
-            ${shortcutButton("Entreno", "🏋️", "training", "plan")}
-            ${shortcutButton("Sueño", "🌙", "recovery", "sleep")}
-            ${shortcutButton("Reset", "↺", "planning", "reset")}
+          <div class="stack stack-tight">
+            <p class="eyebrow">Shortcuts</p>
+            ${supportShortcuts()}
+          </div>
+        `,
+        "section-card-glass section-card-home-light"
+      )}
+      ${sectionCard(
+        "Arrastres y lectura",
+        "Lo mínimo que conviene mirar",
+        `
+          <div class="home-reading-grid">
+            <section class="subpanel stack summary-card-soft">
+              <p class="eyebrow">Arrastres</p>
+              <div class="stack stack-tight">${carryoverPreview(decisionBoard.carryovers)}</div>
+            </section>
+            <section class="subpanel stack summary-card-soft">
+              <p class="eyebrow">A revisar</p>
+              ${compactBulletList(autoSummary.reviewItems, "Todavía no hay una revisión prioritaria clara.")}
+            </section>
           </div>
         `,
         "section-card-glass section-card-home-light"
