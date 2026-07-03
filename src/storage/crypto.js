@@ -46,6 +46,24 @@ export async function deriveEncryptionKey(passphrase, saltBase64) {
       name: "AES-GCM",
       length: KEY_LENGTH
     },
+    true,
+    ["encrypt", "decrypt"]
+  );
+}
+
+export async function exportEncryptionKey(key) {
+  const exported = await window.crypto.subtle.exportKey("raw", key);
+  return toBase64(new Uint8Array(exported));
+}
+
+export async function importEncryptionKey(rawBase64) {
+  return window.crypto.subtle.importKey(
+    "raw",
+    fromBase64(rawBase64),
+    {
+      name: "AES-GCM",
+      length: KEY_LENGTH
+    },
     false,
     ["encrypt", "decrypt"]
   );

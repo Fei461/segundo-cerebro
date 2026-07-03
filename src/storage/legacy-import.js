@@ -1,6 +1,7 @@
 import { createDefaultState, SCHEMA_VERSION } from "../domain/schema.js";
 import { migrateStateToCurrentSchema } from "../domain/migrate.js";
 import { validateImportedPayload } from "../domain/validate.js";
+import { legacyMealPlanToPlannedMeals } from "../domain/plans.js";
 
 function isObject(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -30,6 +31,7 @@ function fromLegacyKeys(raw) {
   };
   state.recipes = parsed.recipes || parsed["recipes-data"] || [];
   state.mealPlan = parsed.weekMenu || parsed["weekmenu-data"] || {};
+  state.plans.meals = legacyMealPlanToPlannedMeals(state.mealPlan);
   state.training = {
     ...state.training,
     ...(parsed.training || parsed["training-data"] || {})
