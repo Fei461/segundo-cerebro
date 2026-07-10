@@ -28,7 +28,10 @@ export function wireDomainForms(options) {
     addSleepEntry,
     saveNoteEntry,
     addMedication,
-    addWeeklyTask
+    addWeeklyTask,
+    addBookEntry,
+    addGoalEntry,
+    addHabitEntry
   } = options;
 
   const mealForm = documentRef.getElementById("meal-form");
@@ -120,6 +123,31 @@ export function wireDomainForms(options) {
     });
   }
 
+  const pantryItemForm = documentRef.getElementById("pantry-item-form");
+  if (pantryItemForm) {
+    pantryItemForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      try {
+        const formData = new FormData(pantryItemForm);
+        const item = requireText(formData.get("item"), "ingrediente de compra");
+        const nextState = {
+          ...viewModel.state,
+          nutrition: {
+            ...viewModel.state.nutrition,
+            pantryStatus: {
+              ...viewModel.state.nutrition.pantryStatus,
+              [item]: "need"
+            }
+          }
+        };
+        await persistState(nextState, `${item} añadido a la compra.`);
+        pantryItemForm.reset();
+      } catch (error) {
+        setStatus(error.message || "No se pudo añadir el ingrediente.");
+      }
+    });
+  }
+
   const plannerForm = documentRef.getElementById("planner-form");
   if (plannerForm) {
     bindPlannerRecipeAutofill(plannerForm, findRecipe);
@@ -141,12 +169,18 @@ export function wireDomainForms(options) {
               name: recipe.name,
               recipeId: recipe.id,
               families: Array.isArray(recipe.familyCoverage) ? recipe.familyCoverage : [],
+              ingredientsText: Array.isArray(recipe.ingredients) ? recipe.ingredients.map(item => item.name).filter(Boolean).join(", ") : "",
+              canonicalIngredients: Array.isArray(recipe.canonicalIngredients)
+                ? recipe.canonicalIngredients
+                : Array.isArray(recipe.ingredients)
+                  ? recipe.ingredients.map(item => item.name).filter(Boolean)
+                  : [],
               calories: Math.round(recipe.totals.calories / recipe.servings),
               protein: Math.round(recipe.totals.protein / recipe.servings),
               carbs: Math.round(recipe.totals.carbs / recipe.servings),
               fat: Math.round(recipe.totals.fat / recipe.servings),
               status: "planned",
-              notes: ""
+              notes: String(formData.get("notes") || "").trim()
             }
           : {
               id: Date.now() + Math.random(),
@@ -154,12 +188,17 @@ export function wireDomainForms(options) {
               slot,
               name: requireText(formData.get("name"), "nombre del item planificado"),
               families,
+              ingredientsText: String(formData.get("ingredientsText") || "").trim(),
+              canonicalIngredients: String(formData.get("ingredientsText") || "")
+                .split(/\r?\n|,| con | y /i)
+                .map(item => item.trim())
+                .filter(Boolean),
               calories: 0,
               protein: 0,
               carbs: 0,
               fat: 0,
               status: "planned",
-              notes: ""
+              notes: String(formData.get("notes") || "").trim()
             };
         await persistState(replacePlannedMeal(viewModel.state, plannedItem), "Planner actualizado.");
         plannerForm.reset();
@@ -228,11 +267,37 @@ export function wireDomainForms(options) {
         await addRoutine({
           name: requireText(formData.get("name"), "nombre de la rutina"),
           focus: requireText(formData.get("focus"), "foco de la rutina"),
-          exercises: String(formData.get("exercises") || "").trim()
+          exercises: String(formData.get("exercises") || "")
+            .split(/\r?\n/)
+            .map(item => item.trim())
+            .filter(Boolean)
         });
         routineForm.reset();
       } catch (error) {
         setStatus(error.message || "No se pudo guardar la rutina.");
+      }
+    });
+  }
+
+  const bookForm = documentRef.getElementById("book-form");
+  if (bookForm) {
+    bookForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      try {
+        const formData = new FormData(bookForm);
+        const rawRating = String(formData.get("rating") || "").trim();
+        await addBookEntry({
+          title: requireText(formData.get("title"), "título"),
+          author: String(formData.get("author") || "").trim(),
+          startedAt: String(formData.get("startedAt") || "").trim(),
+          finishedAt: String(formData.get("finishedAt") || "").trim(),
+          rating: rawRating ? requireNumberInRange(rawRating, "valoración", { min: 1, max: 5 }) : null,
+          status: requireText(formData.get("status"), "estado"),
+          note: String(formData.get("note") || "").trim()
+        });
+        bookForm.reset();
+      } catch (error) {
+        setStatus(error.message || "No se pudo guardar el libro.");
       }
     });
   }
@@ -455,6 +520,43 @@ export function wireDomainForms(options) {
         weeklyForm.reset();
       } catch (error) {
         setStatus(error.message || "No se pudo guardar la checklist semanal.");
+      }
+    });
+  }
+
+  const goalForm = documentRef.getElementById("goal-form");
+  if (goalForm) {
+    goalForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      try {
+        const formData = new FormData(goalForm);
+        await addGoalEntry({
+          title: requireText(formData.get("title"), "objetivo"),
+          area: String(formData.get("area") || "").trim(),
+          target: String(formData.get("target") || "").trim(),
+          notes: String(formData.get("notes") || "").trim()
+        });
+        goalForm.reset();
+      } catch (error) {
+        setStatus(error.message || "No se pudo guardar el objetivo.");
+      }
+    });
+  }
+
+  const habitForm = documentRef.getElementById("habit-form");
+  if (habitForm) {
+    habitForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      try {
+        const formData = new FormData(habitForm);
+        await addHabitEntry({
+          title: requireText(formData.get("title"), "hábito"),
+          cadence: String(formData.get("cadence") || "").trim(),
+          notes: String(formData.get("notes") || "").trim()
+        });
+        habitForm.reset();
+      } catch (error) {
+        setStatus(error.message || "No se pudo guardar el hábito.");
       }
     });
   }

@@ -68,6 +68,7 @@ export function bindPlannerRecipeAutofill(form, findRecipe) {
   if (!form) return;
   const recipeSelect = form.querySelector("[name='recipeId']");
   const nameInput = form.querySelector("[name='name']");
+  const ingredientsInput = form.querySelector("[name='ingredientsText']");
   if (!recipeSelect || !nameInput || typeof findRecipe !== "function") return;
 
   recipeSelect.addEventListener("change", () => {
@@ -77,6 +78,11 @@ export function bindPlannerRecipeAutofill(form, findRecipe) {
     if (!recipe) return;
     if (!nameInput.value.trim()) {
       nameInput.value = recipe.name || "";
+    }
+    if (ingredientsInput && !ingredientsInput.value.trim()) {
+      ingredientsInput.value = Array.isArray(recipe.ingredients)
+        ? recipe.ingredients.map(item => item.name).filter(Boolean).join(", ")
+        : "";
     }
     applyFamilySelects(form, Array.isArray(recipe.familyCoverage) ? recipe.familyCoverage : []);
   });

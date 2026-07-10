@@ -37,7 +37,8 @@ export function wireDomainActions(options) {
     toggleMedicationToday,
     currentWeekStartKey,
     getWeeklyChecklist,
-    replaceWeeklyChecklist
+    replaceWeeklyChecklist,
+    findRecipe
   } = options;
 
   appElement.querySelectorAll("[data-action='add-water']").forEach(button => {
@@ -138,6 +139,32 @@ export function wireDomainActions(options) {
   appElement.querySelectorAll("[data-action='log-recipe']").forEach(button => {
     button.addEventListener("click", async () => {
       await logRecipeToToday(button.dataset.id);
+    });
+  });
+
+  appElement.querySelectorAll("[data-action='plan-recipe']").forEach(button => {
+    button.addEventListener("click", async () => {
+      const recipe = findRecipe(button.dataset.id);
+      if (!recipe) return;
+      await persistState(
+        replacePlannedMeal(viewModel.state, {
+          id: Date.now() + Math.random(),
+          date: todayKey(),
+          slot: "Comida",
+          name: recipe.name,
+          recipeId: recipe.id,
+          families: Array.isArray(recipe.familyCoverage) ? recipe.familyCoverage : [],
+          ingredientsText: Array.isArray(recipe.ingredients) ? recipe.ingredients.map(item => item.name).filter(Boolean).join(", ") : "",
+          canonicalIngredients: Array.isArray(recipe.canonicalIngredients) ? recipe.canonicalIngredients : [],
+          calories: Math.round(Number(recipe.totals?.calories || 0) / Math.max(1, Number(recipe.servings || 1))),
+          protein: Math.round(Number(recipe.totals?.protein || 0) / Math.max(1, Number(recipe.servings || 1))),
+          carbs: Math.round(Number(recipe.totals?.carbs || 0) / Math.max(1, Number(recipe.servings || 1))),
+          fat: Math.round(Number(recipe.totals?.fat || 0) / Math.max(1, Number(recipe.servings || 1))),
+          status: "planned",
+          notes: "Programada desde recetas"
+        }),
+        "Receta enviada al planner de hoy."
+      );
     });
   });
 
@@ -294,6 +321,78 @@ export function wireDomainActions(options) {
     });
   });
 
+  appElement.querySelectorAll("[data-action='delete-book']").forEach(button => {
+    button.addEventListener("click", async () => {
+      const id = Number(button.dataset.id);
+      await persistState(
+        {
+          ...viewModel.state,
+          library: {
+            ...(viewModel.state.library || {}),
+            books: (Array.isArray(viewModel.state.library?.books) ? viewModel.state.library.books : []).filter(book => book.id !== id)
+          }
+        },
+        "Libro eliminado."
+      );
+    });
+  });
+
+  appElement.querySelectorAll("[data-action='toggle-goal']").forEach(button => {
+    button.addEventListener("click", async () => {
+      const id = Number(button.dataset.id);
+      await persistState(
+        {
+          ...viewModel.state,
+          goals: (Array.isArray(viewModel.state.goals) ? viewModel.state.goals : []).map(goal =>
+            goal.id === id ? { ...goal, completed: !goal.completed } : goal
+          )
+        },
+        "Objetivo actualizado."
+      );
+    });
+  });
+
+  appElement.querySelectorAll("[data-action='delete-goal']").forEach(button => {
+    button.addEventListener("click", async () => {
+      const id = Number(button.dataset.id);
+      await persistState(
+        {
+          ...viewModel.state,
+          goals: (Array.isArray(viewModel.state.goals) ? viewModel.state.goals : []).filter(goal => goal.id !== id)
+        },
+        "Objetivo eliminado."
+      );
+    });
+  });
+
+  appElement.querySelectorAll("[data-action='toggle-habit']").forEach(button => {
+    button.addEventListener("click", async () => {
+      const id = Number(button.dataset.id);
+      await persistState(
+        {
+          ...viewModel.state,
+          habits: (Array.isArray(viewModel.state.habits) ? viewModel.state.habits : []).map(habit =>
+            habit.id === id ? { ...habit, activeToday: !habit.activeToday } : habit
+          )
+        },
+        "Hábito actualizado."
+      );
+    });
+  });
+
+  appElement.querySelectorAll("[data-action='delete-habit']").forEach(button => {
+    button.addEventListener("click", async () => {
+      const id = Number(button.dataset.id);
+      await persistState(
+        {
+          ...viewModel.state,
+          habits: (Array.isArray(viewModel.state.habits) ? viewModel.state.habits : []).filter(habit => habit.id !== id)
+        },
+        "Hábito eliminado."
+      );
+    });
+  });
+
   appElement.querySelectorAll("[data-action='complete-planned-session']").forEach(button => {
     button.addEventListener("click", async () => {
       const sessionId = String(button.dataset.id || "");
@@ -313,9 +412,14 @@ export function wireDomainActions(options) {
                 type: session.type,
                 activity: session.activity,
                 duration: session.duration,
-                rpe: 0,
-                loadKg: 0,
-                distanceKm: 0,
+                structure: session.structure || "",
+                exercises: Array.isArray(session.exercises) ? session.exercises : [],
+                rpe: null,
+                loadKg: null,
+                distanceKm: null,
+                preEnergy: null,
+                recoveryScore: null,
+                sorenessScore: null,
                 routineName: session.routineName,
                 notes: session.notes
               }
