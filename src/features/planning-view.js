@@ -277,18 +277,13 @@ export function renderPlanningFeature(state, options = {}) {
         "Checklist",
         "Lo que quieres dejar cerrado",
         `
-          <details class="panel panel-toned disclosure-panel compact-disclosure">
-            <summary class="disclosure-summary"><div><p class="eyebrow">Añadir</p><h4>Tarea semanal</h4></div></summary>
-            <div class="stack disclosure-body">
-              <form id="weekly-form" class="stack">
-                <div class="field-grid">
-                  <label><span>Tarea</span><input name="title" placeholder="Ej. compra base" required></label>
-                  <label><span>Día reset</span><input name="resetDay" value="Domingo" required></label>
-                </div>
-                <button class="primary" type="submit">Guardar checklist</button>
-              </form>
+          <form id="weekly-form" class="stack">
+            <div class="field-grid">
+              <label><span>Tarea</span><input name="title" placeholder="Ej. compra base" required></label>
+              <label><span>Día reset</span><input name="resetDay" value="Domingo" required></label>
             </div>
-          </details>
+            <button class="primary" type="submit">Guardar checklist</button>
+          </form>
           <div class="stack stack-tight">${checklistItems(state)}</div>
         `,
         "section-card-glass section-card-planning-light"

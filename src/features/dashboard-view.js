@@ -85,16 +85,11 @@ function quickMealCapture() {
         <label><span>Tipo</span><select name="type"><option>Desayuno</option><option selected>Comida</option><option>Cena</option><option>Snack</option></select></label>
         <label><span>Nombre</span><input name="name" placeholder="Ej. bowl, tortilla, yogur" required></label>
       </div>
-      <details class="panel panel-toned disclosure-panel compact-disclosure">
-        <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Grupos y postcomida</h4></div></summary>
-        <div class="stack disclosure-body">
-          <div class="field-grid">
-            <label><span>Grupo principal</span><select name="primaryFamily">${familyOptions()}</select></label>
-            <label><span>Grupo secundario</span><select name="secondaryFamily">${familyOptions()}</select></label>
-          </div>
-          <label><span>Postcomida</span><input name="reaction" placeholder="Sensación rápida"></label>
-        </div>
-      </details>
+      <div class="field-grid">
+        <label><span>Grupo principal</span><select name="primaryFamily">${familyOptions()}</select></label>
+        <label><span>Grupo secundario</span><select name="secondaryFamily">${familyOptions()}</select></label>
+      </div>
+      <label><span>Postcomida</span><input name="reaction" placeholder="Opcional"></label>
       <button class="primary" type="submit">Guardar comida rápida</button>
     </form>
   `;
@@ -267,6 +262,7 @@ function supportShortcuts() {
       ${shortcutButton("Programar entreno", "training", "plan")}
       ${shortcutButton("Registrar sueño", "recovery", "sleep")}
       ${shortcutButton("Reset semanal", "planning", "reset")}
+      ${shortcutButton("Biblioteca", "library", "add")}
     </div>
   `;
 }
@@ -318,6 +314,75 @@ function carryoverPreview(carryovers) {
     .join("");
 }
 
+function goalItems(goals) {
+  const items = Array.isArray(goals) ? goals : [];
+  if (!items.length) return emptyState("Todavía no has guardado objetivos.");
+  return items
+    .slice(0, 6)
+    .map(
+      goal => `
+        <article class="entry">
+          <div>
+            <p class="entry-title">${goal.title}</p>
+            <p class="entry-meta">${goal.area || "General"}${goal.target ? ` · ${goal.target}` : ""}${goal.completed ? " · cerrado" : " · en curso"}</p>
+            ${goal.notes ? `<p class="entry-note">${goal.notes}</p>` : ""}
+          </div>
+          <div class="button-row">
+            <button class="${goal.completed ? "primary" : "ghost"} compact" type="button" data-action="toggle-goal" data-id="${goal.id}">${goal.completed ? "Cerrado" : "Cerrar"}</button>
+            <button class="ghost compact" type="button" data-action="delete-goal" data-id="${goal.id}">Eliminar</button>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function habitItems(habits) {
+  const items = Array.isArray(habits) ? habits : [];
+  if (!items.length) return emptyState("Todavía no has guardado hábitos.");
+  return items
+    .slice(0, 6)
+    .map(
+      habit => `
+        <article class="entry">
+          <div>
+            <p class="entry-title">${habit.title}</p>
+            <p class="entry-meta">${habit.cadence || "Frecuencia libre"}${habit.activeToday ? " · hecho hoy" : " · pendiente hoy"}</p>
+            ${habit.notes ? `<p class="entry-note">${habit.notes}</p>` : ""}
+          </div>
+          <div class="button-row">
+            <button class="${habit.activeToday ? "primary" : "ghost"} compact" type="button" data-action="toggle-habit" data-id="${habit.id}">${habit.activeToday ? "Hecho" : "Marcar"}</button>
+            <button class="ghost compact" type="button" data-action="delete-habit" data-id="${habit.id}">Eliminar</button>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function readingSnapshot(state) {
+  const books = Array.isArray(state.library?.books) ? state.library.books : [];
+  const year = String(new Date().getFullYear());
+  const finishedThisYear = books.filter(book => String(book.finishedAt || "").startsWith(year)).length;
+  const active = books.filter(book => book.status === "reading").length;
+  if (!books.length) {
+    return {
+      title: "Biblioteca vacía",
+      detail: "Todavía no has guardado lecturas."
+    };
+  }
+  if (active > 0) {
+    return {
+      title: `${active} lectura(s) activas`,
+      detail: `${finishedThisYear} libro(s) terminados este año.`
+    };
+  }
+  return {
+    title: `${finishedThisYear} libro(s) este año`,
+    detail: "Puedes guardar valoración, fecha y notas."
+  };
+}
+
 function formatDateTimeLabel(value) {
   if (!value) return "Aún no";
   try {
@@ -350,6 +415,7 @@ export function renderDashboardFeature(state, options = {}) {
   const lastImport = formatDateTimeLabel(state.appMeta.lastImportAt);
   const lastBackup = formatDateTimeLabel(state.appMeta.lastBackupExportAt);
   const lastPassphraseChange = formatDateTimeLabel(state.appMeta.lastPassphraseChangeAt);
+  const reading = readingSnapshot(state);
 
   let body = "";
 
@@ -493,6 +559,42 @@ export function renderDashboardFeature(state, options = {}) {
         `,
         "section-card-glass section-card-home-light"
       )}
+      ${sectionCard(
+        "Objetivos",
+        "Dirección y constancia",
+        `
+          <div class="reading-grid">
+            <section class="subpanel stack summary-card-soft">
+              <p class="eyebrow">Objetivo</p>
+              <form id="goal-form" class="stack">
+                <div class="field-grid">
+                  <label><span>Título</span><input name="title" placeholder="Ej. Leer 12 libros" required></label>
+                  <label><span>Área</span><input name="area" placeholder="Lectura, salud, trabajo..."></label>
+                </div>
+                <div class="field-grid">
+                  <label><span>Meta</span><input name="target" placeholder="Ej. 12/2026 o 3 veces/semana"></label>
+                  <label><span>Nota</span><input name="notes" placeholder="Qué significa cumplirlo"></label>
+                </div>
+                <button class="primary" type="submit">Guardar objetivo</button>
+              </form>
+              <div class="stack stack-tight">${goalItems(state.goals)}</div>
+            </section>
+            <section class="subpanel stack summary-card-soft">
+              <p class="eyebrow">Hábito</p>
+              <form id="habit-form" class="stack">
+                <div class="field-grid">
+                  <label><span>Título</span><input name="title" placeholder="Ej. Caminar o leer" required></label>
+                  <label><span>Frecuencia</span><input name="cadence" placeholder="Diario, 3/semana..."></label>
+                </div>
+                <label><span>Nota</span><input name="notes" placeholder="Disparador, contexto o intención"></label>
+                <button class="primary" type="submit">Guardar hábito</button>
+              </form>
+              <div class="stack stack-tight">${habitItems(state.habits)}</div>
+            </section>
+          </div>
+        `,
+        "section-card-glass section-card-home-light"
+      )}
     `;
   } else {
     body = `
@@ -511,9 +613,8 @@ export function renderDashboardFeature(state, options = {}) {
               </section>
               ${latestSleep ? `<p class="muted">Último sueño: ${latestSleep}</p>` : ""}
               <div class="button-row button-row-start button-row-soft">
-                <button class="primary compact" data-action="add-water">+1 vaso</button>
                 <button class="ghost compact" type="button" data-action="open-module-view" data-tab="home" data-view="capture">Capturar</button>
-                <button class="ghost compact" type="button" data-action="open-module-view" data-tab="home" data-view="review">Cerrar hoy</button>
+                <button class="ghost compact" type="button" data-action="open-module-view" data-tab="home" data-view="review">Cierre</button>
               </div>
             </div>
           `,
@@ -524,25 +625,18 @@ export function renderDashboardFeature(state, options = {}) {
           <article class="summary-card summary-card-soft rail-card">
             <p class="eyebrow">Semana</p>
             <p class="entry-title">${weeklyPreparation.headline}</p>
-            <p class="entry-note">${autoSummary.reviewItems[0] || "Sigue registrando para afinar la lectura semanal."}</p>
+            <p class="entry-note">${autoSummary.reviewItems[0] || "La lectura semanal irá afinando el sistema."}</p>
+          </article>
+          <article class="summary-card summary-card-soft rail-card">
+            <p class="eyebrow">Biblioteca</p>
+            <p class="entry-title">${reading.title}</p>
+            <p class="entry-note">${reading.detail}</p>
           </article>
         </div>
       </div>
       ${sectionCard(
-        "Siguiente",
-        "Lo que toca sin ruido",
-        `
-          ${operationalQueue(decisionBoard)}
-          <div class="button-row button-row-start button-row-soft">
-            <button class="ghost compact" data-action="apply-suggested-meal-slots">Completar comidas</button>
-            <button class="ghost compact" data-action="apply-suggested-sessions">Completar entrenos</button>
-          </div>
-        `,
-        "section-card-glass section-card-home-light"
-      )}
-      ${sectionCard(
         "Captura rápida",
-        "Entrar y registrar",
+        "Registrar ya",
         `
           <div class="quick-actions-grid">
             ${quickAction("Agua", { type: "add-water" }, "quick-action-water")}
@@ -550,21 +644,30 @@ export function renderDashboardFeature(state, options = {}) {
             ${quickAction("Entreno", { type: "set-home-capture", capture: "training" }, "quick-action-train")}
             ${quickAction("Síntoma", { type: "set-home-capture", capture: "checkin" }, "quick-action-health")}
           </div>
-          <div class="stack stack-tight">
-            <p class="eyebrow">Shortcuts</p>
-            ${supportShortcuts()}
-          </div>
+          <div class="stack stack-tight home-shortcuts-wrap">${supportShortcuts()}</div>
         `,
         "section-card-glass section-card-home-light"
       )}
       <details class="panel panel-toned compact-vault-bar disclosure-panel">
         <summary class="disclosure-summary">
           <div>
-            <p class="eyebrow">Más lectura</p>
-            <h4>Arrastres y revisión</h4>
+            <p class="eyebrow">Siguiente</p>
+            <h4>Lo siguiente</h4>
           </div>
         </summary>
         <div class="stack disclosure-body">
+          ${sectionCard(
+            "Siguiente",
+            "Lo que toca sin ruido",
+            `
+              ${operationalQueue(decisionBoard)}
+              <div class="button-row button-row-start button-row-soft">
+                <button class="ghost compact" data-action="apply-suggested-meal-slots">Comidas</button>
+                <button class="ghost compact" data-action="apply-suggested-sessions">Entrenos</button>
+              </div>
+            `,
+            "section-card-glass section-card-home-light"
+          )}
           <div class="home-reading-grid">
             <section class="subpanel stack summary-card-soft">
               <p class="eyebrow">Arrastres</p>
@@ -589,14 +692,6 @@ export function renderDashboardFeature(state, options = {}) {
         { id: "review", label: "Cerrar hoy" },
         { id: "settings", label: "Personal" }
       ])}
-      <div class="sr-only">
-        Siguiente paso operativo
-        Actualizar previsto vs real sin salir de home
-        Guardar comida rápida
-        Hacer, suavizar y capturar
-        Lectura semanal automática
-        Checklist de prueba real
-      </div>
       ${body}
     </section>
   `;
