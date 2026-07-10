@@ -82,7 +82,8 @@ const viewModel = {
     nutrition: "today",
     training: "overview",
     wellbeing: "overview",
-    recovery: "overview"
+    recovery: "overview",
+    library: "overview"
   },
   status: "",
   hasVault: false,
@@ -424,6 +425,59 @@ async function addRoutine(payload) {
   await persistState(nextState, "Rutina guardada.");
 }
 
+async function addBookEntry(payload) {
+  const nextState = {
+    ...viewModel.state,
+    library: {
+      ...(viewModel.state.library || {}),
+      books: [
+        ...((viewModel.state.library && Array.isArray(viewModel.state.library.books)) ? viewModel.state.library.books : []),
+        {
+          id: Date.now() + Math.random(),
+          createdAt: new Date().toISOString(),
+          ...payload
+        }
+      ]
+    }
+  };
+
+  await persistState(nextState, "Libro guardado.");
+}
+
+async function addGoalEntry(payload) {
+  const nextState = {
+    ...viewModel.state,
+    goals: [
+      ...(Array.isArray(viewModel.state.goals) ? viewModel.state.goals : []),
+      {
+        id: Date.now() + Math.random(),
+        createdAt: new Date().toISOString(),
+        completed: false,
+        ...payload
+      }
+    ]
+  };
+
+  await persistState(nextState, "Objetivo guardado.");
+}
+
+async function addHabitEntry(payload) {
+  const nextState = {
+    ...viewModel.state,
+    habits: [
+      ...(Array.isArray(viewModel.state.habits) ? viewModel.state.habits : []),
+      {
+        id: Date.now() + Math.random(),
+        createdAt: new Date().toISOString(),
+        activeToday: false,
+        ...payload
+      }
+    ]
+  };
+
+  await persistState(nextState, "Hábito guardado.");
+}
+
 async function addPlannedSession(payload) {
   const plannedSession = {
     id: Date.now() + Math.random(),
@@ -677,6 +731,12 @@ function requireNumberInRange(value, label, { min = -Infinity, max = Infinity } 
   return parsed;
 }
 
+function optionalNumberInRange(value, label, bounds) {
+  const normalized = String(value ?? "").trim();
+  if (!normalized) return null;
+  return requireNumberInRange(normalized, label, bounds);
+}
+
 function mealPayloadFromFormData(formData) {
   const rawFamilies = uniqueFamilies([
     formData.get("primaryFamily"),
@@ -706,18 +766,26 @@ function mealPayloadFromFormData(formData) {
 }
 
 function trainingPayloadFromFormData(formData) {
+  const structure = String(formData.get("structure") || "").trim();
+  const exercises = String(formData.get("exercises") || "")
+    .split(/\r?\n/)
+    .map(item => item.trim())
+    .filter(Boolean);
+
   return {
     date: requireText(formData.get("date"), "fecha del entreno"),
     type: requireText(formData.get("type"), "tipo de entreno"),
     activity: requireText(formData.get("activity"), "actividad"),
     duration: requireNumberInRange(formData.get("duration"), "duracion", { min: 1, max: 600 }),
-    rpe: requireNumberInRange(formData.get("rpe"), "RPE", { min: 1, max: 10 }),
-    loadKg: requireNumberInRange(formData.get("loadKg"), "carga", { min: 0 }),
-    distanceKm: requireNumberInRange(formData.get("distanceKm"), "distancia", { min: 0 }),
+    structure,
+    exercises,
+    rpe: optionalNumberInRange(formData.get("rpe"), "RPE", { min: 1, max: 10 }),
+    loadKg: optionalNumberInRange(formData.get("loadKg"), "carga", { min: 0 }),
+    distanceKm: optionalNumberInRange(formData.get("distanceKm"), "distancia", { min: 0 }),
     routineName: String(formData.get("routineName") || "").trim(),
-    preEnergy: requireNumberInRange(formData.get("preEnergy"), "energía previa", { min: 1, max: 5 }),
-    recoveryScore: requireNumberInRange(formData.get("recoveryScore"), "recuperación", { min: 1, max: 5 }),
-    sorenessScore: requireNumberInRange(formData.get("sorenessScore"), "molestias", { min: 1, max: 5 }),
+    preEnergy: optionalNumberInRange(formData.get("preEnergy"), "energía previa", { min: 1, max: 5 }),
+    recoveryScore: optionalNumberInRange(formData.get("recoveryScore"), "recuperación", { min: 1, max: 5 }),
+    sorenessScore: optionalNumberInRange(formData.get("sorenessScore"), "molestias", { min: 1, max: 5 }),
     notes: String(formData.get("notes") || "").trim()
   };
 }
@@ -1172,7 +1240,10 @@ function wireUi() {
     addSleepEntry,
     saveNoteEntry,
     addMedication,
-    addWeeklyTask
+    addWeeklyTask,
+    addBookEntry,
+    addGoalEntry,
+    addHabitEntry
   });
 
   wireSettingsForm({
@@ -1221,7 +1292,8 @@ function wireUi() {
     toggleMedicationToday,
     currentWeekStartKey,
     getWeeklyChecklist,
-    replaceWeeklyChecklist
+    replaceWeeklyChecklist,
+    findRecipe
   });
 }
 
