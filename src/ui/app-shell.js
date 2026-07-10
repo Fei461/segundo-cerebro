@@ -4,6 +4,7 @@ import { renderPlanningFeature } from "../features/planning-view.js";
 import { renderRecoveryFeature } from "../features/recovery-view.js";
 import { renderTrainingFeature } from "../features/training-view.js";
 import { renderWellbeingFeature } from "../features/wellbeing-view.js";
+import { renderLibraryFeature } from "../features/library-view.js";
 import { localDateKey } from "../domain/date.js";
 
 const APP_TABS = [
@@ -12,7 +13,8 @@ const APP_TABS = [
   { id: "nutrition", label: "Comida", mobileLabel: "Comida" },
   { id: "training", label: "Entreno", mobileLabel: "Entreno" },
   { id: "wellbeing", label: "Salud", mobileLabel: "Salud" },
-  { id: "recovery", label: "Sueño", mobileLabel: "Sueño" }
+  { id: "recovery", label: "Sueño", mobileLabel: "Sueño" },
+  { id: "library", label: "Libros", mobileLabel: "Libros" }
 ];
 
 function currentTabMeta(activeTab) {
@@ -97,6 +99,7 @@ function renderSurface(viewModel) {
   if (activeTab === "training") return renderTrainingFeature(state, { currentView });
   if (activeTab === "wellbeing") return renderWellbeingFeature(state, { currentView });
   if (activeTab === "recovery") return renderRecoveryFeature(state, { currentView });
+  if (activeTab === "library") return renderLibraryFeature(state, { currentView });
 
   return renderDashboardFeature(state, {
     homeCapture: viewModel.homeCapture || "meal",
