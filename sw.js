@@ -1,4 +1,4 @@
-const CACHE_NAME = "segundo-cerebro-app-v15";
+const CACHE_NAME = "segundo-cerebro-app-v16";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -33,6 +33,7 @@ const APP_SHELL = [
   "./src/features/recovery-view.js",
   "./src/features/training-view.js",
   "./src/features/wellbeing-view.js",
+  "./src/features/library-view.js",
   "./src/storage/crypto.js",
   "./src/storage/backup.js",
   "./src/storage/indexeddb.js",
