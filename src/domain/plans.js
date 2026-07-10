@@ -22,6 +22,16 @@ function normalizeFamilies(value) {
   return value.map(item => normalizeText(item)).filter(Boolean);
 }
 
+function normalizeExerciseLines(value) {
+  if (Array.isArray(value)) {
+    return value.map(item => normalizeText(item)).filter(Boolean);
+  }
+  return String(value || "")
+    .split(/\r?\n|,/)
+    .map(item => normalizeText(item))
+    .filter(Boolean);
+}
+
 function normalizeMatchText(value) {
   return String(value || "")
     .normalize("NFD")
@@ -42,6 +52,8 @@ export function buildLegacyMealPlan(plannedMeals = []) {
       name: meal.name,
       recipeId: meal.recipeId || null,
       families: normalizeFamilies(meal.families),
+      ingredientsText: normalizeText(meal.ingredientsText),
+      notes: normalizeText(meal.notes),
       calories: normalizeNumber(meal.calories),
       protein: normalizeNumber(meal.protein),
       carbs: normalizeNumber(meal.carbs),
@@ -62,6 +74,7 @@ export function legacyMealPlanToPlannedMeals(legacyMealPlan = {}) {
       name: normalizeText(item.name),
       recipeId: item.recipeId ?? null,
       families: normalizeFamilies(item.families),
+      ingredientsText: normalizeText(item.ingredientsText),
       calories: normalizeNumber(item.calories),
       protein: normalizeNumber(item.protein),
       carbs: normalizeNumber(item.carbs),
@@ -83,6 +96,7 @@ export function getPlannedMeals(state) {
         name: normalizeText(meal.name),
         recipeId: meal.recipeId ?? null,
         families: normalizeFamilies(meal.families),
+        ingredientsText: normalizeText(meal.ingredientsText),
         calories: normalizeNumber(meal.calories),
         protein: normalizeNumber(meal.protein),
         carbs: normalizeNumber(meal.carbs),
@@ -112,6 +126,14 @@ export function getPlannedSessions(state) {
       activity: normalizeText(session.activity),
       duration: normalizeNumber(session.duration),
       status: normalizeStatus(session.status),
+      structure: normalizeText(session.structure),
+      exercises: normalizeExerciseLines(session.exercises),
+      preEnergy: session.preEnergy == null ? null : normalizeNumber(session.preEnergy),
+      recoveryScore: session.recoveryScore == null ? null : normalizeNumber(session.recoveryScore),
+      sorenessScore: session.sorenessScore == null ? null : normalizeNumber(session.sorenessScore),
+      rpe: session.rpe == null ? null : normalizeNumber(session.rpe),
+      loadKg: session.loadKg == null ? null : normalizeNumber(session.loadKg),
+      distanceKm: session.distanceKm == null ? null : normalizeNumber(session.distanceKm),
       routineName: normalizeText(session.routineName),
       notes: normalizeText(session.notes)
     }))

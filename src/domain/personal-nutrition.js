@@ -228,6 +228,13 @@ export function shoppingListFromPlannedMeals(plannedMeals, recipes) {
     const recipe = meal.recipeId ? recipes.find(entry => String(entry.id) === String(meal.recipeId)) : null;
     const sources = recipe
       ? ingredientsFromRecipe(recipe)
+      : Array.isArray(meal.canonicalIngredients) && meal.canonicalIngredients.length
+        ? meal.canonicalIngredients.map(name => canonicalizeIngredientName(name)).filter(Boolean)
+        : String(meal.ingredientsText || "").trim()
+          ? String(meal.ingredientsText || "")
+              .split(/\r?\n|,| con | y /i)
+              .map(part => canonicalizeIngredientName(part))
+              .filter(Boolean)
       : String(meal.name || "")
           .split(/,| con | y /i)
           .map(part => canonicalizeIngredientName(part))

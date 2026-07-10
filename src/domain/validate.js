@@ -20,6 +20,7 @@ export function normalizeStateShape(state) {
   const nutrition = ensureObject(safe.nutrition);
   const nutritionProfile = ensureObject(nutrition.profile);
   const training = ensureObject(safe.training);
+  const library = ensureObject(safe.library);
   const cycle = ensureObject(safe.cycle);
   const medication = ensureObject(safe.medication);
   const schedule = ensureObject(safe.schedule);
@@ -65,6 +66,10 @@ export function normalizeStateShape(state) {
       ...training,
       sessions: ensureArray(training.sessions),
       routines: ensureArray(training.routines)
+    },
+    library: {
+      ...library,
+      books: ensureArray(library.books)
     },
     cycle: {
       ...cycle,

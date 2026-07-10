@@ -43,6 +43,9 @@ export const DEFAULT_STATE = {
     sessions: [],
     routines: []
   },
+  library: {
+    books: []
+  },
   cycle: {
     periodDays: [],
     symptomLog: {}
@@ -114,6 +117,10 @@ export function mergeState(partialState = {}) {
     training: {
       ...base.training,
       ...(partialState.training || {})
+    },
+    library: {
+      ...base.library,
+      ...(partialState.library || {})
     },
     cycle: {
       ...base.cycle,
