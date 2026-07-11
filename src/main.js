@@ -81,6 +81,7 @@ const viewModel = {
     planning: "overview",
     nutrition: "today",
     training: "overview",
+    more: "hub",
     wellbeing: "overview",
     recovery: "overview",
     library: "overview"
@@ -94,11 +95,16 @@ const viewModel = {
     isStandalone: false,
     isOnline: true,
     hasServiceWorker: false
+  },
+  restTimer: {
+    endsAt: null,
+    durationSeconds: 90
   }
 };
 
 let autolockTimer = null;
 let statusTimer = null;
+let restTimerTick = null;
 
 function loadUiState() {
   const snapshot = loadUiStateSnapshot(window.sessionStorage, {
@@ -136,6 +142,27 @@ function todayDayLabel() {
 
 function updateRuntimeStatus() {
   updateRuntimeStatusController(viewModel, window, navigator);
+}
+
+function syncRestTimer() {
+  if (restTimerTick) {
+    window.clearTimeout(restTimerTick);
+    restTimerTick = null;
+  }
+
+  if (!viewModel.restTimer?.endsAt) return;
+
+  if (viewModel.restTimer.endsAt <= Date.now()) {
+    viewModel.restTimer.endsAt = null;
+    viewModel.restTimer.durationSeconds = viewModel.restTimer.durationSeconds || 90;
+    paint();
+    return;
+  }
+
+  restTimerTick = window.setTimeout(() => {
+    paint();
+    syncRestTimer();
+  }, 1000);
 }
 
 async function persistState(nextState, successMessage = "") {
@@ -240,8 +267,24 @@ function findMealTemplate(slotKey, templateName) {
 
 function familiesFromTemplate(template) {
   if (!template) return [];
+  if (Array.isArray(template.families) && template.families.length) {
+    return uniqueFamilies(template.families);
+  }
   const text = [template.name, ...(Array.isArray(template.ingredients) ? template.ingredients : [])].join(" ");
   return uniqueFamilies(varietyFamiliesFromText(text));
+}
+
+function pickTemplateForPlannedMeal(preferredFamily = "") {
+  const preferred = String(preferredFamily || "").trim();
+  const allTemplates = Object.entries(PERSONAL_MEAL_TEMPLATES).flatMap(([slotKey, items]) =>
+    items.map(template => ({ slotKey, template, families: familiesFromTemplate(template) }))
+  );
+
+  const filtered = preferred
+    ? allTemplates.filter(entry => entry.families.includes(preferred))
+    : allTemplates;
+
+  return filtered[0] || allTemplates[0] || null;
 }
 
 async function addMealEntry(payload) {
@@ -321,6 +364,47 @@ async function logMealTemplateToToday(slotKey, templateName) {
     },
     totals: { calories: 0, protein: 0, carbs: 0, fat: 0 }
   });
+}
+
+async function regeneratePlannedMeal(mealId) {
+  const meal = getPlannedMeals(viewModel.state).find(entry => String(entry.id) === String(mealId));
+  if (!meal) {
+    setStatus("No se encontró la comida prevista.");
+    return;
+  }
+
+  const prepBoard = getWeeklyNutritionPrepBoard({
+    plannedMeals: getPlannedMeals(viewModel.state),
+    loggedMeals: viewModel.state.nutrition.meals,
+    recipes: viewModel.state.recipes
+  });
+  const preferredFamily = prepBoard.review?.variety?.missingFamilies?.[0] || meal.families?.[0] || "";
+  const picked = pickTemplateForPlannedMeal(preferredFamily);
+  if (!picked) {
+    setStatus("No hay plantillas suficientes para regenerar esta comida.");
+    return;
+  }
+
+  const slotLabels = {
+    breakfasts: "Desayuno",
+    lunches: "Comida",
+    dinners: "Cena",
+    snacks: "Snack"
+  };
+  const nextMeal = {
+    ...meal,
+    slot: slotLabels[picked.slotKey] || meal.slot,
+    name: picked.template.name,
+    recipeId: null,
+    families: picked.families,
+    ingredientsText: Array.isArray(picked.template.ingredients) ? picked.template.ingredients.join(", ") : "",
+    canonicalIngredients: Array.isArray(picked.template.ingredients)
+      ? picked.template.ingredients.map(item => canonicalizeIngredientName(item)).filter(Boolean)
+      : [],
+    notes: preferredFamily ? `Regenerada para cubrir ${preferredFamily.toLowerCase()}.` : "Regenerada desde plantilla."
+  };
+
+  await persistState(replacePlannedMeal(viewModel.state, nextMeal), "Comida regenerada.");
 }
 
 async function logPlannedDay(date) {
@@ -425,6 +509,25 @@ async function addRoutine(payload) {
   await persistState(nextState, "Rutina guardada.");
 }
 
+async function addCustomExercise(payload) {
+  const nextState = {
+    ...viewModel.state,
+    training: {
+      ...viewModel.state.training,
+      customExercises: [
+        ...(Array.isArray(viewModel.state.training.customExercises) ? viewModel.state.training.customExercises : []),
+        {
+          id: Date.now() + Math.random(),
+          createdAt: new Date().toISOString(),
+          ...payload
+        }
+      ]
+    }
+  };
+
+  await persistState(nextState, "Ejercicio guardado.");
+}
+
 async function addBookEntry(payload) {
   const nextState = {
     ...viewModel.state,
@@ -442,6 +545,22 @@ async function addBookEntry(payload) {
   };
 
   await persistState(nextState, "Libro guardado.");
+}
+
+async function saveLibraryChallenge(payload) {
+  const nextState = {
+    ...viewModel.state,
+    library: {
+      ...(viewModel.state.library || {}),
+      books: Array.isArray(viewModel.state.library?.books) ? viewModel.state.library.books : [],
+      challenge: {
+        year: payload.year,
+        target: payload.target
+      }
+    }
+  };
+
+  await persistState(nextState, "Reto de lectura guardado.");
 }
 
 async function addGoalEntry(payload) {
@@ -862,7 +981,16 @@ async function addSleepEntry(payload) {
 
 async function cyclePantryItem(itemName) {
   const current = viewModel.state.nutrition.pantryStatus?.[itemName] || "";
-  const next = current === "" ? "have" : current === "have" ? "need" : "";
+  const next =
+    current === ""
+      ? "have"
+      : current === "have"
+        ? "need"
+        : current === "need"
+          ? "bought"
+          : current === "bought"
+            ? "avoid"
+            : "";
   const nextStatus = { ...(viewModel.state.nutrition.pantryStatus || {}) };
 
   if (next) {
@@ -879,7 +1007,15 @@ async function cyclePantryItem(itemName) {
         pantryStatus: nextStatus
       }
     },
-    next === "have" ? "Marcado como disponible." : next === "need" ? "Marcado como pendiente." : "Item quitado de la lista."
+    next === "have"
+      ? "Marcado como disponible."
+      : next === "need"
+        ? "Marcado como pendiente."
+        : next === "bought"
+          ? "Marcado como comprado."
+          : next === "avoid"
+            ? "Marcado como evitar."
+            : "Item quitado de la lista."
   );
 }
 
@@ -1073,6 +1209,7 @@ function paint() {
   try {
     renderApp(appElement, viewModel);
     wireUi();
+    syncRestTimer();
   } catch (error) {
     showFatalError(error);
   }
@@ -1211,11 +1348,28 @@ function wireUi() {
     });
   });
 
+  appElement.querySelectorAll("[data-action='start-rest-timer']").forEach(button => {
+    button.addEventListener("click", () => {
+      const seconds = Math.max(15, Number(button.dataset.seconds || viewModel.restTimer.durationSeconds || 90));
+      viewModel.restTimer.durationSeconds = seconds;
+      viewModel.restTimer.endsAt = Date.now() + seconds * 1000;
+      setStatus(`Descanso de ${Math.round(seconds / 60)} min iniciado.`);
+    });
+  });
+
+  appElement.querySelectorAll("[data-action='clear-rest-timer']").forEach(button => {
+    button.addEventListener("click", () => {
+      viewModel.restTimer.endsAt = null;
+      paint();
+    });
+  });
+
   wireDomainForms({
     documentRef: document,
     bindFamilyAutofill,
     bindPlannerRecipeAutofill,
     findRecipe,
+    findMealTemplate,
     requireNumberInRange,
     requireText,
     uniqueFamilies,
@@ -1234,6 +1388,7 @@ function wireUi() {
     addTrainingSession,
     addPlannedSession,
     addRoutine,
+    addCustomExercise,
     addSymptom,
     addEvent,
     addScheduleBlock,
@@ -1242,6 +1397,7 @@ function wireUi() {
     addMedication,
     addWeeklyTask,
     addBookEntry,
+    saveLibraryChallenge,
     addGoalEntry,
     addHabitEntry
   });
@@ -1264,6 +1420,7 @@ function wireUi() {
     numberValue,
     cyclePantryItem,
     clearPantryStatus,
+    regeneratePlannedMeal,
     logRecipeToToday,
     logMealTemplateToToday,
     logPlannedDay,
