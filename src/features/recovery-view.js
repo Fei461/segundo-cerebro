@@ -9,7 +9,7 @@ function todayKey() {
 function recentSleepEntries(entries) {
   return Object.entries(entries || {})
     .sort((left, right) => right[0].localeCompare(left[0]))
-    .slice(0, 6);
+    .slice(0, 4);
 }
 
 function averageHours(entries) {
@@ -66,7 +66,7 @@ function sleepItems(entries) {
 function calibrationDayItems(calibration) {
   if (!calibration.dayEntries.length) return emptyState("Aún no hay datos suficientes para esta lectura.");
   return calibration.dayEntries
-    .slice(0, 4)
+    .slice(0, 3)
     .map(
       day => `
         <article class="entry">
@@ -95,16 +95,19 @@ export function renderRecoveryFeature(state, options = {}) {
           <form id="sleep-form" class="stack">
             <div class="field-grid">
               <label><span>Fecha</span><input name="date" type="date" value="${todayKey()}" required></label>
-              <label><span>Horas</span><input name="hours" type="number" step="0.1" min="0" placeholder="Opcional si rellenas horario"></label>
+              <label><span>Horas</span><input name="hours" type="number" step="0.1" min="0" placeholder="7,5"></label>
             </div>
-            <div class="field-grid">
-              <label><span>Hora de acostarte</span><input name="sleepStart" type="time"></label>
-              <label><span>Hora de levantarte</span><input name="sleepEnd" type="time"></label>
-            </div>
-            <label><span>Nota</span><input name="notes" placeholder="Cafeína, estrés, despertares..."></label>
-            <div class="field-grid">
-              <label><span>Calidad (1-5)</span><input name="quality" type="number" min="1" max="5" value="3" required></label>
-            </div>
+            <label><span>Calidad (1-5)</span><input name="quality" type="number" min="1" max="5" value="3" required></label>
+            <details class="panel panel-toned disclosure-panel compact-disclosure">
+              <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Horario y nota</h4></div></summary>
+              <div class="stack disclosure-body">
+                <div class="field-grid">
+                  <label><span>Hora de acostarte</span><input name="sleepStart" type="time"></label>
+                  <label><span>Hora de levantarte</span><input name="sleepEnd" type="time"></label>
+                </div>
+                <label><span>Nota</span><input name="notes" placeholder="Cafeína, estrés, despertares..."></label>
+              </div>
+            </details>
             <button class="primary" type="submit">Guardar noche</button>
           </form>
         `,
@@ -115,29 +118,36 @@ export function renderRecoveryFeature(state, options = {}) {
     body = sectionCard("Historial", "Noches recientes", `<div class="stack stack-tight">${sleepItems(state.sleepEntries)}</div>`, "section-card-glass section-card-recovery-light");
   } else {
     body = `
-      ${sectionCard(
-        "Semana",
-        "Descanso y ajuste",
-        `
-          <section class="dashboard-summary compact-metrics feature-metrics-soft">
+        ${sectionCard(
+          "Semana",
+          "Descanso y ajuste",
+          `
+            <section class="dashboard-summary compact-metrics feature-metrics-soft">
             ${statCard("Media 7d", `${averageHours(state.sleepEntries)} h`, "promedio")}
-            ${statCard("Registros", Object.keys(state.sleepEntries).length, "noches")}
-            ${statCard("Horario", latestSleepSpan(state.sleepEntries), "última noche")}
-            ${statCard("Vigilancia", calibration.watchDays, "días")}
-          </section>
-          ${latestSleepNote(state.sleepEntries) ? `<p class="muted">Última nota: ${latestSleepNote(state.sleepEntries)}</p>` : ""}
-          <div class="button-row button-row-start button-row-soft">
-            <button class="ghost compact" type="button" data-action="open-module-view" data-tab="recovery" data-view="sleep">Registrar</button>
-            <button class="primary compact" data-action="apply-weekly-calibration-pack">Ajustar semana</button>
-            <button class="ghost compact" type="button" data-action="create-support-block" data-kind="recovery">Bloque suave</button>
-          </div>
+              ${statCard("Registros", Object.keys(state.sleepEntries).length, "noches")}
+              ${statCard("Horario", latestSleepSpan(state.sleepEntries), "última noche")}
+              ${statCard("Vigilancia", calibration.watchDays, "días")}
+            </section>
+            <article class="summary-card summary-card-soft">
+              <p class="eyebrow">Siguiente</p>
+              <p class="entry-title">${calibration.watchDays > 0 ? "Conviene suavizar la semana." : "Descanso estable por ahora."}</p>
+              <p class="entry-meta">${latestSleepNote(state.sleepEntries) ? `Última nota: ${latestSleepNote(state.sleepEntries)}` : "Sigue registrando horario y calidad para afinar la lectura."}</p>
+            </article>
+            <div class="button-row button-row-start button-row-soft">
+              <button class="ghost compact" type="button" data-action="open-module-view" data-tab="recovery" data-view="sleep">Registrar</button>
+              <button class="primary compact" data-action="apply-weekly-calibration-pack">Ajustar semana</button>
+              <button class="ghost compact" type="button" data-action="create-support-block" data-kind="recovery">Bloque suave</button>
+            </div>
         `,
         "section-card-hero section-card-recovery"
       )}
       <div class="planning-focus-grid planning-focus-grid-compact">
         ${sectionCard("Detalle", "Días a mirar", `<div class="stack stack-tight">${calibrationDayItems(calibration)}</div>`, "section-card-glass section-card-recovery-light")}
-        ${sectionCard("Historial", "Noches recientes", `<div class="stack stack-tight">${sleepItems(state.sleepEntries).split("</article>").slice(0, 3).join("</article>")}</div>`, "section-card-glass section-card-recovery-light")}
       </div>
+      <details class="panel panel-toned disclosure-panel compact-disclosure">
+        <summary class="disclosure-summary"><div><p class="eyebrow">Reciente</p><h4>Últimas noches</h4></div></summary>
+        <div class="stack disclosure-body">${sleepItems(state.sleepEntries)}</div>
+      </details>
     `;
   }
 

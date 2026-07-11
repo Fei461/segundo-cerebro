@@ -9,6 +9,17 @@ import { localDateKey } from "../domain/date.js";
 import { emptyState, featureHeader, sectionCard, viewSwitcher } from "../ui/feature-layout.js";
 import { VARIETY_FAMILY_RULES, varietyFamiliesFromText } from "../domain/personal-nutrition.js";
 
+const FAMILY_LABELS = {
+  "Cereal/tuberculo": "Cereal / tubérculo",
+  "Ave y huevos": "Ave y huevos",
+  "Carne roja y cerdo": "Carne roja y cerdo",
+  "Pescado y marisco": "Pescado y marisco",
+  "Proteina vegetal": "Proteína vegetal",
+  Verduras: "Verduras",
+  Fruta: "Fruta",
+  "Lacteos/alternativos": "Lácteos / alternativos"
+};
+
 function todayKey() {
   return localDateKey(new Date());
 }
@@ -74,7 +85,7 @@ function captureSwitcher(current) {
 function familyOptions() {
   return `
     <option value="">Sin definir</option>
-    ${VARIETY_FAMILY_RULES.map(rule => `<option value="${rule.family}">${rule.family}</option>`).join("")}
+    ${VARIETY_FAMILY_RULES.map(rule => `<option value="${rule.family}">${FAMILY_LABELS[rule.family] || rule.family}</option>`).join("")}
   `;
 }
 
@@ -85,11 +96,14 @@ function quickMealCapture() {
         <label><span>Tipo</span><select name="type"><option>Desayuno</option><option selected>Comida</option><option>Cena</option><option>Snack</option></select></label>
         <label><span>Nombre</span><input name="name" placeholder="Ej. bowl, tortilla, yogur" required></label>
       </div>
-      <div class="field-grid">
-        <label><span>Grupo principal</span><select name="primaryFamily">${familyOptions()}</select></label>
-        <label><span>Grupo secundario</span><select name="secondaryFamily">${familyOptions()}</select></label>
-      </div>
-      <label><span>Postcomida</span><input name="reaction" placeholder="Opcional"></label>
+      <label><span>Grupo principal</span><select name="primaryFamily">${familyOptions()}</select></label>
+      <details class="panel panel-toned disclosure-panel compact-disclosure">
+        <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Más detalle</h4></div></summary>
+        <div class="stack disclosure-body">
+          <label><span>Grupo secundario</span><select name="secondaryFamily">${familyOptions()}</select></label>
+          <label><span>Postcomida</span><input name="reaction" placeholder="Opcional"></label>
+        </div>
+      </details>
       <button class="primary" type="submit">Guardar comida rápida</button>
     </form>
   `;
@@ -107,7 +121,7 @@ function quickTrainingCapture(today) {
         <label><span>Duración</span><input name="duration" type="number" min="1" value="45" required></label>
       </div>
       <details class="panel panel-toned disclosure-panel compact-disclosure">
-        <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Métricas extra</h4></div></summary>
+        <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Carga y contexto</h4></div></summary>
         <div class="stack disclosure-body">
           <div class="field-grid four">
             <label><span>RPE</span><input name="rpe" type="number" min="1" max="10" value="6"></label>
@@ -117,7 +131,7 @@ function quickTrainingCapture(today) {
           </div>
         </div>
       </details>
-      <button class="primary" type="submit">Guardar entreno rápido</button>
+      <button class="primary" type="submit">Guardar entreno</button>
     </form>
   `;
 }
@@ -129,17 +143,12 @@ function quickCheckinCapture() {
         <label><span>Síntoma</span><input name="name" placeholder="Ej. fatiga o hinchazón" required></label>
         <label><span>Intensidad</span><input name="intensity" type="number" min="1" max="5" value="3" required></label>
       </div>
-      <details class="panel panel-toned disclosure-panel compact-disclosure">
-        <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Energía y nota</h4></div></summary>
-        <div class="stack disclosure-body">
-          <div class="field-grid">
-            <label><span>Energía</span><input name="energy" type="number" min="1" max="5" value="3"></label>
-            <label><span>Ánimo</span><input name="mood" type="number" min="1" max="5" value="3"></label>
-          </div>
-          <label><span>Nota</span><input name="note" placeholder="Contexto rápido"></label>
-        </div>
-      </details>
-      <button class="primary" type="submit">Guardar check-in</button>
+      <div class="field-grid">
+        <label><span>Energía</span><input name="energy" type="number" min="1" max="5" value="3"></label>
+        <label><span>Ánimo</span><input name="mood" type="number" min="1" max="5" value="3"></label>
+      </div>
+      <label><span>Nota</span><input name="note" placeholder="Contexto rápido"></label>
+      <button class="primary" type="submit">Guardar síntoma</button>
     </form>
   `;
 }
@@ -149,16 +158,19 @@ function quickSleepCapture(today) {
     <form id="quick-sleep-form" class="stack">
       <div class="field-grid">
         <label><span>Fecha</span><input name="date" type="date" value="${today}" required></label>
-        <label><span>Horas</span><input name="hours" type="number" step="0.1" min="0" placeholder="Opcional si rellenas horario"></label>
+        <label><span>Horas</span><input name="hours" type="number" step="0.1" min="0" placeholder="7,5"></label>
       </div>
-      <div class="field-grid">
-        <label><span>Hora de acostarte</span><input name="sleepStart" type="time"></label>
-        <label><span>Hora de levantarte</span><input name="sleepEnd" type="time"></label>
-      </div>
-      <div class="field-grid">
-        <label><span>Calidad</span><input name="quality" type="number" min="1" max="5" value="3" required></label>
-        <label><span>Nota</span><input name="notes" placeholder="Cafeína, estrés..."></label>
-      </div>
+      <label><span>Calidad</span><input name="quality" type="number" min="1" max="5" value="3" required></label>
+      <details class="panel panel-toned disclosure-panel compact-disclosure">
+        <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Horario y nota</h4></div></summary>
+        <div class="stack disclosure-body">
+          <div class="field-grid">
+            <label><span>Hora de acostarte</span><input name="sleepStart" type="time"></label>
+            <label><span>Hora de levantarte</span><input name="sleepEnd" type="time"></label>
+          </div>
+          <label><span>Nota</span><input name="notes" placeholder="Cafeína, estrés..."></label>
+        </div>
+      </details>
       <button class="primary" type="submit">Guardar sueño</button>
     </form>
   `;
@@ -189,10 +201,10 @@ function latestSleepContext(state) {
 }
 
 function captureContext(currentCapture) {
-  if (currentCapture === "training") return "Registrar una sesión rápida con lo justo.";
-  if (currentCapture === "checkin") return "Guardar un síntoma sin salir de hoy.";
+  if (currentCapture === "training") return "Guardar una sesión rápida sin salir de hoy.";
+  if (currentCapture === "checkin") return "Registrar un síntoma en menos de un minuto.";
   if (currentCapture === "sleep") return "Apuntar la noche con horario y calidad.";
-  return "Guardar una comida por grupos de alimentos.";
+  return "Registrar una comida por grupos de alimentos.";
 }
 
 function renderCaptureBody(currentCapture, today) {
@@ -212,9 +224,9 @@ function compactFocusTitle(dailyCommand) {
 
 function compactFocusDetail(dailyCommand, weeklyPreparation) {
   const plannedCount = dailyCommand.mealProgress.total + dailyCommand.sessionProgress.total;
-  if (plannedCount > 0) return `${plannedCount} bloque(s) previstos. Semana ${weeklyPreparation.readinessScore}/100.`;
+  if (plannedCount > 0) return `${plannedCount} bloque(s) previstos · ritmo semanal ${weeklyPreparation.readinessScore}/100`;
   if (dailyCommand.loggedMealsToday.length > 0 || dailyCommand.executedSessionsToday.length > 0) return "Ya hay señales de hoy. Solo toca mantener el hilo.";
-  return "Empieza con una comida, un check-in o una nota.";
+  return "Empieza por una comida, un check-in o una nota.";
 }
 
 function reviewItems(items) {
@@ -257,11 +269,10 @@ function supportShortcuts() {
   return `
     <div class="shortcut-row shortcut-row-scroll">
       ${shortcutButton("Registrar comida", "nutrition", "log")}
-      ${shortcutButton("Planner", "nutrition", "plan")}
+      ${shortcutButton("Planner comida", "nutrition", "plan")}
       ${shortcutButton("Síntoma", "wellbeing", "symptom")}
       ${shortcutButton("Programar entreno", "training", "plan")}
       ${shortcutButton("Registrar sueño", "recovery", "sleep")}
-      ${shortcutButton("Reset semanal", "planning", "reset")}
       ${shortcutButton("Biblioteca", "library", "add")}
     </div>
   `;
@@ -294,7 +305,7 @@ function operationalQueue(decisionBoard) {
     ...decisionBoard.captureNow.slice(0, 1),
     ...decisionBoard.lighten.slice(0, 1)
   ];
-  return compactBulletList(queue, "Hoy no hay una cola operativa especialmente cargada.");
+  return compactBulletList(queue, "Hoy no hay una cola especialmente cargada.");
 }
 
 function carryoverPreview(carryovers) {
@@ -397,6 +408,12 @@ function formatDateTimeLabel(value) {
   }
 }
 
+function readinessTone(score) {
+  if (score >= 70) return "Fluido";
+  if (score >= 40) return "Intermedio";
+  return "Ligero";
+}
+
 export function renderDashboardFeature(state, options = {}) {
   const currentView = options.currentView || (options.homeCapture && options.homeCapture !== "meal" ? "capture" : "overview");
   const currentCapture = options.homeCapture || "meal";
@@ -438,38 +455,31 @@ export function renderDashboardFeature(state, options = {}) {
     body = `
       ${sectionCard(
         "Cerrar hoy",
-        "Cerrar el día",
+        "Cierre breve",
         `
           <section class="dashboard-summary compact-metrics feature-metrics-soft">
             ${statCard("Comida", `${dailyCommand.mealProgress.done}/${dailyCommand.mealProgress.total}`, "hecho")}
             ${statCard("Entreno", `${dailyCommand.sessionProgress.done}/${dailyCommand.sessionProgress.total}`, "hecho")}
             ${statCard("Agua", `${dailyCommand.hydrationToday}/${dailyCommand.hydrationGoal}`, "vasos")}
-            ${statCard("Revisión", `${weeklyReviewSummary.completion}%`, "semana")}
+            ${statCard("Semana", `${weeklyReviewSummary.completion}%`, "revisión")}
           </section>
           <div class="button-row button-row-start button-row-soft">
             <button class="primary compact" data-action="add-water">+1 vaso</button>
             <button class="ghost compact" data-action="apply-suggested-meal-slots">Completar comidas</button>
             <button class="ghost compact" data-action="apply-suggested-sessions">Completar entrenos</button>
           </div>
-          <article class="entry"><div><p class="entry-title">Dejar el día cerrado sin salir de aquí</p></div></article>
         `,
         "section-card-hero section-card-home"
       )}
       ${sectionCard(
         "Lectura",
-        "Qué está diciendo la semana",
+        "Cómo va la semana",
         `
           <div class="reading-grid reading-grid-triple">
             ${compactSignalColumn("Va bien", autoSummary.highlights, "Aún faltan más registros para una señal positiva clara.")}
             ${compactSignalColumn("Vigilar", autoSummary.watchouts, "No hay alertas fuertes ahora mismo.")}
-            ${compactSignalColumn("Revisar", autoSummary.reviewItems, "Todavía no hay un punto de revisión principal.")}
+            ${compactSignalColumn("Revisar", autoSummary.reviewItems, "Todavía no hay una revisión dominante.")}
           </div>
-          <article class="entry">
-            <div>
-              <p class="entry-title">Lectura semanal automática</p>
-              <p class="entry-note">${autoSummary.headline}</p>
-            </div>
-          </article>
         `,
         "section-card-glass section-card-home-light"
       )}
@@ -492,77 +502,86 @@ export function renderDashboardFeature(state, options = {}) {
         "Ajustes",
         "Tu base local",
         `
-          <form id="profile-form" class="stack inline-form-soft">
-            <div class="field-grid">
-              <label><span>Nombre visible</span><input name="displayName" placeholder="Cómo quieres verte aquí" value="${displayName}"></label>
-              <label><span>Autobloqueo (min)</span><input name="autoLockMinutes" type="number" min="0" max="120" value="${autoLockMinutes}" required></label>
-            </div>
-            <p class="muted">Usa 0 para bloquear solo manualmente. Mientras este mismo contexto siga abierto, la app intentará recordarte sin pedir la clave otra vez.</p>
-            <button class="primary" type="submit">Guardar ajustes</button>
-          </form>
-        `,
-        "section-card-tinted section-card-home"
-      )}
-      ${sectionCard(
-        "Seguridad",
-        "Vault y backup",
-        `
           <section class="dashboard-summary compact-metrics feature-metrics-soft">
+            ${statCard("Nombre", displayName || "Tu espacio", "visible")}
             ${statCard("Bloqueo", lockLabel, "actual")}
-            ${statCard("Último acceso", lastUnlock, "vault")}
-            ${statCard("Último backup", lastBackup, "exportado")}
-            ${statCard("Última importación", lastImport, "base")}
           </section>
-          <article class="entry"><div><p class="entry-title">${lastBackup === "Aún no" ? "Backup pendiente" : "Backup disponible"}</p><p class="entry-note">${lastBackup === "Aún no" ? "Conviene exportar uno antes de cambiar de contexto o publicar una build nueva." : "Ya existe una copia de seguridad exportada desde este contexto."}</p></div></article>
-          <article class="entry"><div><p class="entry-title">Cambio de passphrase</p><p class="entry-note">Último cambio: ${lastPassphraseChange}</p></div></article>
-          <form id="change-passphrase-form" class="stack inline-form-soft">
-            <div class="field-grid">
-              <label><span>Nueva passphrase</span><input name="nextPassphrase" type="password" minlength="8" placeholder="Mínimo 8 caracteres" required></label>
-              <label><span>Confirmar</span><input name="nextPassphraseConfirm" type="password" minlength="8" placeholder="Repite la clave" required></label>
-            </div>
-            <button class="primary" type="submit">Cambiar passphrase</button>
-          </form>
           <details class="panel panel-toned disclosure-panel compact-disclosure">
-            <summary class="disclosure-summary"><div><p class="eyebrow">Backup</p><h4>Exportar o importar</h4></div></summary>
+            <summary class="disclosure-summary"><div><p class="eyebrow">Perfil</p><h4>Editar base personal</h4></div></summary>
             <div class="stack disclosure-body">
-              <form id="backup-export-form" class="stack inline-form-soft">
+              <form id="profile-form" class="stack inline-form-soft">
                 <div class="field-grid">
-                  <label><span>Passphrase backup</span><input name="backupPassphrase" type="password" minlength="8" placeholder="Clave del archivo" required></label>
-                  <label><span>Confirmar</span><input name="backupPassphraseConfirm" type="password" minlength="8" placeholder="Repite la clave" required></label>
+                  <label><span>Nombre visible</span><input name="displayName" placeholder="Cómo quieres verte aquí" value="${displayName}"></label>
+                  <label><span>Autobloqueo (min)</span><input name="autoLockMinutes" type="number" min="0" max="120" value="${autoLockMinutes}" required></label>
                 </div>
-                <button class="ghost compact" type="submit">Exportar backup cifrado</button>
+                <p class="muted">Usa 0 para bloquear solo manualmente. Si este contexto sigue abierto, la app intentará recordarte sin pedir la clave otra vez.</p>
+                <button class="primary" type="submit">Guardar ajustes</button>
               </form>
-              <form id="backup-import-form" class="stack inline-form-soft">
-                <div class="field-grid">
-                  <label><span>Passphrase backup</span><input name="backupImportPassphrase" type="password" minlength="8" placeholder="Clave del archivo" required></label>
-                  <label class="file-button compact-file auth-file"><input id="import-file-settings" name="backupFile" type="file" accept=".json,application/json" required>Elegir archivo</label>
-                </div>
-                <p class="muted">La importación reemplaza el contenido actual de este contexto local.</p>
-                <button class="ghost compact" type="submit">Importar backup</button>
-              </form>
-              <button id="reset-vault-button" class="ghost compact" type="button">Restablecer este contexto</button>
             </div>
           </details>
         `,
-        "section-card-glass section-card-home-light"
+        "section-card-tinted section-card-home"
       )}
-      ${sectionCard(
-        "Notas",
-        "Recordatorios rápidos",
-        `
+      <details class="panel panel-toned disclosure-panel compact-disclosure">
+        <summary class="disclosure-summary"><div><p class="eyebrow">Seguridad</p><h4>Clave y copia</h4></div></summary>
+        <div class="stack disclosure-body">
+          <section class="dashboard-summary compact-metrics feature-metrics-soft">
+            ${statCard("Bloqueo", lockLabel, "actual")}
+            ${statCard("Último acceso", lastUnlock, "sesión")}
+            ${statCard("Última copia", lastBackup, "exportada")}
+            ${statCard("Última importación", lastImport, "base")}
+          </section>
+          <article class="entry"><div><p class="entry-title">${lastBackup === "Aún no" ? "Copia pendiente" : "Copia disponible"}</p><p class="entry-note">${lastBackup === "Aún no" ? "Conviene exportar una antes de cambiar de contexto o publicar una build nueva." : "Ya existe una copia cifrada exportada desde este contexto."}</p></div></article>
+          <article class="entry"><div><p class="entry-title">Cambio de clave</p><p class="entry-note">Último cambio: ${lastPassphraseChange}</p></div></article>
+          <details class="panel panel-toned disclosure-panel compact-disclosure">
+            <summary class="disclosure-summary"><div><p class="eyebrow">Clave</p><h4>Cambiar clave local</h4></div></summary>
+            <div class="stack disclosure-body">
+              <form id="change-passphrase-form" class="stack inline-form-soft">
+                <div class="field-grid">
+                  <label><span>Nueva clave local</span><input name="nextPassphrase" type="password" minlength="8" placeholder="Mínimo 8 caracteres" required></label>
+                  <label><span>Confirmar</span><input name="nextPassphraseConfirm" type="password" minlength="8" placeholder="Repite la clave" required></label>
+                </div>
+                <button class="primary" type="submit">Cambiar clave</button>
+              </form>
+            </div>
+          </details>
+          <details class="panel panel-toned disclosure-panel compact-disclosure">
+            <summary class="disclosure-summary"><div><p class="eyebrow">Copia</p><h4>Exportar o importar</h4></div></summary>
+            <div class="stack disclosure-body">
+              <form id="backup-export-form" class="stack inline-form-soft">
+                <div class="field-grid">
+                  <label><span>Clave del archivo</span><input name="backupPassphrase" type="password" minlength="8" placeholder="Clave del archivo" required></label>
+                  <label><span>Confirmar</span><input name="backupPassphraseConfirm" type="password" minlength="8" placeholder="Repite la clave" required></label>
+                </div>
+                <button class="ghost compact" type="submit">Exportar copia cifrada</button>
+              </form>
+              <form id="backup-import-form" class="stack inline-form-soft">
+                <div class="field-grid">
+                  <label><span>Clave del archivo</span><input name="backupImportPassphrase" type="password" minlength="8" placeholder="Clave del archivo" required></label>
+                  <label class="file-button compact-file auth-file"><input id="import-file-settings" name="backupFile" type="file" accept=".json,application/json" required>Elegir archivo</label>
+                </div>
+                <p class="muted">La importación reemplaza el contenido actual de este contexto local.</p>
+                <button class="ghost compact" type="submit">Importar copia</button>
+              </form>
+              <button id="reset-vault-button" class="ghost compact" type="button">Limpiar este contexto</button>
+            </div>
+          </details>
+        </div>
+      </details>
+      <details class="panel panel-toned disclosure-panel compact-disclosure">
+        <summary class="disclosure-summary"><div><p class="eyebrow">Notas</p><h4>Recordatorios rápidos</h4></div></summary>
+        <div class="stack disclosure-body">
           <form id="note-form" class="stack inline-form-soft">
             <label><span>Clave</span><input name="key" placeholder="Ej. hoy o ideas" required></label>
             <label><span>Contenido</span><textarea name="value" rows="4" placeholder="Escribe una nota corta" required></textarea></label>
             <button class="primary" type="submit">Guardar nota</button>
           </form>
           <div class="stack">${noteItems(state.notes)}</div>
-        `,
-        "section-card-glass section-card-home-light"
-      )}
-      ${sectionCard(
-        "Objetivos",
-        "Dirección y constancia",
-        `
+        </div>
+      </details>
+      <details class="panel panel-toned disclosure-panel compact-disclosure">
+        <summary class="disclosure-summary"><div><p class="eyebrow">Ritmo</p><h4>Objetivos y hábitos</h4></div></summary>
+        <div class="stack disclosure-body">
           <div class="reading-grid">
             <section class="subpanel stack summary-card-soft">
               <p class="eyebrow">Objetivo</p>
@@ -592,13 +611,12 @@ export function renderDashboardFeature(state, options = {}) {
               <div class="stack stack-tight">${habitItems(state.habits)}</div>
             </section>
           </div>
-        `,
-        "section-card-glass section-card-home-light"
-      )}
+        </div>
+      </details>
     `;
   } else {
     body = `
-      <div class="home-rail-grid home-rail-grid-dual">
+      <div class="stack stack-tight">
         ${sectionCard(
           "Ahora",
           compactFocusTitle(dailyCommand),
@@ -606,37 +624,34 @@ export function renderDashboardFeature(state, options = {}) {
             <div class="home-hero-stack">
               <p class="muted">${compactFocusDetail(dailyCommand, weeklyPreparation)}</p>
               <section class="dashboard-summary compact-metrics feature-metrics-soft">
+                ${statCard("Ritmo", `${weeklyPreparation.readinessScore}/100`, readinessTone(weeklyPreparation.readinessScore))}
                 ${statCard("Comidas", dailyCommand.loggedMealsToday.length, "registradas")}
                 ${statCard("Agua", `${dailyCommand.hydrationToday}/${dailyCommand.hydrationGoal}`, "vasos")}
                 ${statCard("Entreno", dailyCommand.executedSessionsToday.length, "sesiones")}
-                ${statCard("Grupos", familiesToday.length, "cubiertos hoy")}
               </section>
               ${latestSleep ? `<p class="muted">Último sueño: ${latestSleep}</p>` : ""}
               <div class="button-row button-row-start button-row-soft">
                 <button class="ghost compact" type="button" data-action="open-module-view" data-tab="home" data-view="capture">Capturar</button>
-                <button class="ghost compact" type="button" data-action="open-module-view" data-tab="home" data-view="review">Cierre</button>
+                <button class="ghost compact" type="button" data-action="open-module-view" data-tab="nutrition" data-view="log">Comida</button>
+                <button class="ghost compact" type="button" data-action="open-module-view" data-tab="home" data-view="review">Cerrar hoy</button>
               </div>
             </div>
           `,
           "section-card-hero section-card-home rail-card"
         )}
-        <div class="stack stack-tight home-side-stack">
+        <div class="home-reading-grid">
           ${nextActionCard(dailyCommand, autoSummary)}
           <article class="summary-card summary-card-soft rail-card">
             <p class="eyebrow">Semana</p>
             <p class="entry-title">${weeklyPreparation.headline}</p>
-            <p class="entry-note">${autoSummary.reviewItems[0] || "La lectura semanal irá afinando el sistema."}</p>
-          </article>
-          <article class="summary-card summary-card-soft rail-card">
-            <p class="eyebrow">Biblioteca</p>
-            <p class="entry-title">${reading.title}</p>
-            <p class="entry-note">${reading.detail}</p>
+            <p class="entry-note">${autoSummary.reviewItems[0] || "Todo bastante estable por ahora."}</p>
+            <p class="entry-note">${reading.title}</p>
           </article>
         </div>
       </div>
       ${sectionCard(
         "Captura rápida",
-        "Registrar ya",
+        "Lo útil al instante",
         `
           <div class="quick-actions-grid">
             ${quickAction("Agua", { type: "add-water" }, "quick-action-water")}
@@ -651,23 +666,18 @@ export function renderDashboardFeature(state, options = {}) {
       <details class="panel panel-toned compact-vault-bar disclosure-panel">
         <summary class="disclosure-summary">
           <div>
-            <p class="eyebrow">Siguiente</p>
-            <h4>Lo siguiente</h4>
+            <p class="eyebrow">Más de hoy</p>
+            <h4>Cola, arrastres y revisión</h4>
           </div>
         </summary>
         <div class="stack disclosure-body">
-          ${sectionCard(
-            "Siguiente",
-            "Lo que toca sin ruido",
-            `
-              ${operationalQueue(decisionBoard)}
-              <div class="button-row button-row-start button-row-soft">
-                <button class="ghost compact" data-action="apply-suggested-meal-slots">Comidas</button>
-                <button class="ghost compact" data-action="apply-suggested-sessions">Entrenos</button>
-              </div>
-            `,
-            "section-card-glass section-card-home-light"
-          )}
+          <div class="stack stack-tight">
+            ${operationalQueue(decisionBoard)}
+            <div class="button-row button-row-start button-row-soft">
+              <button class="ghost compact" data-action="apply-suggested-meal-slots">Comidas</button>
+              <button class="ghost compact" data-action="apply-suggested-sessions">Entrenos</button>
+            </div>
+          </div>
           <div class="home-reading-grid">
             <section class="subpanel stack summary-card-soft">
               <p class="eyebrow">Arrastres</p>

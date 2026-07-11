@@ -23,7 +23,7 @@ function statCard(label, value, detail) {
   `;
 }
 
-function recentSymptoms(symptomLog, limit = 5) {
+function recentSymptoms(symptomLog, limit = 4) {
   return Object.entries(symptomLog || {})
     .sort((left, right) => right[0].localeCompare(left[0]))
     .slice(0, limit);
@@ -88,7 +88,7 @@ function renderSymptomGroups() {
 function supportPreview(suggestions) {
   if (!suggestions.length) return emptyState("Aún faltan datos para sugerencias por fase.");
   return suggestions
-    .slice(0, 3)
+    .slice(0, 2)
     .map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`)
     .join("");
 }
@@ -130,16 +130,18 @@ export function renderWellbeingFeature(state, options = {}) {
               </div>
               <div class="field-grid">
                 <label><span>Intensidad</span><input name="intensity" type="number" min="1" max="5" value="3" required></label>
-                <label><span>Digestión</span><select name="digestion"><option value="">Opcional</option>${digestionOptions}</select></label>
               </div>
               <details class="panel panel-toned disclosure-panel compact-disclosure">
-                <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Energía, ánimo y nota</h4></div></summary>
+                <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Contexto del síntoma</h4></div></summary>
                 <div class="stack disclosure-body">
                   <div class="field-grid">
+                    <label><span>Digestión</span><select name="digestion"><option value="">Opcional</option>${digestionOptions}</select></label>
                     <label><span>Energía</span><select name="energy"><option value="">Opcional</option>${energyOptions}</select></label>
-                    <label><span>Ánimo</span><select name="mood"><option value="">Opcional</option>${moodOptions}</select></label>
                   </div>
-                  <label><span>Nota</span><input name="note" placeholder="Opcional"></label>
+                  <div class="field-grid">
+                    <label><span>Ánimo</span><select name="mood"><option value="">Opcional</option>${moodOptions}</select></label>
+                    <label><span>Nota</span><input name="note" placeholder="Opcional"></label>
+                  </div>
                 </div>
               </details>
               <button class="primary" type="submit">Guardar síntoma</button>
@@ -191,6 +193,10 @@ export function renderWellbeingFeature(state, options = {}) {
               ${statCard("Medicación", state.medication.meds.length, "items")}
               ${statCard("Fase", health.cycleContext.label, health.dominantSymptoms[0]?.name || "sin patrón")}
             </section>
+            <article class="summary-card summary-card-soft">
+              <p class="eyebrow">Siguiente</p>
+              <p class="entry-title">${suggestions[0] || "Seguir registrando para afinar patrones."}</p>
+            </article>
             <div class="button-row button-row-start button-row-soft">
               <button class="${periodToday ? "primary" : "ghost"} compact" data-action="toggle-period">${periodToday ? "Quitar hoy" : "Marcar hoy"}</button>
               <button class="ghost compact" type="button" data-action="open-module-view" data-tab="wellbeing" data-view="symptom">Síntoma</button>
@@ -214,7 +220,10 @@ export function renderWellbeingFeature(state, options = {}) {
       </div>
       <div class="planning-focus-grid planning-focus-grid-compact">
         ${sectionCard("Patrón", "Síntomas que más se repiten", `<div class="stack stack-tight">${dominantSymptomPreview(health)}</div>`, "section-card-glass section-card-wellbeing-light")}
-        ${sectionCard("Hoy", "Tomas activas", `<div class="stack stack-tight">${renderMedications(state.medication)}</div>`, "section-card-glass section-card-wellbeing-light")}
+        <details class="panel panel-toned disclosure-panel compact-disclosure">
+          <summary class="disclosure-summary"><div><p class="eyebrow">Hoy</p><h4>Tomas activas</h4></div></summary>
+          <div class="stack disclosure-body">${renderMedications(state.medication)}</div>
+        </details>
       </div>
     `;
   }

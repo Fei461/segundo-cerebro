@@ -8,19 +8,19 @@ const TRAINING_TYPES = ["Fuerza", "Cardio", "Movilidad", "Recuperación", "Natac
 const TRAINING_STRUCTURES = ["Simple", "Circuito", "Series", "Técnica", "Intervalos"];
 const EXERCISE_GROUPS = [
   {
-    title: "Fuerza tren inferior",
+    title: "Fuerza inferior",
     items: ["Hip thrust", "Sentadilla", "Peso muerto rumano", "Prensa", "Zancadas", "Puente glúteo"]
   },
   {
-    title: "Fuerza tren superior",
+    title: "Fuerza superior",
     items: ["Remo", "Jalón al pecho", "Press banca", "Press militar", "Face pull", "Curl bíceps"]
   },
   {
-    title: "Cardio y base",
+    title: "Cardio",
     items: ["Running", "Bici", "Elíptica", "Caminata inclinada", "Saltar cuerda"]
   },
   {
-    title: "Movilidad y core",
+    title: "Movilidad",
     items: ["Core", "Pilates", "Movilidad cadera", "Movilidad dorsal", "Estiramientos", "Yoga suave"]
   },
   {
@@ -46,10 +46,7 @@ function statCard(label, value, detail) {
 function weeklyTotals(sessions) {
   const keys = new Set();
   const base = todayKey();
-  for (let index = 0; index < 7; index += 1) {
-    keys.add(addDaysToDateKey(base, -index));
-  }
-
+  for (let index = 0; index < 7; index += 1) keys.add(addDaysToDateKey(base, -index));
   return sessions
     .filter(session => keys.has(session.date))
     .reduce(
@@ -63,18 +60,24 @@ function weeklyTotals(sessions) {
     );
 }
 
-function exerciseOptions() {
-  return EXERCISE_GROUPS.flatMap(group => group.items).map(exercise => `<option value="${exercise}"></option>`).join("");
+function normalizeExercisePool(state) {
+  const custom = Array.isArray(state.training?.customExercises) ? state.training.customExercises.map(item => item.name) : [];
+  return [...new Set([...EXERCISE_GROUPS.flatMap(group => group.items), ...custom])];
+}
+
+function exerciseOptions(state) {
+  return normalizeExercisePool(state).map(exercise => `<option value="${exercise}"></option>`).join("");
 }
 
 function sessionMeta(session) {
-  const parts = [
+  return [
     session.activity,
     session.duration ? `${session.duration} min` : "",
     session.structure || "",
     session.rpe ? `RPE ${session.rpe}` : ""
-  ].filter(Boolean);
-  return parts.join(" · ");
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 function sessionExercisePreview(session) {
@@ -83,14 +86,12 @@ function sessionExercisePreview(session) {
   return `<p class="entry-note">${exercises.slice(0, 3).join(" · ")}</p>`;
 }
 
-function recentSessionItems(items, limit = 5) {
+function recentSessionItems(items, limit = 4) {
   const sessions = items
     .slice()
     .sort((left, right) => `${right.date}-${right.type}`.localeCompare(`${left.date}-${left.type}`))
     .slice(0, limit);
-
   if (!sessions.length) return emptyState("Aún no hay sesiones registradas.");
-
   return sessions
     .map(
       session => `
@@ -107,9 +108,8 @@ function recentSessionItems(items, limit = 5) {
     .join("");
 }
 
-function plannedSessionItems(items, limit = 5) {
+function plannedSessionItems(items, limit = 4) {
   if (!items.length) return emptyState("Aún no hay sesiones programadas.");
-
   return items
     .slice(0, limit)
     .map(
@@ -123,7 +123,6 @@ function plannedSessionItems(items, limit = 5) {
           <div class="button-row">
             <button class="primary compact" data-action="complete-planned-session" data-id="${item.id}">Hecho</button>
             <button class="ghost compact" data-action="cycle-planned-session-status" data-id="${item.id}">Estado</button>
-            <button class="ghost compact" data-action="delete-planned-session" data-id="${item.id}">Eliminar</button>
           </div>
         </article>
       `
@@ -132,10 +131,9 @@ function plannedSessionItems(items, limit = 5) {
 }
 
 function routineItems(items) {
-  if (!items.length) return emptyState("Aún no hay rutinas guardadas.");
-
+  if (!items.length) return emptyState("Aún no hay plantillas guardadas.");
   return items
-    .slice(0, 6)
+    .slice(0, 4)
     .map(
       item => `
         <article class="entry">
@@ -151,29 +149,53 @@ function routineItems(items) {
     .join("");
 }
 
-function libraryItems() {
-  return EXERCISE_GROUPS.map(
-    group => `
-      <article class="summary-card summary-card-soft">
-        <p class="eyebrow">${group.title}</p>
-        <p class="entry-meta">${group.items.join(" · ")}</p>
-      </article>
-    `
-  ).join("");
+function customExerciseItems(items) {
+  if (!items.length) return emptyState("Todavía no has añadido ejercicios propios.");
+  return items
+    .slice(0, 6)
+    .map(
+      item => `
+        <article class="entry">
+          <div>
+            <p class="entry-title">${item.name}</p>
+            <p class="entry-meta">${item.type}</p>
+            ${item.notes ? `<p class="entry-note">${item.notes}</p>` : ""}
+          </div>
+        </article>
+      `
+    )
+    .join("");
 }
 
-function nextPlannedHeadline(plannedSessions) {
-  const next = plannedSessions[0];
-  if (!next) return emptyState("No hay una siguiente sesión marcada todavía.");
-  return `
-    <article class="entry">
-      <div>
-        <p class="entry-title">${next.type} · ${next.activity}</p>
-        <p class="entry-meta">${next.date} · ${next.duration} min · ${formatPlanStatus(next.status)}</p>
-        ${sessionExercisePreview(next)}
-      </div>
-    </article>
-  `;
+function bestByActivity(items) {
+  const map = new Map();
+  items.forEach(session => {
+    const key = String(session.activity || "").trim();
+    if (!key) return;
+    const current = map.get(key) || { loadKg: 0, distanceKm: 0, duration: 0 };
+    map.set(key, {
+      loadKg: Math.max(current.loadKg, Number(session.loadKg || 0)),
+      distanceKm: Math.max(current.distanceKm, Number(session.distanceKm || 0)),
+      duration: Math.max(current.duration, Number(session.duration || 0))
+    });
+  });
+  return Array.from(map.entries())
+    .slice(0, 6)
+    .map(([activity, best]) => ({
+      activity,
+      detail: [best.loadKg ? `${best.loadKg} kg` : "", best.distanceKm ? `${best.distanceKm} km` : "", best.duration ? `${best.duration} min` : ""]
+        .filter(Boolean)
+        .join(" · ")
+    }))
+    .filter(item => item.detail);
+}
+
+function prPreview(items) {
+  const prs = bestByActivity(items);
+  if (!prs.length) return emptyState("Los mejores registros aparecerán cuando acumules más sesiones.");
+  return prs
+    .map(item => `<article class="entry"><div><p class="entry-title">${item.activity}</p><p class="entry-meta">${item.detail}</p></div></article>`)
+    .join("");
 }
 
 function signalPreview(health) {
@@ -190,17 +212,35 @@ function typeDistribution(items) {
     map.set(key, (map.get(key) || 0) + 1);
     return map;
   }, new Map());
-
   if (!totals.size) return emptyState("Todavía no hay sesiones registradas esta semana.");
-
   return Array.from(totals.entries())
     .sort((left, right) => right[1] - left[1])
     .map(([name, count]) => `<article class="entry"><div><p class="entry-title">${name}</p><p class="entry-meta">${count} sesión(es)</p></div></article>`)
     .join("");
 }
 
+function timerLabel(restTimer = {}) {
+  if (!restTimer.endsAt) return "Listo";
+  const remaining = Math.max(0, Math.ceil((restTimer.endsAt - Date.now()) / 1000));
+  const minutes = Math.floor(remaining / 60);
+  const seconds = String(remaining % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
+function timerButtons() {
+  return `
+    <div class="button-row button-row-start button-row-soft">
+      <button class="ghost compact" type="button" data-action="start-rest-timer" data-seconds="60">1 min</button>
+      <button class="ghost compact" type="button" data-action="start-rest-timer" data-seconds="90">1,5 min</button>
+      <button class="ghost compact" type="button" data-action="start-rest-timer" data-seconds="120">2 min</button>
+      <button class="ghost compact" type="button" data-action="clear-rest-timer">Parar</button>
+    </div>
+  `;
+}
+
 export function renderTrainingFeature(state, options = {}) {
   const currentView = options.currentView || "overview";
+  const restTimer = options.restTimer || {};
   const totals = weeklyTotals(state.training.sessions);
   const typeOptions = TRAINING_TYPES.map(type => `<option value="${type}">${type}</option>`).join("");
   const structureOptions = TRAINING_STRUCTURES.map(type => `<option value="${type}">${type}</option>`).join("");
@@ -216,9 +256,9 @@ export function renderTrainingFeature(state, options = {}) {
       <div class="training-focus-grid">
         ${sectionCard(
           "Registrar",
-          "Guardar sesión",
+          "Sesión hecha",
           `
-            <datalist id="exercise-library">${exerciseOptions()}</datalist>
+            <datalist id="exercise-library">${exerciseOptions(state)}</datalist>
             <form id="training-form" class="stack">
               <div class="field-grid">
                 <label><span>Fecha</span><input name="date" type="date" value="${todayKey()}" required></label>
@@ -229,24 +269,19 @@ export function renderTrainingFeature(state, options = {}) {
                 <label><span>Duración</span><input name="duration" type="number" min="1" value="60" required></label>
               </div>
               <details class="panel panel-toned disclosure-panel compact-disclosure">
-                <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Circuito, métricas y notas</h4></div></summary>
+                <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Estructura y métricas</h4></div></summary>
                 <div class="stack disclosure-body">
                   <div class="field-grid">
                     <label><span>Estructura</span><select name="structure"><option value="">Simple</option>${structureOptions}</select></label>
-                    <label><span>Rutina</span><input name="routineName" placeholder="Ej. Pierna A o Natación técnica"></label>
+                    <label><span>Rutina</span><input name="routineName" placeholder="Ej. Pierna A o Agua técnica"></label>
                   </div>
-                  <label><span>Ejercicios o bloques</span><textarea name="exercises" rows="4" placeholder="Un ejercicio por línea. Ej.&#10;Sentadilla 4x8&#10;Hip thrust 4x10&#10;Core 3 rondas"></textarea></label>
+                  <label><span>Bloques o ejercicios</span><textarea name="exercises" rows="4" placeholder="Un ejercicio por línea. También sirve para circuitos:&#10;3 rondas&#10;Crol 100m&#10;Pull buoy 50m"></textarea></label>
                   <div class="field-grid four">
                     <label><span>RPE</span><input name="rpe" type="number" min="1" max="10" placeholder="1-10"></label>
                     <label><span>Carga kg</span><input name="loadKg" type="number" min="0" placeholder="Opcional"></label>
                     <label><span>Distancia km</span><input name="distanceKm" type="number" step="0.1" min="0" placeholder="Opcional"></label>
-                    <label><span>Energía previa</span><input name="preEnergy" type="number" min="1" max="5" placeholder="1-5"></label>
+                    <label><span>Energía</span><input name="preEnergy" type="number" min="1" max="5" placeholder="1-5"></label>
                   </div>
-                  <div class="field-grid">
-                    <label><span>Recuperación</span><input name="recoveryScore" type="number" min="1" max="5" placeholder="1-5"></label>
-                    <label><span>Molestias</span><input name="sorenessScore" type="number" min="1" max="5" placeholder="1-5"></label>
-                  </div>
-                  <label><span>Notas</span><input name="notes" placeholder="Sensaciones, técnica, ritmo o contexto"></label>
                 </div>
               </details>
               <button class="primary" type="submit">Guardar sesión</button>
@@ -260,10 +295,23 @@ export function renderTrainingFeature(state, options = {}) {
   } else if (currentView === "plan") {
     body = `
       ${sectionCard(
-        "Programar",
-        "Sesión futura",
+        "Próximas",
+        "Lo ya programado",
         `
-          <datalist id="exercise-library">${exerciseOptions()}</datalist>
+          <section class="dashboard-summary compact-metrics feature-metrics-soft">
+            ${statCard("Futuras", plannedSessions.length, "guardadas")}
+            ${statCard("Hechas", plannedSessions.filter(item => item.status === "done").length, "cerradas")}
+            ${statCard("Parciales", plannedSessions.filter(item => item.status === "partial").length, "ajuste")}
+            ${statCard("Omitidas", plannedSessions.filter(item => item.status === "skipped").length, "saltadas")}
+          </section>
+          <div class="stack stack-tight">${plannedSessionItems(plannedSessions)}</div>
+        `,
+        "section-card-hero section-card-training"
+      )}
+      <details class="panel panel-toned disclosure-panel compact-disclosure">
+        <summary class="disclosure-summary"><div><p class="eyebrow">Nueva</p><h4>Programar sesión</h4></div></summary>
+        <div class="stack disclosure-body">
+          <datalist id="exercise-library">${exerciseOptions(state)}</datalist>
           <form id="planned-session-form" class="stack">
             <div class="field-grid">
               <label><span>Fecha</span><input name="date" type="date" value="${todayKey()}" required></label>
@@ -273,27 +321,23 @@ export function renderTrainingFeature(state, options = {}) {
               <label><span>Actividad</span><input name="activity" list="exercise-library" placeholder="Ej. upper, movilidad o crol" required></label>
               <label><span>Duración</span><input name="duration" type="number" min="1" value="60" required></label>
             </div>
-            <details class="panel panel-toned disclosure-panel compact-disclosure">
-              <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Estructura y notas</h4></div></summary>
-              <div class="stack disclosure-body">
-                <div class="field-grid">
-                  <label><span>Estructura</span><select name="structure"><option value="">Simple</option>${structureOptions}</select></label>
-                  <label><span>Estado</span><select name="status"><option value="planned">Previsto</option><option value="partial">Parcial</option><option value="done">Hecho</option><option value="skipped">Omitido</option></select></label>
-                </div>
-                <label><span>Rutina base</span><input name="routineName" placeholder="Opcional"></label>
-                <label><span>Notas</span><input name="notes" placeholder="Objetivo, marcas o ajuste esperado"></label>
-              </div>
-            </details>
+            <div class="field-grid">
+              <label><span>Estructura</span><select name="structure"><option value="">Simple</option>${structureOptions}</select></label>
+              <label><span>Estado</span><select name="status"><option value="planned">Previsto</option><option value="partial">Parcial</option><option value="done">Hecho</option><option value="skipped">Omitido</option></select></label>
+            </div>
+            <label><span>Rutina base</span><input name="routineName" placeholder="Opcional"></label>
+            <label><span>Notas</span><input name="notes" placeholder="Objetivo o ajuste esperado"></label>
             <button class="primary" type="submit">Programar sesión</button>
           </form>
-        `,
-        "section-card-tinted section-card-training"
-      )}
-      <div class="training-focus-grid">
-        ${sectionCard("Próximas", "Lo ya programado", `<div class="stack stack-tight">${plannedSessionItems(plannedSessions)}</div>`, "section-card-glass section-card-training-light")}
+        </div>
+      </details>
+      <details class="panel panel-toned disclosure-panel compact-disclosure">
+        <summary class="disclosure-summary"><div><p class="eyebrow">Base</p><h4>Rutinas y ejercicios propios</h4></div></summary>
+        <div class="stack disclosure-body">
+          <div class="training-focus-grid">
         ${sectionCard(
-          "Rutinas",
-          "Base reutilizable",
+          "Plantillas",
+          "Rutinas reutilizables",
           `
             <form id="routine-form" class="stack">
               <div class="field-grid">
@@ -301,16 +345,53 @@ export function renderTrainingFeature(state, options = {}) {
                 <label><span>Enfoque</span><input name="focus" placeholder="Fuerza glúteo, natación técnica..." required></label>
               </div>
               <label><span>Ejercicios</span><textarea name="exercises" rows="4" placeholder="Un ejercicio por línea"></textarea></label>
-              <button class="primary" type="submit">Guardar rutina</button>
+              <button class="primary" type="submit">Guardar plantilla</button>
             </form>
             <div class="stack stack-tight">${routineItems(state.training.routines)}</div>
           `,
           "section-card-glass section-card-training-light"
         )}
-      </div>
+        ${sectionCard(
+          "Propios",
+          "Ejercicios personalizados",
+          `
+            <form id="custom-exercise-form" class="stack">
+              <div class="field-grid">
+                <label><span>Nombre</span><input name="name" placeholder="Ej. 8x50 crol" required></label>
+                <label><span>Tipo</span><input name="type" placeholder="Natación, fuerza..." required></label>
+              </div>
+              <label><span>Nota</span><input name="notes" placeholder="Cuándo te sirve o cómo lo usas"></label>
+              <button class="primary" type="submit">Guardar ejercicio</button>
+            </form>
+            <div class="stack stack-tight">${customExerciseItems(state.training.customExercises || [])}</div>
+          `,
+          "section-card-glass section-card-training-light"
+        )}
+          </div>
+        </div>
+      </details>
     `;
   } else if (currentView === "library") {
-    body = sectionCard("Biblioteca", "Ejercicios y formatos base", `<section class="dashboard-summary compact-metrics">${libraryItems()}</section>`, "section-card-glass section-card-training-light");
+    body = sectionCard(
+      "Base",
+      "Biblioteca útil",
+      `
+        <section class="dashboard-summary compact-metrics template-grid">
+          ${EXERCISE_GROUPS.map(
+            group => `
+              <article class="summary-card summary-card-soft">
+                <p class="eyebrow">${group.title}</p>
+                <p class="entry-meta">${group.items.join(" · ")}</p>
+              </article>
+            `
+          ).join("")}
+        </section>
+        <div class="stack stack-tight">
+          ${customExerciseItems(state.training.customExercises || [])}
+        </div>
+      `,
+      "section-card-glass section-card-training-light"
+    );
   } else {
     body = `
       <div class="training-focus-grid">
@@ -327,10 +408,26 @@ export function renderTrainingFeature(state, options = {}) {
             <div class="button-row button-row-start button-row-soft">
               <button class="ghost compact" type="button" data-action="open-module-view" data-tab="training" data-view="log">Registrar</button>
               <button class="ghost compact" type="button" data-action="open-module-view" data-tab="training" data-view="plan">Programar</button>
+              <button class="ghost compact" type="button" data-action="open-module-view" data-tab="training" data-view="library">Base</button>
             </div>
           `,
           "section-card-hero section-card-training"
         )}
+        ${sectionCard(
+          "Descanso",
+          "Temporizador",
+          `
+            <article class="summary-card summary-card-soft">
+              <p class="eyebrow">Rest</p>
+              <p class="metric">${timerLabel(restTimer)}</p>
+              <p class="entry-meta">rápido entre bloques</p>
+            </article>
+            ${timerButtons()}
+          `,
+          "section-card-glass section-card-training-light"
+        )}
+      </div>
+      <div class="training-focus-grid">
         ${sectionCard(
           "Cruce",
           "Energía y recuperación",
@@ -338,26 +435,22 @@ export function renderTrainingFeature(state, options = {}) {
             <article class="entry"><div><p class="entry-title">Ciclo</p><p class="entry-meta">${formatCycleContextLabel(health.cycleContext)}</p></div></article>
             <article class="entry"><div><p class="entry-title">Energía media</p><p class="entry-meta">${health.avgEnergy ? health.avgEnergy.toFixed(1) : "-"} / 5</p></div></article>
             <div class="stack stack-tight">${signalPreview(health)}</div>
-            <div class="button-row button-row-start button-row-soft">
-              <button class="ghost compact" type="button" data-action="open-module-view" data-tab="recovery" data-view="overview">Ver sueño</button>
-              <button class="ghost compact" type="button" data-action="create-support-block" data-kind="recovery">Bloque suave</button>
-            </div>
+          `,
+          "section-card-glass section-card-training-light"
+        )}
+        ${sectionCard(
+          "Progresión",
+          "Tus mejores registros",
+          `
+            <div class="stack stack-tight">${prPreview(state.training.sessions)}</div>
+            <details class="panel panel-toned disclosure-panel compact-disclosure">
+              <summary class="disclosure-summary"><div><p class="eyebrow">Semana</p><h4>Reparto por tipo</h4></div></summary>
+              <div class="stack disclosure-body">${typeDistribution(state.training.sessions.filter(session => session.date >= addDaysToDateKey(todayKey(), -6)))}</div>
+            </details>
           `,
           "section-card-glass section-card-training-light"
         )}
       </div>
-      ${sectionCard(
-        "Siguiente",
-        "Próxima sesión",
-        `
-          ${nextPlannedHeadline(plannedSessions)}
-          <div class="stack stack-tight">${typeDistribution(state.training.sessions.filter(session => session.date >= addDaysToDateKey(todayKey(), -6)))}</div>
-          <div class="button-row button-row-start button-row-soft">
-            <button class="ghost compact" type="button" data-action="open-module-view" data-tab="training" data-view="library">Base</button>
-          </div>
-        `,
-        "section-card-glass section-card-training-light"
-      )}
     `;
   }
 

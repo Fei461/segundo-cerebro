@@ -12,6 +12,24 @@ import { addDaysToDateKey, localDateKey, weekStartKeyFromLocalDate } from "../do
 import { formatPlanStatus } from "../ui/formatters.js";
 import { emptyState, featureHeader, sectionCard, viewSwitcher } from "../ui/feature-layout.js";
 
+const SLOT_LABELS = {
+  breakfasts: "Desayuno",
+  lunches: "Comida",
+  dinners: "Cena",
+  snacks: "Snack"
+};
+
+const FAMILY_LABELS = {
+  "Cereal/tuberculo": "Cereal / tubérculo",
+  "Ave y huevos": "Ave y huevos",
+  "Carne roja y cerdo": "Carne roja y cerdo",
+  "Pescado y marisco": "Pescado y marisco",
+  "Proteina vegetal": "Proteína vegetal",
+  Verduras: "Verduras",
+  Fruta: "Fruta",
+  "Lacteos/alternativos": "Lácteos / alternativos"
+};
+
 function todayKey() {
   return localDateKey(new Date());
 }
@@ -19,10 +37,12 @@ function todayKey() {
 function currentWeekKeySet() {
   const startKey = weekStartKeyFromLocalDate(new Date());
   const keys = [];
-  for (let index = 0; index < 7; index += 1) {
-    keys.push(addDaysToDateKey(startKey, index));
-  }
+  for (let index = 0; index < 7; index += 1) keys.push(addDaysToDateKey(startKey, index));
   return new Set(keys);
+}
+
+function displayFamilyLabel(family) {
+  return FAMILY_LABELS[String(family || "").trim()] || String(family || "").trim();
 }
 
 function pantryIngredientList() {
@@ -36,7 +56,9 @@ function pantryOptions() {
 function familyOptions(selected = "") {
   return `
     <option value="">Sin definir</option>
-    ${VARIETY_FAMILY_RULES.map(rule => `<option value="${rule.family}"${rule.family === selected ? " selected" : ""}>${rule.family}</option>`).join("")}
+    ${VARIETY_FAMILY_RULES.map(
+      rule => `<option value="${rule.family}"${rule.family === selected ? " selected" : ""}>${displayFamilyLabel(rule.family)}</option>`
+    ).join("")}
   `;
 }
 
@@ -52,6 +74,18 @@ function statCard(label, value, detail) {
 
 function recipeOptions(recipes) {
   return recipes.map(recipe => `<option value="${recipe.id}">${recipe.name}</option>`).join("");
+}
+
+function templateSelectOptions() {
+  return Object.entries(PERSONAL_MEAL_TEMPLATES)
+    .map(
+      ([slotKey, items]) => `
+        <optgroup label="${SLOT_LABELS[slotKey] || slotKey}">
+          ${items.map(item => `<option value="${slotKey}::${item.name}">${item.name}</option>`).join("")}
+        </optgroup>
+      `
+    )
+    .join("");
 }
 
 function mealFamilies(meal) {
@@ -88,6 +122,29 @@ function weeklyPrepBoard(state) {
   return getWeeklyNutritionPrepBoard({ plannedMeals, loggedMeals, recipes: state.recipes });
 }
 
+function mealItems(meals, emptyText = "Todavía no has registrado ninguna comida hoy.") {
+  if (!meals.length) return emptyState(emptyText);
+  return meals
+    .map(meal => {
+      const families = mealFamilies(meal);
+      const names = meal.items.map(item => item.name).join(", ");
+      const ingredients = meal.items.map(item => item.ingredientsText).filter(Boolean).join(" · ");
+      const reaction = Array.isArray(meal.reaction) ? meal.reaction.filter(Boolean).join(" · ") : String(meal.reaction || "").trim();
+      return `
+        <article class="entry">
+          <div>
+            <p class="entry-title">${meal.type} · ${names}</p>
+            <p class="entry-meta">${families.length ? families.map(displayFamilyLabel).join(" · ") : "Grupos sin definir"}</p>
+            ${ingredients ? `<p class="entry-note">${ingredients}</p>` : ""}
+            ${reaction ? `<p class="entry-note">Postcomida: ${reaction}</p>` : ""}
+          </div>
+          <button class="ghost compact" data-action="delete-meal" data-id="${meal.id}">Eliminar</button>
+        </article>
+      `;
+    })
+    .join("");
+}
+
 function recipeItems(recipes) {
   if (!recipes.length) return emptyState("Aún no hay recetas guardadas.");
   return recipes
@@ -96,7 +153,7 @@ function recipeItems(recipes) {
         <article class="entry">
           <div>
             <p class="entry-title">${recipe.name}</p>
-            <p class="entry-meta">${recipe.servings} raciones · ${(recipe.familyCoverage || []).slice(0, 3).join(" · ") || "familias por definir"}</p>
+            <p class="entry-meta">${recipe.servings} raciones · ${(recipe.familyCoverage || []).slice(0, 3).map(displayFamilyLabel).join(" · ") || "familias por definir"}</p>
           </div>
           <div class="button-row">
             <button class="ghost compact" data-action="log-recipe" data-id="${recipe.id}">Registrar</button>
@@ -108,35 +165,12 @@ function recipeItems(recipes) {
     .join("");
 }
 
-function mealItems(meals) {
-  if (!meals.length) return emptyState("Todavía no has registrado ninguna comida hoy.");
-  return meals
-    .map(meal => {
-      const families = mealFamilies(meal);
-      const names = meal.items.map(item => item.name).join(", ");
-      const ingredients = meal.items.map(item => item.ingredientsText).filter(Boolean).join(" · ");
-      const reaction = Array.isArray(meal.reaction) ? meal.reaction.filter(Boolean).join(" · ") : String(meal.reaction || "").trim();
-      return `
-        <article class="entry">
-          <div>
-            <p class="entry-title">${meal.type} · ${names}</p>
-            <p class="entry-meta">${families.length ? families.join(" · ") : "Grupos sin definir"}</p>
-            ${ingredients ? `<p class="entry-note">${ingredients}</p>` : ""}
-            ${reaction ? `<p class="entry-note">Postcomida: ${reaction}</p>` : ""}
-          </div>
-          <button class="ghost compact" data-action="delete-meal" data-id="${meal.id}">Eliminar</button>
-        </article>
-      `;
-    })
-    .join("");
-}
-
 function plannerItems(items) {
   if (!items.length) return emptyState("Aún no hay comidas programadas.");
   return items
     .slice()
     .sort((left, right) => `${left.date}-${left.slot}`.localeCompare(`${right.date}-${right.slot}`))
-    .slice(0, 8)
+    .slice(0, 6)
     .map(
       item => `
         <article class="entry">
@@ -144,11 +178,11 @@ function plannerItems(items) {
             <p class="entry-title">${item.date} · ${item.slot}</p>
             <p class="entry-meta">${item.name} · ${formatPlanStatus(item.status)}</p>
             ${item.ingredientsText ? `<p class="entry-note">${item.ingredientsText}</p>` : ""}
-            ${Array.isArray(item.families) && item.families.length ? `<p class="entry-note">${item.families.join(" · ")}</p>` : ""}
+            ${Array.isArray(item.families) && item.families.length ? `<p class="entry-note">${item.families.map(displayFamilyLabel).join(" · ")}</p>` : ""}
           </div>
           <div class="button-row">
             <button class="ghost compact" data-action="cycle-planned-meal-status" data-id="${item.id}">Estado</button>
-            <button class="ghost compact" data-action="delete-planned-meal" data-id="${item.id}">Eliminar</button>
+            <button class="ghost compact" data-action="regenerate-planned-meal" data-id="${item.id}">Cambiar</button>
           </div>
         </article>
       `
@@ -156,16 +190,24 @@ function plannerItems(items) {
     .join("");
 }
 
-function pantrySummaryCards(pantryStatus) {
+function pantryCounts(pantryStatus) {
   const values = Object.values(pantryStatus || {});
-  const have = values.filter(value => value === "have").length;
-  const need = values.filter(value => value === "need").length;
+  return {
+    have: values.filter(value => value === "have").length,
+    need: values.filter(value => value === "need").length,
+    bought: values.filter(value => value === "bought").length,
+    avoid: values.filter(value => value === "avoid").length
+  };
+}
+
+function pantrySummaryCards(pantryStatus) {
+  const totals = pantryCounts(pantryStatus);
   return `
     <section class="dashboard-summary compact-metrics feature-metrics-soft">
-      ${statCard("Tengo", have, "marcados")}
-      ${statCard("Falta", need, "por reponer")}
-      ${statCard("Fondos", PERSONAL_PANTRY.length, "familias")}
-      ${statCard("Plantillas", Object.keys(PERSONAL_MEAL_TEMPLATES).length, "bases")}
+      ${statCard("Tengo", totals.have, "en casa")}
+      ${statCard("Falta", totals.need, "por comprar")}
+      ${statCard("Comprado", totals.bought, "cerrado")}
+      ${statCard("Evitar", totals.avoid, "marcado")}
     </section>
   `;
 }
@@ -182,12 +224,7 @@ function pantryCards(pantryStatus) {
                 ${group.items
                   .map(item => {
                     const status = pantryStatus?.[item] || "";
-                    const label = status === "have" ? "Tengo" : status === "need" ? "Falta" : "Neutro";
-                    return `
-                      <button class="pantry-chip${status ? ` is-${status}` : ""}" type="button" data-action="toggle-pantry-item" data-item="${item}" aria-label="${item}: ${label}">
-                        ${item}
-                      </button>
-                    `;
+                    return `<button class="pantry-chip${status ? ` is-${status}` : ""}" type="button" data-action="toggle-pantry-item" data-item="${item}">${item}</button>`;
                   })
                   .join("")}
               </div>
@@ -199,99 +236,31 @@ function pantryCards(pantryStatus) {
   `;
 }
 
-function pantryNeedList(pantryStatus) {
-  const needItems = Object.entries(pantryStatus || {})
-    .filter(([, value]) => value === "need")
+function pantryListByStatus(pantryStatus, status, emptyText) {
+  const items = Object.entries(pantryStatus || {})
+    .filter(([, value]) => value === status)
     .map(([item]) => item);
-  if (!needItems.length) return emptyState("Todavía no has marcado faltas en la despensa.");
-  return needItems.map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`).join("");
+  if (!items.length) return emptyState(emptyText);
+  return items.slice(0, 8).map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`).join("");
 }
 
-function pantryHaveList(pantryStatus) {
-  const haveItems = Object.entries(pantryStatus || {})
-    .filter(([, value]) => value === "have")
-    .map(([item]) => item);
-  if (!haveItems.length) return emptyState("Aún no has marcado básicos disponibles.");
-  return haveItems.slice(0, 12).map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`).join("");
-}
-
-function pantryCounts(pantryStatus) {
-  const values = Object.values(pantryStatus || {});
-  return {
-    have: values.filter(value => value === "have").length,
-    need: values.filter(value => value === "need").length
-  };
-}
-
-function templateFamilyPreview(items) {
-  return Array.from(new Set(items.flatMap(item => varietyFamiliesFromText(`${item.name || ""} ${(item.ingredients || []).join(" ")}`))))
-    .slice(0, 3)
-    .join(" · ");
-}
-
-function templateCards(limit = 6) {
+function baseTemplateCards({ limit = 4, action = "log" } = {}) {
   return Object.entries(PERSONAL_MEAL_TEMPLATES)
-    .flatMap(([slot, items]) =>
-      items.slice(0, 2).map(template => `
-        <article class="summary-card summary-card-soft template-card">
-          <p class="eyebrow">${slot}</p>
-          <p class="entry-title">${template.name}</p>
-          <p class="entry-meta">${templateFamilyPreview([template]) || "familias base"}</p>
-          <button class="ghost compact" type="button" data-action="log-meal-template" data-slot="${slot}" data-name="${template.name.replace(/"/g, "&quot;")}">Usar hoy</button>
-        </article>
-      `)
+    .flatMap(([slotKey, items]) =>
+      items.slice(0, 1).map(template => {
+        const buttonLabel = action === "log" ? "Usar hoy" : "Usar hoy";
+        const actionType = "log-meal-template";
+        return `
+          <article class="summary-card summary-card-soft template-card">
+            <p class="eyebrow">${SLOT_LABELS[slotKey] || slotKey}</p>
+            <p class="entry-title">${template.name}</p>
+            <p class="entry-meta">${(template.families || []).slice(0, 2).map(displayFamilyLabel).join(" · ")}</p>
+            <button class="ghost compact" type="button" data-action="${actionType}" data-slot="${slotKey}" data-name="${template.name.replace(/"/g, "&quot;")}">${buttonLabel}</button>
+          </article>
+        `;
+      })
     )
     .slice(0, limit)
-    .join("");
-}
-
-function quickTemplateButtons() {
-  return Object.entries(PERSONAL_MEAL_TEMPLATES)
-    .flatMap(([slot, items]) =>
-      items.slice(0, 1).map(template => `
-        <button class="ghost compact" type="button" data-action="log-meal-template" data-slot="${slot}" data-name="${template.name.replace(/"/g, "&quot;")}">
-          ${template.name}
-        </button>
-      `)
-    )
-    .slice(0, 4)
-    .join("");
-}
-
-function signalItems(state) {
-  const items = mealReactionSignals(state.nutrition.meals).slice(0, 3);
-  if (!items.length) return emptyState("Aún no hay suficientes postcomidas para detectar patrones.");
-  return items
-    .map(item => `<article class="entry"><div><p class="entry-title">${item.name}</p><p class="entry-meta">${item.count} apariciones</p></div></article>`)
-    .join("");
-}
-
-function familyChipRow(families) {
-  if (!families.length) return emptyState("Todavía no has cubierto grupos hoy.");
-  return `
-    <div class="family-chip-row">
-      ${families.map(family => `<span class="family-chip">${family}</span>`).join("")}
-    </div>
-  `;
-}
-
-function prepSuggestionPreview(review) {
-  const suggestions = review.prepSuggestions.slice(0, 3);
-  if (!suggestions.length) return emptyState("Todavía no hay una preparación dominante.");
-  return suggestions.map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`).join("");
-}
-
-function plannerNeedSummary(review) {
-  const missing = review.variety.missingFamilies.slice(0, 2);
-  if (!missing.length) return "Semana bastante cubierta.";
-  return `Conviene meter: ${missing.join(" · ")}`;
-}
-
-function familyFocusList(review, coveredToday) {
-  const todayMissing = review.variety.missingFamilies.filter(item => !coveredToday.includes(item)).slice(0, 2);
-  if (!todayMissing.length) return emptyState("Hoy ya vas razonablemente cubierta a nivel de grupos.");
-  return todayMissing
-    .map(item => `<article class="entry"><div><p class="entry-title">${item}</p><p class="entry-meta">Buen hueco para la siguiente comida.</p></div></article>`)
     .join("");
 }
 
@@ -305,7 +274,7 @@ function shoppingGroupCards(groups) {
           <p class="eyebrow">${group.family}</p>
           <div class="stack stack-tight">
             ${group.items
-              .slice(0, 5)
+              .slice(0, 4)
               .map(
                 item => `
                   <div class="shopping-item-row">
@@ -328,6 +297,103 @@ function shoppingGroupCards(groups) {
     .join("");
 }
 
+function familyChipRow(families) {
+  if (!families.length) return emptyState("Todavía no has cubierto grupos hoy.");
+  return `<div class="family-chip-row">${families.map(family => `<span class="family-chip">${displayFamilyLabel(family)}</span>`).join("")}</div>`;
+}
+
+function favoriteMealsPreview(items) {
+  if (!items.length) return emptyState("Todavía no has definido favoritos.");
+  return items.slice(0, 6).map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`).join("");
+}
+
+function avoidIngredientsPreview(items) {
+  if (!items.length) return emptyState("Todavía no has marcado ingredientes a evitar.");
+  return items.slice(0, 6).map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`).join("");
+}
+
+function signalItems(state) {
+  const items = mealReactionSignals(state.nutrition.meals).slice(0, 3);
+  if (!items.length) return emptyState("Aún no hay suficientes postcomidas para detectar patrones.");
+  return items
+    .map(item => `<article class="entry"><div><p class="entry-title">${item.name}</p><p class="entry-meta">${item.count} apariciones</p></div></article>`)
+    .join("");
+}
+
+function nextMissingFamilies(review, coveredToday) {
+  const pending = review.variety.missingFamilies.filter(family => !coveredToday.includes(family));
+  return pending.slice(0, 3);
+}
+
+function pantryCorePreview(pantryStatus, status, fallbackText) {
+  const items = Object.entries(pantryStatus || {})
+    .filter(([, value]) => value === status)
+    .map(([item]) => item)
+    .slice(0, 6);
+  if (!items.length) return emptyState(fallbackText);
+  return items.map(item => `<span class="family-chip">${item}</span>`).join("");
+}
+
+function recurringMealsBlock() {
+  return `
+    <section class="dashboard-summary compact-metrics template-grid">
+      ${baseTemplateCards({ limit: 4, action: "log" })}
+    </section>
+  `;
+}
+
+function plannerFocusCard(review, plannedToday) {
+  const headline = plannedToday.length
+    ? `${plannedToday.length} comida(s) ya colocadas hoy`
+    : "Hoy sigue libre";
+  const detail = review.variety.missingFamilies.length
+    ? `Conviene cubrir ${review.variety.missingFamilies.slice(0, 2).map(displayFamilyLabel).join(" · ")}`
+    : "La variedad semanal va bien";
+  return `
+    <article class="summary-card summary-card-soft">
+      <p class="eyebrow">Foco</p>
+      <p class="entry-title">${headline}</p>
+      <p class="entry-meta">${detail}</p>
+    </article>
+  `;
+}
+
+function plannedTodayPreview(plannedToday) {
+  if (!plannedToday.length) return emptyState("Hoy no tienes comidas previstas todavía.");
+  return plannedToday
+    .slice()
+    .sort((left, right) => String(left.slot || "").localeCompare(String(right.slot || "")))
+    .slice(0, 3)
+    .map(
+      item => `
+        <article class="entry">
+          <div>
+            <p class="entry-title">${item.slot}</p>
+            <p class="entry-meta">${item.name}</p>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function prepPreview(prep) {
+  const items = Array.isArray(prep.batchItems) ? prep.batchItems.slice(0, 3) : [];
+  if (!items.length) return emptyState("Aún no hay prep semanal claro.");
+  return items
+    .map(
+      item => `
+        <article class="entry">
+          <div>
+            <p class="entry-title">${item.title}</p>
+            <p class="entry-meta">${item.detail}</p>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
 export function renderNutritionFeature(state, options = {}) {
   const currentView = options.currentView || "today";
   const today = todayKey();
@@ -337,15 +403,24 @@ export function renderNutritionFeature(state, options = {}) {
   const review = weeklyReview(state);
   const prep = weeklyPrepBoard(state);
   const plannedMeals = getPlannedMeals(state);
+  const plannedToday = plannedMeals.filter(item => item.date === today);
   const pantryStatus = state.nutrition.pantryStatus || {};
   const groupedShoppingList = prep.review?.groupedShoppingList || [];
-  const pantryTotals = pantryCounts(pantryStatus);
+  const favoriteMeals = Array.isArray(state.nutrition.favoriteMeals) ? state.nutrition.favoriteMeals : [];
+  const avoidIngredients = Array.isArray(state.nutrition.avoidIngredients) ? state.nutrition.avoidIngredients : [];
+  const missingToday = nextMissingFamilies(review, coveredToday);
 
   let body = "";
 
   if (currentView === "log") {
     body = `
       <div class="nutrition-secondary-grid">
+        ${sectionCard(
+          "Atajos",
+          "Tus bases reales",
+          recurringMealsBlock(),
+          "section-card-glass section-card-nutrition-light"
+        )}
         ${sectionCard(
           "Registrar",
           "Comida manual",
@@ -354,89 +429,145 @@ export function renderNutritionFeature(state, options = {}) {
             <form id="meal-form" class="stack">
               <div class="field-grid">
                 <label><span>Tipo</span><select name="type"><option>Desayuno</option><option>Comida</option><option>Cena</option><option>Snack</option></select></label>
-                <label><span>Nombre</span><input name="name" placeholder="Ej. pasta con pollo, yogur con fruta..." required></label>
+                <label><span>Nombre</span><input name="name" placeholder="Ej. arroz con pollo" required></label>
               </div>
               <div class="field-grid">
                 <label><span>Grupo principal</span><select name="primaryFamily">${familyOptions()}</select></label>
                 <label><span>Grupo secundario</span><select name="secondaryFamily">${familyOptions()}</select></label>
               </div>
-              <label><span>Ingredientes</span><input name="ingredientsText" list="pantry-ingredients" placeholder="Ej. arroz, pollo, zanahoria"></label>
-              <label><span>Postcomida</span><input name="reaction" placeholder="Ej. ligera, pesada, hinchazón"></label>
+              <label><span>Ingredientes clave</span><input name="ingredientsText" list="pantry-ingredients" placeholder="Ej. arroz, pollo, zanahoria"></label>
+              <label><span>Postcomida</span><input name="reaction" placeholder="Ligera, pesada, hinchazón..."></label>
               <button class="primary" type="submit">Guardar comida</button>
-            </form>
-            <form id="weight-form" class="inline-form inline-form-soft">
-              <label><span>Peso</span><input name="weight" type="number" step="0.1" min="0" placeholder="kg"></label>
-              <button class="ghost compact" type="submit">Guardar peso</button>
             </form>
           `,
           "section-card-tinted section-card-nutrition"
         )}
-        ${sectionCard(
-          "Plantillas",
-          "Usar sin pensar",
-          `
-            <div class="button-row button-row-start button-row-wrap">
-              ${quickTemplateButtons()}
-            </div>
-            <div class="stack stack-tight">${mealItems(mealsToday)}</div>
-          `,
-          "section-card-glass section-card-nutrition-light"
-        )}
+        ${sectionCard("Registro", "Comidas de hoy", `<div class="stack stack-tight">${mealItems(mealsToday)}</div>`, "section-card-glass section-card-nutrition-light")}
       </div>
     `;
   } else if (currentView === "plan") {
     body = `
+      ${sectionCard(
+        "Plan",
+        "Semana comida",
+        `
+          <section class="dashboard-summary compact-metrics feature-metrics-soft">
+            ${statCard("Previstas", plannedMeals.length, "totales")}
+            ${statCard("Hoy", plannedToday.length, "previstas")}
+            ${statCard("Recetas", state.recipes.length, "guardadas")}
+            ${statCard("Variedad", `${review.variety.covered}/8`, "familias")}
+          </section>
+          ${plannerFocusCard(review, plannedToday)}
+          <div class="nutrition-secondary-grid">
+            ${sectionCard("Hoy", "Lo ya previsto", `<div class="stack stack-tight">${plannedTodayPreview(plannedToday)}</div>`, "section-card-glass section-card-nutrition-light")}
+            ${sectionCard("Prep", "Lo que conviene adelantar", `<div class="stack stack-tight">${prepPreview(prep)}</div>`, "section-card-glass section-card-nutrition-light")}
+          </div>
+        `,
+        "section-card-hero section-card-nutrition"
+      )}
+      <details class="panel panel-toned disclosure-panel compact-disclosure">
+        <summary class="disclosure-summary"><div><p class="eyebrow">Nueva</p><h4>Añadir comida prevista</h4></div></summary>
+        <div class="stack disclosure-body">
+          <datalist id="pantry-ingredients">${pantryOptions()}</datalist>
+          <form id="planner-form" class="stack">
+            <div class="field-grid">
+              <label><span>Fecha</span><input name="date" type="date" value="${today}" required></label>
+              <label><span>Slot</span><select name="slot"><option>Desayuno</option><option selected>Comida</option><option>Cena</option><option>Snack</option></select></label>
+            </div>
+            <div class="field-grid">
+              <label><span>Plantilla</span><select name="templateKey"><option value="">Elegir una base real</option>${templateSelectOptions()}</select></label>
+              <label><span>Receta</span><select name="recipeId"><option value="">o usar receta</option>${recipeOptions(state.recipes)}</select></label>
+            </div>
+            <div class="field-grid">
+              <label><span>Nombre visible</span><input name="name" placeholder="Solo si es libre"></label>
+              <label><span>Nota</span><input name="notes" placeholder="Fuera, sobras, batch..."></label>
+            </div>
+            <details class="panel panel-toned disclosure-panel compact-disclosure">
+              <summary class="disclosure-summary"><div><p class="eyebrow">Libre</p><h4>Más detalle</h4></div></summary>
+              <div class="stack disclosure-body">
+                <div class="field-grid">
+                  <label><span>Grupo principal</span><select name="primaryFamily">${familyOptions()}</select></label>
+                  <label><span>Grupo secundario</span><select name="secondaryFamily">${familyOptions()}</select></label>
+                </div>
+                <label><span>Ingredientes previstos</span><textarea name="ingredientsText" rows="3" placeholder="Solo si no usas plantilla o receta"></textarea></label>
+              </div>
+            </details>
+            <button class="primary" type="submit">Guardar en plan</button>
+          </form>
+        </div>
+      </details>
+      ${sectionCard("Rotación", "Bases de la semana", `<section class="dashboard-summary compact-metrics template-grid">${baseTemplateCards({ limit: 4, action: "log" })}</section>`, "section-card-glass section-card-nutrition-light")}
+      <details class="panel panel-toned disclosure-panel compact-disclosure">
+        <summary class="disclosure-summary"><div><p class="eyebrow">Semana</p><h4>Ver plan completo</h4></div></summary>
+        <div class="stack disclosure-body">${plannerItems(plannedMeals)}</div>
+      </details>
+    `;
+  } else if (currentView === "shopping") {
+    body = `
+      ${sectionCard(
+        "Compra",
+        "Lista útil",
+        `
+          ${pantrySummaryCards(pantryStatus)}
+          <section class="dashboard-summary compact-metrics pantry-shopping-grid">${shoppingGroupCards(groupedShoppingList)}</section>
+        `,
+        "section-card-hero section-card-nutrition"
+      )}
       <div class="nutrition-secondary-grid">
-        ${sectionCard(
-          "Planner",
-          "Plan semanal real",
-          `
-            <datalist id="pantry-ingredients">${pantryOptions()}</datalist>
-            <form id="planner-form" class="stack">
-              <div class="field-grid">
-                <label><span>Fecha</span><input name="date" type="date" value="${today}" required></label>
-                <label><span>Slot</span><select name="slot"><option>Desayuno</option><option selected>Comida</option><option>Cena</option><option>Snack</option></select></label>
-              </div>
-              <div class="field-grid">
-                <label><span>Receta</span><select name="recipeId"><option value="">Libre</option>${recipeOptions(state.recipes)}</select></label>
-                <label><span>Nombre visible</span><input name="name" placeholder="Ej. bowl rápido, tortilla suave..."></label>
-              </div>
-              <div class="field-grid">
-                <label><span>Grupo principal</span><select name="primaryFamily">${familyOptions()}</select></label>
-                <label><span>Grupo secundario</span><select name="secondaryFamily">${familyOptions()}</select></label>
-              </div>
-              <label><span>Ingredientes previstos</span><textarea name="ingredientsText" rows="3" placeholder="Unos pocos ingredientes clave, separados por comas"></textarea></label>
-              <label><span>Nota</span><input name="notes" placeholder="Batch cooking, sobras, comida fuera..."></label>
-              <button class="primary" type="submit">Guardar en planner</button>
-            </form>
-            <p class="muted">${plannerNeedSummary(review)}</p>
-          `,
-          "section-card-tinted section-card-nutrition"
-        )}
-        ${sectionCard("Previstas", "Lo ya programado", `<div class="stack stack-tight">${plannerItems(plannedMeals)}</div>`, "section-card-glass section-card-nutrition-light")}
-        ${sectionCard(
-          "Preparación",
-          "Compra y base semanal",
-          `
-            <div class="button-row button-row-start button-row-soft">
-              <button class="primary compact" data-action="apply-weekly-nutrition-pack">Preparar semana</button>
-              <button class="ghost compact" data-action="save-weekly-nutrition-notes">Guardar notas</button>
-            </div>
-            <div class="stack stack-tight">
-              ${groupedShoppingList.length
-                ? groupedShoppingList
-                    .slice(0, 5)
-                    .map(group => `<article class="entry"><div><p class="entry-title">${group.family}</p><p class="entry-meta">${group.items.slice(0, 4).map(item => item.name).join(" · ")}</p></div></article>`)
-                    .join("")
-                : emptyState("Aún no hay suficiente planner para generar compra automática.")}
-            </div>
-            <div class="stack stack-tight">
-              ${prepSuggestionPreview(review)}
-            </div>
-          `,
-          "section-card-glass section-card-nutrition-light"
-        )}
+        ${sectionCard("Falta", "Lo que compras esta semana", `<div class="stack stack-tight">${pantryListByStatus(pantryStatus, "need", "Todavía no has marcado faltas.")}</div>`, "section-card-glass section-card-nutrition-light")}
+        ${sectionCard("Cerrado", "Lo que ya está resuelto", `<div class="stack stack-tight">${pantryListByStatus(pantryStatus, "bought", "Todavía no has cerrado compras.")}</div>`, "section-card-glass section-card-nutrition-light")}
       </div>
+    `;
+  } else if (currentView === "pantry") {
+    body = `
+      ${sectionCard(
+        "Despensa",
+        "Lo que tienes y lo que falta",
+        `
+          ${pantrySummaryCards(pantryStatus)}
+          <div class="stack stack-tight">
+            <div>
+              <p class="eyebrow">En casa</p>
+              <div class="family-chip-row">${pantryCorePreview(pantryStatus, "have", "Todavía no has marcado básicos en casa.")}</div>
+            </div>
+            <div>
+              <p class="eyebrow">Por comprar</p>
+              <div class="family-chip-row">${pantryCorePreview(pantryStatus, "need", "Todavía no has marcado faltas.")}</div>
+            </div>
+          </div>
+          <form id="pantry-item-form" class="inline-form inline-form-soft">
+            <label><span>Añadir a compra</span><input name="item" placeholder="Ej. avena, tomates, garbanzos"></label>
+            <button class="ghost compact" type="submit">Añadir</button>
+          </form>
+          <div class="button-row button-row-start button-row-soft">
+            <button class="ghost compact" type="button" data-action="clear-pantry-status">Limpiar marcas</button>
+          </div>
+          <p class="muted">Toque único: tengo → falta → comprado → evitar.</p>
+        `,
+        "section-card-hero section-card-nutrition"
+      )}
+      <details class="panel panel-toned disclosure-panel compact-disclosure">
+        <summary class="disclosure-summary"><div><p class="eyebrow">Editar</p><h4>Ver toda la despensa</h4></div></summary>
+        <div class="stack disclosure-body">${pantryCards(pantryStatus)}</div>
+      </details>
+      <details class="panel panel-toned disclosure-panel compact-disclosure">
+        <summary class="disclosure-summary"><div><p class="eyebrow">Preferencias</p><h4>Favoritos y evitar</h4></div></summary>
+        <div class="stack disclosure-body">
+          <form id="nutrition-preferences-form" class="stack">
+            <label><span>Comidas favoritas</span><textarea name="favoriteMeals" rows="4" placeholder="Una por línea o separadas por coma">${favoriteMeals.join("\n")}</textarea></label>
+            <label><span>Ingredientes a evitar</span><textarea name="avoidIngredients" rows="4" placeholder="Uno por línea o separados por coma">${avoidIngredients.join("\n")}</textarea></label>
+            <button class="primary" type="submit">Guardar preferencias</button>
+          </form>
+          <div class="nutrition-secondary-grid">
+            ${sectionCard("Favoritos", "Lo que sí quieres repetir", `<div class="stack stack-tight">${favoriteMealsPreview(favoriteMeals)}</div>`, "section-card-glass section-card-nutrition-light")}
+            ${sectionCard("Evitar", "Lo que te aleja", `<div class="stack stack-tight">${avoidIngredientsPreview(avoidIngredients)}</div>`, "section-card-glass section-card-nutrition-light")}
+          </div>
+        </div>
+      </details>
+      <details class="panel panel-toned disclosure-panel compact-disclosure">
+        <summary class="disclosure-summary"><div><p class="eyebrow">Lectura</p><h4>Tolerancia y repetición</h4></div></summary>
+        <div class="stack disclosure-body">${signalItems(state)}</div>
+      </details>
     `;
   } else if (currentView === "recipes") {
     body = `
@@ -447,7 +578,7 @@ export function renderNutritionFeature(state, options = {}) {
           `
             <form id="recipe-form" class="stack">
               <div class="field-grid">
-                <label><span>Nombre</span><input name="name" placeholder="Ej. Bowl tofu arroz" required></label>
+                <label><span>Nombre</span><input name="name" placeholder="Ej. arepa de pollo" required></label>
                 <label><span>Raciones</span><input name="servings" type="number" min="1" value="2" required></label>
               </div>
               <label><span>Ingredientes</span><textarea name="ingredients" rows="5" placeholder="Arroz | Cereal/tuberculo&#10;Pollo | Ave y huevos&#10;Zanahoria | Verduras" required></textarea></label>
@@ -458,107 +589,37 @@ export function renderNutritionFeature(state, options = {}) {
         )}
         ${sectionCard("Guardadas", "Registrar o planificar", `<div class="stack stack-tight">${recipeItems(state.recipes)}</div>`, "section-card-glass section-card-nutrition-light")}
       </div>
-      ${sectionCard("Plantillas", "Usar sin pensar", `<section class="dashboard-summary compact-metrics template-grid">${templateCards(6)}</section>`, "section-card-glass section-card-nutrition-light")}
-    `;
-  } else if (currentView === "pantry") {
-    body = `
-      ${sectionCard(
-        "Despensa",
-        "Tengo y falta",
-        `
-          ${pantrySummaryCards(pantryStatus)}
-          <p class="muted">Toca para alternar entre tengo, falta o neutro.</p>
-          <form id="pantry-item-form" class="inline-form inline-form-soft">
-            <label><span>Añadir a compra</span><input name="item" placeholder="Ej. garbanzos, tomates, avena"></label>
-            <button class="ghost compact" type="submit">Añadir</button>
-          </form>
-          <div class="button-row button-row-start button-row-soft">
-            <button class="ghost compact" type="button" data-action="clear-pantry-status">Limpiar marcas</button>
-          </div>
-          <div class="stack stack-tight">${pantryCards(pantryStatus)}</div>
-        `,
-        "section-card-hero section-card-nutrition"
-      )}
-      <details class="panel panel-toned compact-vault-bar disclosure-panel">
-        <summary class="disclosure-summary">
-          <div>
-            <p class="eyebrow">Lista viva</p>
-            <h4>Tengo, falta y compra</h4>
-          </div>
-        </summary>
-        <div class="stack disclosure-body">
-          <div class="nutrition-secondary-grid">
-            ${sectionCard("Falta", "Lo que reponer", `<div class="stack stack-tight">${pantryNeedList(pantryStatus)}</div>`, "section-card-glass section-card-nutrition-light")}
-            ${sectionCard("Tengo", "Base real", `<div class="stack stack-tight">${pantryHaveList(pantryStatus)}</div>`, "section-card-glass section-card-nutrition-light")}
-          </div>
-          ${sectionCard("Compra", "Convertir planner en despensa", `<section class="dashboard-summary compact-metrics pantry-shopping-grid">${shoppingGroupCards(groupedShoppingList)}</section>`, "section-card-glass section-card-nutrition-light")}
-        </div>
-      </details>
     `;
   } else {
     body = `
       ${sectionCard(
         "Hoy",
-        "Resumen por grupos",
+        "Tu comida real",
         `
           <section class="dashboard-summary compact-metrics feature-metrics-soft">
             ${statCard("Comidas", mealsToday.length, "registradas")}
             ${statCard("Agua", `${waterToday}/8`, "vasos")}
-            ${statCard("Grupos", coveredToday.length, "hoy")}
-            ${statCard("Falta", pantryTotals.need, "despensa")}
+            ${statCard("Grupos", coveredToday.length, "cubiertos")}
+            ${statCard("Plan", plannedToday.length, "previstas")}
           </section>
-          <article class="entry"><div><p class="entry-title">Variedad semanal</p><p class="entry-meta">${review.variety.covered}/8 familias cubiertas</p></div></article>
+          <article class="summary-card summary-card-soft">
+            <p class="eyebrow">Siguiente</p>
+            <p class="entry-title">${review.nextAction}</p>
+            <p class="entry-meta">${missingToday.length ? missingToday.map(displayFamilyLabel).join(" · ") : "Día ya bastante cubierto"}</p>
+          </article>
           ${familyChipRow(coveredToday)}
           <div class="button-row button-row-start button-row-soft">
             <button class="primary compact" data-action="add-water">+1 vaso</button>
             <button class="ghost compact" type="button" data-action="open-module-view" data-tab="nutrition" data-view="log">Registrar</button>
-            <button class="ghost compact" type="button" data-action="open-module-view" data-tab="nutrition" data-view="plan">Planner</button>
-            <button class="ghost compact" type="button" data-action="open-module-view" data-tab="nutrition" data-view="recipes">Recetas</button>
-            <button class="ghost compact" type="button" data-action="open-module-view" data-tab="nutrition" data-view="pantry">Despensa</button>
+            <button class="ghost compact" type="button" data-action="open-module-view" data-tab="nutrition" data-view="plan">Plan</button>
           </div>
         `,
         "section-card-hero section-card-nutrition"
       )}
-      ${sectionCard(
-        "Siguiente",
-        "Siguiente comida",
-        `
-          <article class="entry"><div><p class="entry-title">${review.nextAction}</p></div></article>
-          <div class="stack stack-tight">${familyFocusList(review, coveredToday)}</div>
-          <div class="button-row button-row-start button-row-soft">
-            <button class="ghost compact" type="button" data-action="open-module-view" data-tab="nutrition" data-view="log">Registrar comida</button>
-            <button class="ghost compact" type="button" data-action="open-module-view" data-tab="nutrition" data-view="plan">Abrir planner</button>
-          </div>
-        `,
-        "section-card-glass section-card-nutrition-light"
-      )}
-      <details class="panel panel-toned compact-vault-bar disclosure-panel">
-        <summary class="disclosure-summary">
-          <div>
-            <p class="eyebrow">Más</p>
-            <h4>Despensa y tolerancia</h4>
-          </div>
-        </summary>
-        <div class="stack disclosure-body">
-          <div class="nutrition-secondary-grid">
-            ${sectionCard(
-              "Despensa viva",
-              "Lo que ya tienes y lo que falta",
-              `
-                <div class="stack stack-tight">
-                  ${Object.values(pantryStatus || {}).some(value => value === "need") ? pantryNeedList(pantryStatus) : pantryHaveList(pantryStatus)}
-                </div>
-                <div class="button-row button-row-start button-row-soft">
-                  <button class="ghost compact" type="button" data-action="open-module-view" data-tab="nutrition" data-view="pantry">Abrir despensa</button>
-                </div>
-              `,
-              "section-card-glass section-card-nutrition-light"
-            )}
-            ${sectionCard("Lectura", "Variedad y tolerancia", `<div class="stack stack-tight">${signalItems(state)}</div>`, "section-card-glass section-card-nutrition-light")}
-          </div>
-          ${sectionCard("Registro", "Comidas de hoy", `<div class="stack stack-tight">${mealItems(mealsToday)}</div>`, "section-card-glass section-card-nutrition-light")}
-        </div>
-      </details>
+      <div class="nutrition-secondary-grid">
+        ${sectionCard("Bases", "Lo que más repites", recurringMealsBlock(), "section-card-glass section-card-nutrition-light")}
+        ${sectionCard("Hoy", "Últimas comidas", `<div class="stack stack-tight">${mealItems(mealsToday.slice(-2), "Todavía no hay últimas comidas que revisar.")}</div>`, "section-card-glass section-card-nutrition-light")}
+      </div>
     `;
   }
 
@@ -568,8 +629,9 @@ export function renderNutritionFeature(state, options = {}) {
       ${viewSwitcher("nutrition", currentView, [
         { id: "today", label: "Resumen" },
         { id: "log", label: "Registrar" },
-        { id: "plan", label: "Planner" },
+        { id: "plan", label: "Plan" },
         { id: "recipes", label: "Recetas" },
+        { id: "shopping", label: "Compra" },
         { id: "pantry", label: "Despensa" }
       ])}
       ${body}
