@@ -1,9 +1,10 @@
-export function wireDomainForms(options) {
+﻿export function wireDomainForms(options) {
   const {
     documentRef,
     bindFamilyAutofill,
     bindPlannerRecipeAutofill,
     findRecipe,
+    findMealTemplate,
     requireNumberInRange,
     requireText,
     uniqueFamilies,
@@ -22,6 +23,7 @@ export function wireDomainForms(options) {
     addTrainingSession,
     addPlannedSession,
     addRoutine,
+    addCustomExercise,
     addSymptom,
     addEvent,
     addScheduleBlock,
@@ -30,6 +32,7 @@ export function wireDomainForms(options) {
     addMedication,
     addWeeklyTask,
     addBookEntry,
+    saveLibraryChallenge,
     addGoalEntry,
     addHabitEntry
   } = options;
@@ -159,7 +162,11 @@ export function wireDomainForms(options) {
         const date = requireText(formData.get("date"), "fecha del planner");
         const slot = requireText(formData.get("slot"), "slot del planner");
         const recipeId = String(formData.get("recipeId") || "").trim();
+        const templateValue = String(formData.get("templateKey") || "").trim();
+        const [templateSlot = "", ...templateNameParts] = templateValue.split("::");
+        const templateName = templateNameParts.join("::").trim();
         const recipe = recipeId ? findRecipe(recipeId) : null;
+        const template = templateSlot && templateName ? findMealTemplate(templateSlot, templateName) : null;
         const families = uniqueFamilies([formData.get("primaryFamily"), formData.get("secondaryFamily")]);
         const plannedItem = recipe
           ? {
@@ -182,6 +189,23 @@ export function wireDomainForms(options) {
               status: "planned",
               notes: String(formData.get("notes") || "").trim()
             }
+          : template
+            ? {
+                id: Date.now() + Math.random(),
+                date,
+                slot,
+                name: template.name,
+                recipeId: null,
+                families: Array.isArray(template.families) ? template.families : families,
+                ingredientsText: Array.isArray(template.ingredients) ? template.ingredients.join(", ") : "",
+                canonicalIngredients: Array.isArray(template.ingredients) ? template.ingredients.filter(Boolean) : [],
+                calories: 0,
+                protein: 0,
+                carbs: 0,
+                fat: 0,
+                status: "planned",
+                notes: String(formData.get("notes") || "").trim() || "Planificada desde plantilla"
+              }
           : {
               id: Date.now() + Math.random(),
               date,
@@ -279,6 +303,24 @@ export function wireDomainForms(options) {
     });
   }
 
+  const customExerciseForm = documentRef.getElementById("custom-exercise-form");
+  if (customExerciseForm) {
+    customExerciseForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      try {
+        const formData = new FormData(customExerciseForm);
+        await addCustomExercise({
+          name: requireText(formData.get("name"), "nombre del ejercicio"),
+          type: requireText(formData.get("type"), "tipo"),
+          notes: String(formData.get("notes") || "").trim()
+        });
+        customExerciseForm.reset();
+      } catch (error) {
+        setStatus(error.message || "No se pudo guardar el ejercicio.");
+      }
+    });
+  }
+
   const bookForm = documentRef.getElementById("book-form");
   if (bookForm) {
     bookForm.addEventListener("submit", async event => {
@@ -289,15 +331,64 @@ export function wireDomainForms(options) {
         await addBookEntry({
           title: requireText(formData.get("title"), "título"),
           author: String(formData.get("author") || "").trim(),
+          isbn: String(formData.get("isbn") || "").trim(),
           startedAt: String(formData.get("startedAt") || "").trim(),
           finishedAt: String(formData.get("finishedAt") || "").trim(),
           rating: rawRating ? requireNumberInRange(rawRating, "valoración", { min: 1, max: 5 }) : null,
           status: requireText(formData.get("status"), "estado"),
+          format: String(formData.get("format") || "").trim(),
           note: String(formData.get("note") || "").trim()
         });
         bookForm.reset();
       } catch (error) {
         setStatus(error.message || "No se pudo guardar el libro.");
+      }
+    });
+  }
+
+  const readingChallengeForm = documentRef.getElementById("reading-challenge-form");
+  if (readingChallengeForm) {
+    readingChallengeForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      try {
+        const formData = new FormData(readingChallengeForm);
+        await saveLibraryChallenge({
+          year: requireNumberInRange(formData.get("year"), "año del reto", { min: 2000, max: 2100 }),
+          target: requireNumberInRange(formData.get("target"), "objetivo del reto", { min: 1, max: 365 })
+        });
+      } catch (error) {
+        setStatus(error.message || "No se pudo guardar el reto de lectura.");
+      }
+    });
+  }
+
+  const nutritionPreferencesForm = documentRef.getElementById("nutrition-preferences-form");
+  if (nutritionPreferencesForm) {
+    nutritionPreferencesForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      try {
+        const formData = new FormData(nutritionPreferencesForm);
+        const favoriteMeals = String(formData.get("favoriteMeals") || "")
+          .split(/\r?\n|,/)
+          .map(item => item.trim())
+          .filter(Boolean);
+        const avoidIngredients = String(formData.get("avoidIngredients") || "")
+          .split(/\r?\n|,/)
+          .map(item => item.trim())
+          .filter(Boolean);
+        await persistState(
+          {
+            ...viewModel.state,
+            nutrition: {
+              ...viewModel.state.nutrition,
+              favoriteMeals,
+              avoidIngredients
+            }
+          },
+          "Preferencias de nutrición guardadas."
+        );
+      } catch (error) {
+        setStatus(error.message || "No se pudieron guardar las preferencias.");
       }
     });
   }
@@ -561,3 +652,5 @@ export function wireDomainForms(options) {
     });
   }
 }
+
+

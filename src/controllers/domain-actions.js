@@ -9,6 +9,7 @@ export function wireDomainActions(options) {
     numberValue,
     cyclePantryItem,
     clearPantryStatus,
+    regeneratePlannedMeal,
     logRecipeToToday,
     logMealTemplateToToday,
     logPlannedDay,
@@ -139,6 +140,12 @@ export function wireDomainActions(options) {
   appElement.querySelectorAll("[data-action='log-recipe']").forEach(button => {
     button.addEventListener("click", async () => {
       await logRecipeToToday(button.dataset.id);
+    });
+  });
+
+  appElement.querySelectorAll("[data-action='regenerate-planned-meal']").forEach(button => {
+    button.addEventListener("click", async () => {
+      await regeneratePlannedMeal(button.dataset.id);
     });
   });
 
