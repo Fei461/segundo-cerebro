@@ -1,27 +1,35 @@
 ﻿export const PERSONAL_PANTRY = [
   {
-    family: "Bases rapidas",
-    items: ["Tortitas de arroz", "Arroz", "Macarrones", "Fideos de arroz", "Patata", "Pan", "Quinoa", "Harina PAN"]
+    family: "Desayunos base",
+    items: ["Tortitas de arroz", "Copos de avena", "Pan", "Banana", "Yogur vegetal", "Te verde", "Queso emmental", "Pavo loncheado", "Jamon serrano"]
+  },
+  {
+    family: "Bases de plato",
+    items: ["Arroz", "Macarrones", "Fideos de arroz", "Patata", "Harina PAN", "Pastina", "Pan de pizza", "Quinoa"]
   },
   {
     family: "Proteinas frecuentes",
-    items: ["Huevo", "Pollo", "Pavo loncheado", "Jamon serrano", "Jamon york", "Atun", "Ternera", "Cerdo", "Soja texturizada", "Merluza", "Bacalao"]
+    items: ["Huevo", "Pollo", "Pavo loncheado", "Jamon york", "Atun", "Ternera", "Cerdo", "Carne picada", "Merluza", "Bacalao", "Soja texturizada"]
   },
   {
     family: "Verduras de rotacion",
-    items: ["Zanahoria", "Cebolla", "Calabacin", "Tomate", "Tomate cherry", "Pimiento rojo", "Pimiento verde", "Pimiento amarillo", "Calabaza", "Puerro", "Espinacas", "Alcachofa"]
+    items: ["Zanahoria", "Cebolla", "Calabacin", "Tomate", "Tomate cherry", "Pimiento rojo", "Pimiento verde", "Pimiento amarillo", "Calabaza", "Puerro", "Espinacas", "Alcachofa", "Rabanitos"]
   },
   {
-    family: "Fruta habitual",
-    items: ["Banana", "Melon", "Mandarina", "Melocoton", "Mango", "Papaya", "Uvas rojas", "Nectarina"]
+    family: "Legumbres y cuchara",
+    items: ["Lentejas", "Garbanzos", "Judias blancas", "Fabada", "Cocido", "Caldo", "Tomate frito"]
+  },
+  {
+    family: "Fruta y apoyo",
+    items: ["Banana", "Uvas rojas", "Melon", "Mandarina", "Mango", "Papaya", "Melocoton", "Nectarina", "Palomitas"]
   },
   {
     family: "Lacteos y alternativos",
     items: ["Yogur vegetal", "Queso emmental", "Queso rallado", "Bebida de avena", "Bebida de almendra", "Bebida de soja"]
   },
   {
-    family: "Grasas y extras",
-    items: ["Bacon", "Chorizo", "Panceta", "Semillas chia", "Ajo", "Tomate frito", "Salsa teriyaki", "Leche de coco"]
+    family: "Extras y sabor",
+    items: ["Bacon", "Chorizo", "Panceta", "Semillas chia", "Ajo", "Salsa teriyaki", "Leche de coco", "Alcachofa", "Rabanitos"]
   }
 ];
 
@@ -64,6 +72,8 @@ export const INGREDIENT_ALIASES = {
   "glass noodles": "Fideos de arroz",
   "patata": "Patata",
   "patatas": "Patata",
+  "pastina": "Pastina",
+  "estrellitas": "Pastina",
   "copos de avena": "Copos de avena",
   "bebida de almendra": "Bebida de almendra",
   "leche de almendra": "Bebida de almendra",
@@ -107,71 +117,107 @@ export const INGREDIENT_ALIASES = {
   "panceta": "Panceta",
   "garbanzos": "Garbanzos",
   "lentejas": "Lentejas",
+  "fabada": "Fabada",
+  "judias blancas": "Judias blancas",
+  "albondigas": "Albondigas",
+  "arepa": "Arepa",
+  "arepas": "Arepa",
   "quinoa": "Quinoa",
   "harina pan": "Harina PAN",
-  "palomitas": "Palomitas"
+  "pan de pizza": "Pan de pizza",
+  "caldo": "Caldo",
+  "palomitas": "Palomitas",
+  "rabanitos": "Rabanitos"
 };
 
 export const PERSONAL_MEAL_TEMPLATES = {
   breakfasts: [
     {
-      name: "Tortitas de arroz con proteina salada",
-      ingredients: ["Tortitas de arroz", "Jamon serrano o pavo loncheado", "Queso emmental", "Banana opcional", "Yogur vegetal", "Te verde"]
+      name: "Tortitas con pavo, queso y yogur",
+      families: ["Cereal/tuberculo", "Ave y huevos", "Lacteos/alternativos", "Fruta"],
+      ingredients: ["Tortitas de arroz", "Pavo loncheado", "Queso emmental", "Yogur vegetal", "Banana", "Te verde"]
     },
     {
-      name: "Porridge proteico",
-      ingredients: ["Copos de avena", "Bebida vegetal", "Proteina whey vainilla", "Banana o mango", "Semillas chia", "Te verde"]
+      name: "Tortitas con jamon serrano y banana",
+      families: ["Cereal/tuberculo", "Carne roja y cerdo", "Lacteos/alternativos", "Fruta"],
+      ingredients: ["Tortitas de arroz", "Jamon serrano", "Queso emmental", "Yogur vegetal", "Banana", "Te verde"]
     },
     {
-      name: "Gofres proteicos",
-      ingredients: ["Huevo", "Bebida de almendra", "Proteina whey", "Mezcla panificable", "Te verde"]
+      name: "Porridge con banana",
+      families: ["Cereal/tuberculo", "Lacteos/alternativos", "Fruta"],
+      ingredients: ["Copos de avena", "Bebida de avena", "Banana", "Semillas chia", "Te verde"]
     },
     {
-      name: "Sandwich o tostadas con jamon y queso",
-      ingredients: ["Pan", "Jamon serrano o york", "Queso emmental", "Yogur vegetal o fruta"]
+      name: "Pan con jamon y queso",
+      families: ["Cereal/tuberculo", "Carne roja y cerdo", "Lacteos/alternativos"],
+      ingredients: ["Pan", "Jamon york", "Queso emmental", "Yogur vegetal", "Te verde"]
     }
   ],
   lunches: [
     {
-      name: "Arroz con proteina y verduras",
-      ingredients: ["Arroz", "Pollo o soja texturizada", "Cebolla", "Zanahoria", "Pimientos", "Tomate"]
+      name: "Arroz con pollo y verduras",
+      families: ["Cereal/tuberculo", "Ave y huevos", "Verduras"],
+      ingredients: ["Arroz", "Pollo", "Cebolla", "Zanahoria", "Pimiento verde", "Tomate"]
     },
     {
-      name: "Pures + plancha",
-      ingredients: ["Calabaza o calabacin o verduras mixtas", "Patata", "Pollo o pescado"]
+      name: "Pasta boloñesa simple",
+      families: ["Cereal/tuberculo", "Carne roja y cerdo", "Verduras"],
+      ingredients: ["Macarrones", "Carne picada", "Cebolla", "Zanahoria", "Tomate frito", "Queso rallado"]
     },
     {
-      name: "Bolonesa adaptable",
-      ingredients: ["Macarrones o arroz", "Carne picada o soja texturizada", "Cebolla", "Zanahoria", "Tomate", "Queso"]
+      name: "Legumbre de cuchara",
+      families: ["Proteina vegetal", "Verduras", "Carne roja y cerdo"],
+      ingredients: ["Lentejas", "Zanahoria", "Cebolla", "Chorizo", "Tomate"]
     },
     {
-      name: "Legumbre contundente",
-      ingredients: ["Lentejas o garbanzos", "Verduras base", "Chorizo o panceta opcionales"]
+      name: "Pure con pollo o pescado",
+      families: ["Verduras", "Ave y huevos", "Pescado y marisco", "Cereal/tuberculo"],
+      ingredients: ["Calabaza", "Calabacin", "Patata", "Pollo", "Merluza"]
+    },
+    {
+      name: "Arepa con relleno",
+      families: ["Cereal/tuberculo", "Ave y huevos", "Verduras"],
+      ingredients: ["Harina PAN", "Pollo", "Queso emmental", "Tomate", "Rabanitos"]
+    },
+    {
+      name: "Estofado de ternera",
+      families: ["Carne roja y cerdo", "Verduras", "Cereal/tuberculo"],
+      ingredients: ["Ternera", "Patata", "Zanahoria", "Cebolla", "Pimiento rojo"]
     }
   ],
   dinners: [
     {
-      name: "Tortilla o revuelto rapido",
-      ingredients: ["Huevo", "Jamon o atun", "Queso", "Verdura salteada opcional"]
+      name: "Tortilla de patatas",
+      families: ["Ave y huevos", "Cereal/tuberculo"],
+      ingredients: ["Huevo", "Patata", "Cebolla"]
+    },
+    {
+      name: "Pastina con jamon",
+      families: ["Cereal/tuberculo", "Carne roja y cerdo"],
+      ingredients: ["Pastina", "Jamon serrano", "Caldo"]
     },
     {
       name: "Fideos de arroz salteados",
-      ingredients: ["Fideos de arroz", "Cerdo o ternera", "Cebolla", "Zanahoria", "Calabacin", "Pimiento"]
+      families: ["Cereal/tuberculo", "Carne roja y cerdo", "Verduras"],
+      ingredients: ["Fideos de arroz", "Cerdo", "Cebolla", "Zanahoria", "Calabacin", "Pimiento"]
     },
     {
-      name: "Pizza o mini pizza casera",
-      ingredients: ["Base o hojaldre", "Tomate", "Queso", "Jamon o bacon", "Verdura"]
+      name: "Filete con verduras",
+      families: ["Carne roja y cerdo", "Verduras"],
+      ingredients: ["Cerdo", "Calabacin", "Tomate", "Pimiento rojo"]
     },
     {
-      name: "Pastina o plato suave",
-      ingredients: ["Estrellitas", "Huevo", "Jamon serrano o pollo"]
+      name: "Pizza casera simple",
+      families: ["Cereal/tuberculo", "Lacteos/alternativos", "Carne roja y cerdo", "Verduras"],
+      ingredients: ["Pan de pizza", "Tomate frito", "Queso rallado", "Jamon york", "Pimiento"]
     }
   ],
   snacks: [
-    { name: "Palomitas", type: "Snack salado frecuente" },
-    { name: "Batido con fruta y proteina whey", type: "Snack de batido frecuente" },
-    { name: "Tortitas de arroz con jamon y queso", type: "Snack salado funcional" },
-    { name: "Fruta facil", type: "Fruta de apoyo" }
+    { name: "Palomitas", type: "Snack salado frecuente", families: ["Cereal/tuberculo"] },
+    { name: "Batido con fruta", type: "Snack de batido frecuente", families: ["Fruta", "Lacteos/alternativos"] },
+    { name: "Tortitas con jamon y queso", type: "Snack salado funcional", families: ["Cereal/tuberculo", "Carne roja y cerdo", "Lacteos/alternativos"] },
+    { name: "Fruta facil", type: "Fruta de apoyo", families: ["Fruta"] },
+    { name: "Gofres proteicos", type: "Capricho funcional", families: ["Cereal/tuberculo", "Ave y huevos"] }
   ]
 };
 

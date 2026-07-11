@@ -18,6 +18,8 @@ export const DEFAULT_STATE = {
     waterLog: {},
     weightLog: {},
     pantryStatus: {},
+    favoriteMeals: [],
+    avoidIngredients: [],
     supplements: [],
     supplementLog: {},
     profile: {
@@ -41,10 +43,15 @@ export const DEFAULT_STATE = {
   },
   training: {
     sessions: [],
-    routines: []
+    routines: [],
+    customExercises: []
   },
   library: {
-    books: []
+    books: [],
+    challenge: {
+      year: new Date().getFullYear(),
+      target: 12
+    }
   },
   cycle: {
     periodDays: [],
@@ -99,6 +106,8 @@ export function mergeState(partialState = {}) {
       waterLog: { ...(partialState.nutrition?.waterLog || {}) },
       weightLog: { ...(partialState.nutrition?.weightLog || {}) },
       pantryStatus: { ...(partialState.nutrition?.pantryStatus || {}) },
+      favoriteMeals: Array.isArray(partialState.nutrition?.favoriteMeals) ? partialState.nutrition.favoriteMeals : [],
+      avoidIngredients: Array.isArray(partialState.nutrition?.avoidIngredients) ? partialState.nutrition.avoidIngredients : [],
       supplementLog: { ...(partialState.nutrition?.supplementLog || {}) },
       profile: {
         ...base.nutrition.profile,
@@ -116,11 +125,16 @@ export function mergeState(partialState = {}) {
     },
     training: {
       ...base.training,
-      ...(partialState.training || {})
+      ...(partialState.training || {}),
+      customExercises: Array.isArray(partialState.training?.customExercises) ? partialState.training.customExercises : []
     },
     library: {
       ...base.library,
-      ...(partialState.library || {})
+      ...(partialState.library || {}),
+      challenge: {
+        ...base.library.challenge,
+        ...(partialState.library?.challenge || {})
+      }
     },
     cycle: {
       ...base.cycle,

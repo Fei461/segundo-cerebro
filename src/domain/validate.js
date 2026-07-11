@@ -40,6 +40,8 @@ export function normalizeStateShape(state) {
       waterLog: ensureObject(nutrition.waterLog),
       weightLog: ensureObject(nutrition.weightLog),
       pantryStatus: ensureObject(nutrition.pantryStatus),
+      favoriteMeals: ensureArray(nutrition.favoriteMeals),
+      avoidIngredients: ensureArray(nutrition.avoidIngredients),
       supplements: ensureArray(nutrition.supplements),
       supplementLog: ensureObject(nutrition.supplementLog),
       waterGoal: ensureNumber(nutrition.waterGoal, 8),
@@ -65,11 +67,16 @@ export function normalizeStateShape(state) {
     training: {
       ...training,
       sessions: ensureArray(training.sessions),
-      routines: ensureArray(training.routines)
+      routines: ensureArray(training.routines),
+      customExercises: ensureArray(training.customExercises)
     },
     library: {
       ...library,
-      books: ensureArray(library.books)
+      books: ensureArray(library.books),
+      challenge: {
+        year: ensureNumber(library.challenge?.year, new Date().getFullYear()),
+        target: ensureNumber(library.challenge?.target, 12)
+      }
     },
     cycle: {
       ...cycle,
