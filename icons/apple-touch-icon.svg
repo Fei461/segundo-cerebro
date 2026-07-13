@@ -1,25 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
   <defs>
     <linearGradient id="bg" x1="12%" y1="8%" x2="88%" y2="92%">
-      <stop offset="0%" stop-color="#bfecea"/>
-      <stop offset="55%" stop-color="#7fd4d4"/>
-      <stop offset="100%" stop-color="#58b6bf"/>
+      <stop offset="0%" stop-color="#d6f5f1"/>
+      <stop offset="55%" stop-color="#93dad8"/>
+      <stop offset="100%" stop-color="#61b7c1"/>
     </linearGradient>
-    <linearGradient id="card" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f7fffe" stop-opacity="0.96"/>
-      <stop offset="100%" stop-color="#d9f2f1" stop-opacity="0.88"/>
+    <linearGradient id="glass" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbfffe" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#dff4f3" stop-opacity="0.9"/>
     </linearGradient>
     <linearGradient id="ink" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3f7384"/>
-      <stop offset="100%" stop-color="#275766"/>
+      <stop offset="0%" stop-color="#325a6a"/>
+      <stop offset="100%" stop-color="#1f4653"/>
     </linearGradient>
     <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fff1c7"/>
-      <stop offset="100%" stop-color="#f4ce7e"/>
+      <stop offset="0%" stop-color="#fff4ce"/>
+      <stop offset="100%" stop-color="#f4cc84"/>
     </linearGradient>
   </defs>
   <rect width="180" height="180" rx="40" fill="url(#bg)"/>
-  <rect x="30" y="30" width="120" height="120" rx="34" fill="url(#card)" opacity="0.94"/>
+  <rect x="30" y="30" width="120" height="120" rx="34" fill="url(#glass)" opacity="0.94"/>
   <path d="M53 70c0-7 5-12 12-12h11c6 0 11 3 14 8 3-5 8-8 14-8h11c7 0 12 5 12 12v42c0 7-5 12-12 12H65c-7 0-12-5-12-12z" fill="url(#ink)"/>
   <path d="M90 66v50" stroke="#dff8f7" stroke-width="5" stroke-linecap="round"/>
   <path d="M65 74h13" stroke="#dff8f7" stroke-width="4.5" stroke-linecap="round"/>

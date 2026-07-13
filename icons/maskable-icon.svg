@@ -1,7 +1,33 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#d8c2a4"/>
-  <rect x="56" y="56" width="400" height="400" rx="96" fill="#fff9f2"/>
-  <circle cx="256" cy="195" r="82" fill="#9a6338"/>
-  <path d="M186 195c23-31 45-47 70-47 26 0 48 16 70 47-22 29-44 44-70 44-25 0-47-15-70-44z" fill="#fff7ef"/>
-  <path d="M150 332c0-43 31-77 70-77h72c39 0 70 34 70 77v42H150z" fill="#9a6338"/>
+  <defs>
+    <linearGradient id="bg" x1="12%" y1="8%" x2="88%" y2="92%">
+      <stop offset="0%" stop-color="#d6f5f1"/>
+      <stop offset="55%" stop-color="#93dad8"/>
+      <stop offset="100%" stop-color="#61b7c1"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbfffe" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#dff4f3" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="ink" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#325a6a"/>
+      <stop offset="100%" stop-color="#1f4653"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff4ce"/>
+      <stop offset="100%" stop-color="#f4cc84"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect x="72" y="72" width="368" height="368" rx="112" fill="url(#glass)" opacity="0.96"/>
+  <path d="M151 197c0-18 14-32 32-32h29c16 0 30 8 39 20 9-12 23-20 39-20h29c18 0 32 14 32 32v116c0 18-14 32-32 32H183c-18 0-32-14-32-32z" fill="url(#ink)"/>
+  <path d="M256 185v141" stroke="#dff8f7" stroke-width="12" stroke-linecap="round"/>
+  <path d="M204 205h37" stroke="#dff8f7" stroke-width="10" stroke-linecap="round"/>
+  <path d="M271 205h37" stroke="#dff8f7" stroke-width="10" stroke-linecap="round"/>
+  <path d="M204 237h37" stroke="#dff8f7" stroke-width="10" stroke-linecap="round"/>
+  <path d="M271 237h37" stroke="#dff8f7" stroke-width="10" stroke-linecap="round"/>
+  <path d="M204 269h37" stroke="#dff8f7" stroke-width="10" stroke-linecap="round"/>
+  <path d="M271 269h37" stroke="#dff8f7" stroke-width="10" stroke-linecap="round"/>
+  <path d="M356 144l7 14 15 2-11 10 3 15-14-8-13 8 2-15-11-10 15-2z" fill="url(#gold)"/>
+  <path d="M145 129l4 8 9 1-6 6 1 9-8-4-8 4 2-9-7-6 9-1z" fill="#fff8e1" opacity="0.92"/>
 </svg>
