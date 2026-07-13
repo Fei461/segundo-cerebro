@@ -42,12 +42,25 @@ function statCard(label, value, detail = "") {
 }
 
 function quickAction(label, action, tone = "") {
-  return `<button class="quick-action-button ${tone}" type="button" data-action="${action.type}"${action.capture ? ` data-capture="${action.capture}"` : ""}>${label}</button>`;
+  const iconByTone = {
+    "quick-action-water": "◍",
+    "quick-action-food": "◔",
+    "quick-action-train": "△",
+    "quick-action-health": "✳"
+  };
+  const icon = iconByTone[tone] || "•";
+  return `
+    <button class="quick-action-button ${tone}" type="button" data-action="${action.type}"${action.capture ? ` data-capture="${action.capture}"` : ""}>
+      <span class="quick-action-icon" aria-hidden="true">${icon}</span>
+      <span class="quick-action-label">${label}</span>
+    </button>
+  `;
 }
 
-function shortcutButton(label, tab, view) {
+function shortcutButton(label, tab, view, icon = "•") {
   return `
     <button class="shortcut-pill" type="button" data-action="open-module-view" data-tab="${tab}" data-view="${view}">
+      <span class="module-card-emoji" aria-hidden="true">${icon}</span>
       <span class="module-card-label">${label}</span>
     </button>
   `;
@@ -268,12 +281,12 @@ function nextActionCard(dailyCommand, autoSummary) {
 function supportShortcuts() {
   return `
     <div class="shortcut-row shortcut-row-scroll">
-      ${shortcutButton("Registrar comida", "nutrition", "log")}
-      ${shortcutButton("Planner comida", "nutrition", "plan")}
-      ${shortcutButton("Síntoma", "wellbeing", "symptom")}
-      ${shortcutButton("Programar entreno", "training", "plan")}
-      ${shortcutButton("Registrar sueño", "recovery", "sleep")}
-      ${shortcutButton("Biblioteca", "library", "add")}
+      ${shortcutButton("Registrar comida", "nutrition", "log", "◔")}
+      ${shortcutButton("Plan comida", "nutrition", "plan", "◒")}
+      ${shortcutButton("Síntoma", "wellbeing", "symptom", "✳")}
+      ${shortcutButton("Programar entreno", "training", "plan", "△")}
+      ${shortcutButton("Registrar sueño", "recovery", "sleep", "☾")}
+      ${shortcutButton("Biblioteca", "library", "add", "✦")}
     </div>
   `;
 }
@@ -295,6 +308,30 @@ function compactSignalColumn(title, items, emptyText) {
     <section class="subpanel stack summary-card-soft">
       <p class="eyebrow">${title}</p>
       ${compactBulletList(items, emptyText)}
+    </section>
+  `;
+}
+
+function celebrationStrip(dailyCommand, weeklyPreparation, weeklyReviewSummary) {
+  const wins = [];
+  if (dailyCommand.hydrationToday >= Math.max(1, Math.ceil(dailyCommand.hydrationGoal / 2))) wins.push("Agua en marcha");
+  if (dailyCommand.loggedMealsToday.length > 0) wins.push("Comida registrada");
+  if (dailyCommand.executedSessionsToday.length > 0) wins.push("Entreno hecho");
+  if (weeklyPreparation.readinessScore >= 70) wins.push("Semana fluida");
+  if (weeklyReviewSummary.completion >= 60) wins.push("Cierre sólido");
+
+  const mood = wins.length >= 4 ? "día muy bien encarrilado" : wins.length >= 2 ? "buen ritmo hoy" : "arranque suave";
+  const chips = wins.length
+    ? wins.slice(0, 4).map(item => `<span class="celebration-chip">${item}</span>`).join("")
+    : `<span class="celebration-chip celebration-chip-soft">Todo listo para empezar</span>`;
+
+  return `
+    <section class="celebration-strip">
+      <div class="celebration-strip-head">
+        <p class="eyebrow">Brillo</p>
+        <p class="celebration-copy">${mood}</p>
+      </div>
+      <div class="celebration-chip-row">${chips}</div>
     </section>
   `;
 }
@@ -629,6 +666,7 @@ export function renderDashboardFeature(state, options = {}) {
                 ${statCard("Agua", `${dailyCommand.hydrationToday}/${dailyCommand.hydrationGoal}`, "vasos")}
                 ${statCard("Entreno", dailyCommand.executedSessionsToday.length, "sesiones")}
               </section>
+              ${celebrationStrip(dailyCommand, weeklyPreparation, weeklyReviewSummary)}
               ${latestSleep ? `<p class="muted">Último sueño: ${latestSleep}</p>` : ""}
               <div class="button-row button-row-start button-row-soft">
                 <button class="ghost compact" type="button" data-action="open-module-view" data-tab="home" data-view="capture">Capturar</button>
@@ -695,7 +733,7 @@ export function renderDashboardFeature(state, options = {}) {
 
   return `
     <section id="home-panel" class="panel stack app-feature-shell">
-      ${featureHeader(todayHeadline(), "Tu día", "", { emblem: "◌", emblemTone: "home" })}
+      ${featureHeader(todayHeadline(), "Tu día", "", { emblem: "◌", emblemTone: "home", artSrc: "./icons/scene-home.svg" })}
       ${viewSwitcher("home", currentView, [
         { id: "overview", label: "Resumen" },
         { id: "capture", label: "Capturar" },

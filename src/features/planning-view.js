@@ -164,6 +164,28 @@ function timelinePreview(items) {
     .join("");
 }
 
+function planningRibbon(prep, reviewSummary, timeline) {
+  const pills = [
+    `${prep.readinessScore}/100 ritmo`,
+    `${reviewSummary.completion}% revisión`,
+    `${timeline.length} bloque(s)`
+  ];
+  return `<div class="premium-pill-row">${pills.map(item => `<span class="premium-pill">${item}</span>`).join("")}</div>`;
+}
+
+function compactSuggestionLead(items) {
+  const first = items[0];
+  if (!first) return emptyState("No hay huecos urgentes ahora mismo.");
+  return `
+    <div class="mini-entry-list">
+      <article class="mini-entry">
+        <p class="entry-title">${first.title}</p>
+        <p class="entry-meta">${first.reason ? formatSuggestionReason(first.reason, first.reason) : "Puedes cerrarlo ya."}</p>
+      </article>
+    </div>
+  `;
+}
+
 export function renderPlanningFeature(state, options = {}) {
   const currentView = options.currentView || "overview";
   const prep = getWeeklyPreparationPack(state);
@@ -178,16 +200,15 @@ export function renderPlanningFeature(state, options = {}) {
 
   if (currentView === "agenda") {
     body = `
-      ${sectionCard(
-        "Agenda",
-        "Movimientos de semana",
-        `
-          <section class="dashboard-summary compact-metrics feature-metrics-soft">
-            ${statCard("Eventos", state.calendar.events.length, "guardados")}
-            ${statCard("Bloques", state.schedule.blocks.length, "activos")}
-            ${statCard("Comidas", weeklySummaryData.plannedMeals, "previstas")}
-            ${statCard("Entrenos", weeklySummaryData.plannedSessions, "previstos")}
-          </section>
+        ${sectionCard(
+          "Agenda",
+          "Movimientos de semana",
+          `
+          ${planningRibbon(prep, reviewSummary, timeline)}
+          <article class="summary-card summary-card-soft summary-card-premium">
+            <p class="entry-title">${state.calendar.events.length} evento(s) · ${state.schedule.blocks.length} bloque(s)</p>
+            <p class="entry-meta">${weeklySummaryData.plannedMeals} comida(s) y ${weeklySummaryData.plannedSessions} entreno(s) previstos.</p>
+          </article>
           <details class="panel panel-toned disclosure-panel compact-disclosure">
             <summary class="disclosure-summary"><div><p class="eyebrow">Nuevo</p><h4>Evento</h4></div></summary>
             <div class="stack disclosure-body">
@@ -235,13 +256,8 @@ export function renderPlanningFeature(state, options = {}) {
           "Reset",
           "Semana en orden",
           `
-            <section class="dashboard-summary compact-metrics feature-metrics-soft">
-              ${statCard("Checklist", getWeeklyChecklist(state, currentWeekStartKey()).length, "items")}
-              ${statCard("Comidas", weeklySummaryData.plannedMeals, "previstas")}
-              ${statCard("Entrenos", weeklySummaryData.plannedSessions, "programados")}
-              ${statCard("Ritmo", `${prep.readinessScore}/100`, "semana")}
-            </section>
-            <article class="summary-card summary-card-soft">
+            ${planningRibbon(prep, reviewSummary, timeline)}
+            <article class="summary-card summary-card-soft summary-card-premium">
               <p class="eyebrow">Orden sugerido</p>
               <p class="entry-title">${reviewFlow[0]?.title || "Preparar la semana"}</p>
               <p class="entry-meta">${reviewFlow[0]?.detail || "Cerrar lo básico primero."}</p>
@@ -286,13 +302,8 @@ export function renderPlanningFeature(state, options = {}) {
           "Semana",
           "Centro semanal",
         `
-          <section class="dashboard-summary compact-metrics feature-metrics-soft">
-              ${statCard("Ritmo", `${prep.readinessScore}/100`, "semana")}
-              ${statCard("Comidas", weeklySummaryData.plannedMeals, "previstas")}
-              ${statCard("Entrenos", weeklySummaryData.plannedSessions, "programados")}
-              ${statCard("Revisión", `${reviewSummary.completion}%`, "avance")}
-          </section>
-            <article class="summary-card summary-card-soft">
+          ${planningRibbon(prep, reviewSummary, timeline)}
+            <article class="summary-card summary-card-soft summary-card-premium">
               <p class="entry-title">${autoSummary.headline}</p>
               <p class="entry-meta">${prep.headline}</p>
             </article>
@@ -304,7 +315,7 @@ export function renderPlanningFeature(state, options = {}) {
           "Siguiente",
           "Huecos que puedes cerrar",
           `
-            <div class="stack stack-tight">${weeklySuggestionPreview(weeklySuggestions)}</div>
+            ${compactSuggestionLead(weeklySuggestions)}
             <div class="button-row button-row-start button-row-soft">
               <button class="ghost compact" data-action="apply-suggested-meal-slots">Comidas</button>
               <button class="ghost compact" data-action="apply-suggested-sessions">Entrenos</button>
@@ -321,8 +332,8 @@ export function renderPlanningFeature(state, options = {}) {
   }
 
   return `
-    <section id="planning-panel" class="panel stack app-feature-shell">
-      ${featureHeader("Semana", "Planificar sin ruido", "", { emblem: "▫", emblemTone: "planning" })}
+    <section id="planning-panel" class="panel stack app-feature-shell" data-view="${currentView}">
+      ${featureHeader("Semana", "Planificar sin ruido", "", { emblem: "▫", emblemTone: "planning", artSrc: "./icons/scene-planning.svg" })}
       ${viewSwitcher("planning", currentView, [
         { id: "overview", label: "Resumen" },
         { id: "agenda", label: "Agenda" },

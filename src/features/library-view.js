@@ -183,7 +183,7 @@ export function renderLibraryFeature(state, options = {}) {
 
   return `
     <section id="library-panel" class="panel stack app-feature-shell">
-      ${featureHeader("Biblioteca", "Leer y recordar", "", { emblem: "✦", emblemTone: "recovery" })}
+      ${featureHeader("Biblioteca", "Leer y recordar", "", { emblem: "✦", emblemTone: "library", artSrc: "./icons/scene-library.svg" })}
       ${viewSwitcher("library", currentView, [
         { id: "overview", label: "Resumen" },
         { id: "add", label: "Añadir" },

@@ -230,7 +230,7 @@ export function renderWellbeingFeature(state, options = {}) {
 
   return `
     <section id="wellbeing-panel" class="panel stack app-feature-shell">
-      ${featureHeader("Salud", "Ciclo y síntomas", "", { emblem: "✳", emblemTone: "wellbeing" })}
+      ${featureHeader("Salud", "Ciclo y síntomas", "", { emblem: "✳", emblemTone: "wellbeing", artSrc: "./icons/scene-wellbeing.svg" })}
       ${viewSwitcher("wellbeing", currentView, [
         { id: "overview", label: "Resumen" },
         { id: "symptom", label: "Síntoma" },

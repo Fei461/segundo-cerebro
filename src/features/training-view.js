@@ -456,7 +456,7 @@ export function renderTrainingFeature(state, options = {}) {
 
   return `
     <section id="training-panel" class="panel stack app-feature-shell">
-      ${featureHeader("Entreno", "Entrenar sin ruido", "", { emblem: "△", emblemTone: "training" })}
+      ${featureHeader("Entreno", "Entrenar sin ruido", "", { emblem: "△", emblemTone: "training", artSrc: "./icons/scene-training.svg" })}
       ${viewSwitcher("training", currentView, [
         { id: "overview", label: "Resumen" },
         { id: "log", label: "Registrar" },

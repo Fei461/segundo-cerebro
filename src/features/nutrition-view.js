@@ -20,15 +20,17 @@ const SLOT_LABELS = {
 };
 
 const FAMILY_LABELS = {
-  "Cereal/tuberculo": "Cereal / tubérculo",
+  "Cereal/tuberculo": "Cereal / tub\u00e9rculo",
   "Ave y huevos": "Ave y huevos",
   "Carne roja y cerdo": "Carne roja y cerdo",
   "Pescado y marisco": "Pescado y marisco",
-  "Proteina vegetal": "Proteína vegetal",
+  "Proteina vegetal": "Prote\u00edna vegetal",
   Verduras: "Verduras",
   Fruta: "Fruta",
-  "Lacteos/alternativos": "Lácteos / alternativos"
+  "Lacteos/alternativos": "L\u00e1cteos / alternativos"
 };
+
+const SEP = " \u00b7 ";
 
 function todayKey() {
   return localDateKey(new Date());
@@ -122,19 +124,19 @@ function weeklyPrepBoard(state) {
   return getWeeklyNutritionPrepBoard({ plannedMeals, loggedMeals, recipes: state.recipes });
 }
 
-function mealItems(meals, emptyText = "Todavía no has registrado ninguna comida hoy.") {
+function mealItems(meals, emptyText = "Todav\u00eda no has registrado ninguna comida hoy.") {
   if (!meals.length) return emptyState(emptyText);
   return meals
     .map(meal => {
       const families = mealFamilies(meal);
       const names = meal.items.map(item => item.name).join(", ");
-      const ingredients = meal.items.map(item => item.ingredientsText).filter(Boolean).join(" · ");
-      const reaction = Array.isArray(meal.reaction) ? meal.reaction.filter(Boolean).join(" · ") : String(meal.reaction || "").trim();
+      const ingredients = meal.items.map(item => item.ingredientsText).filter(Boolean).join(SEP);
+      const reaction = Array.isArray(meal.reaction) ? meal.reaction.filter(Boolean).join(SEP) : String(meal.reaction || "").trim();
       return `
         <article class="entry">
           <div>
-            <p class="entry-title">${meal.type} · ${names}</p>
-            <p class="entry-meta">${families.length ? families.map(displayFamilyLabel).join(" · ") : "Grupos sin definir"}</p>
+            <p class="entry-title">${meal.type}${SEP}${names}</p>
+            <p class="entry-meta">${families.length ? families.map(displayFamilyLabel).join(SEP) : "Grupos sin definir"}</p>
             ${ingredients ? `<p class="entry-note">${ingredients}</p>` : ""}
             ${reaction ? `<p class="entry-note">Postcomida: ${reaction}</p>` : ""}
           </div>
@@ -146,14 +148,14 @@ function mealItems(meals, emptyText = "Todavía no has registrado ninguna comida
 }
 
 function recipeItems(recipes) {
-  if (!recipes.length) return emptyState("Aún no hay recetas guardadas.");
+  if (!recipes.length) return emptyState("A\u00fan no hay recetas guardadas.");
   return recipes
     .map(
       recipe => `
         <article class="entry">
           <div>
             <p class="entry-title">${recipe.name}</p>
-            <p class="entry-meta">${recipe.servings} raciones · ${(recipe.familyCoverage || []).slice(0, 3).map(displayFamilyLabel).join(" · ") || "familias por definir"}</p>
+            <p class="entry-meta">${recipe.servings} raciones${SEP}${(recipe.familyCoverage || []).slice(0, 3).map(displayFamilyLabel).join(SEP) || "familias por definir"}</p>
           </div>
           <div class="button-row">
             <button class="ghost compact" data-action="log-recipe" data-id="${recipe.id}">Registrar</button>
@@ -166,7 +168,7 @@ function recipeItems(recipes) {
 }
 
 function plannerItems(items) {
-  if (!items.length) return emptyState("Aún no hay comidas programadas.");
+  if (!items.length) return emptyState("A\u00fan no hay comidas programadas.");
   return items
     .slice()
     .sort((left, right) => `${left.date}-${left.slot}`.localeCompare(`${right.date}-${right.slot}`))
@@ -175,10 +177,10 @@ function plannerItems(items) {
       item => `
         <article class="entry">
           <div>
-            <p class="entry-title">${item.date} · ${item.slot}</p>
-            <p class="entry-meta">${item.name} · ${formatPlanStatus(item.status)}</p>
+            <p class="entry-title">${item.date}${SEP}${item.slot}</p>
+            <p class="entry-meta">${item.name}${SEP}${formatPlanStatus(item.status)}</p>
             ${item.ingredientsText ? `<p class="entry-note">${item.ingredientsText}</p>` : ""}
-            ${Array.isArray(item.families) && item.families.length ? `<p class="entry-note">${item.families.map(displayFamilyLabel).join(" · ")}</p>` : ""}
+            ${Array.isArray(item.families) && item.families.length ? `<p class="entry-note">${item.families.map(displayFamilyLabel).join(SEP)}</p>` : ""}
           </div>
           <div class="button-row">
             <button class="ghost compact" data-action="cycle-planned-meal-status" data-id="${item.id}">Estado</button>
@@ -218,7 +220,7 @@ function pantryCards(pantryStatus) {
       ${PERSONAL_PANTRY.map(
         group => `
           <details class="panel panel-toned disclosure-panel compact-disclosure pantry-group-card">
-            <summary class="disclosure-summary"><div><p class="eyebrow">${group.family}</p><h4>${group.items.length} básicos</h4></div></summary>
+            <summary class="disclosure-summary"><div><p class="eyebrow">${group.family}</p><h4>${group.items.length} b\u00e1sicos</h4></div></summary>
             <div class="stack disclosure-body">
               <div class="pantry-chip-grid">
                 ${group.items
@@ -244,28 +246,24 @@ function pantryListByStatus(pantryStatus, status, emptyText) {
   return items.slice(0, 8).map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`).join("");
 }
 
-function baseTemplateCards({ limit = 4, action = "log" } = {}) {
+function baseTemplateCards({ limit = 4 } = {}) {
   return Object.entries(PERSONAL_MEAL_TEMPLATES)
     .flatMap(([slotKey, items]) =>
-      items.slice(0, 1).map(template => {
-        const buttonLabel = action === "log" ? "Usar hoy" : "Usar hoy";
-        const actionType = "log-meal-template";
-        return `
-          <article class="summary-card summary-card-soft template-card">
-            <p class="eyebrow">${SLOT_LABELS[slotKey] || slotKey}</p>
-            <p class="entry-title">${template.name}</p>
-            <p class="entry-meta">${(template.families || []).slice(0, 2).map(displayFamilyLabel).join(" · ")}</p>
-            <button class="ghost compact" type="button" data-action="${actionType}" data-slot="${slotKey}" data-name="${template.name.replace(/"/g, "&quot;")}">${buttonLabel}</button>
-          </article>
-        `;
-      })
+      items.slice(0, 1).map(template => `
+        <article class="summary-card summary-card-soft template-card">
+          <p class="eyebrow">${SLOT_LABELS[slotKey] || slotKey}</p>
+          <p class="entry-title">${template.name}</p>
+          <p class="entry-meta">${(template.families || []).slice(0, 2).map(displayFamilyLabel).join(SEP)}</p>
+          <button class="ghost compact" type="button" data-action="log-meal-template" data-slot="${slotKey}" data-name="${template.name.replace(/"/g, "&quot;")}">Usar hoy</button>
+        </article>
+      `)
     )
     .slice(0, limit)
     .join("");
 }
 
 function shoppingGroupCards(groups) {
-  if (!groups.length) return emptyState("Todavía no hay compra derivada suficiente.");
+  if (!groups.length) return emptyState("Todav\u00eda no hay compra derivada suficiente.");
   return groups
     .slice(0, 5)
     .map(
@@ -298,23 +296,23 @@ function shoppingGroupCards(groups) {
 }
 
 function familyChipRow(families) {
-  if (!families.length) return emptyState("Todavía no has cubierto grupos hoy.");
+  if (!families.length) return emptyState("Todav\u00eda no has cubierto grupos hoy.");
   return `<div class="family-chip-row">${families.map(family => `<span class="family-chip">${displayFamilyLabel(family)}</span>`).join("")}</div>`;
 }
 
 function favoriteMealsPreview(items) {
-  if (!items.length) return emptyState("Todavía no has definido favoritos.");
+  if (!items.length) return emptyState("Todav\u00eda no has definido favoritos.");
   return items.slice(0, 6).map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`).join("");
 }
 
 function avoidIngredientsPreview(items) {
-  if (!items.length) return emptyState("Todavía no has marcado ingredientes a evitar.");
+  if (!items.length) return emptyState("Todav\u00eda no has marcado ingredientes a evitar.");
   return items.slice(0, 6).map(item => `<article class="entry"><div><p class="entry-title">${item}</p></div></article>`).join("");
 }
 
 function signalItems(state) {
   const items = mealReactionSignals(state.nutrition.meals).slice(0, 3);
-  if (!items.length) return emptyState("Aún no hay suficientes postcomidas para detectar patrones.");
+  if (!items.length) return emptyState("A\u00fan no hay suficientes postcomidas para detectar patrones.");
   return items
     .map(item => `<article class="entry"><div><p class="entry-title">${item.name}</p><p class="entry-meta">${item.count} apariciones</p></div></article>`)
     .join("");
@@ -325,29 +323,18 @@ function nextMissingFamilies(review, coveredToday) {
   return pending.slice(0, 3);
 }
 
-function pantryCorePreview(pantryStatus, status, fallbackText) {
-  const items = Object.entries(pantryStatus || {})
-    .filter(([, value]) => value === status)
-    .map(([item]) => item)
-    .slice(0, 6);
-  if (!items.length) return emptyState(fallbackText);
-  return items.map(item => `<span class="family-chip">${item}</span>`).join("");
-}
-
 function recurringMealsBlock() {
   return `
     <section class="dashboard-summary compact-metrics template-grid">
-      ${baseTemplateCards({ limit: 4, action: "log" })}
+      ${baseTemplateCards({ limit: 4 })}
     </section>
   `;
 }
 
 function plannerFocusCard(review, plannedToday) {
-  const headline = plannedToday.length
-    ? `${plannedToday.length} comida(s) ya colocadas hoy`
-    : "Hoy sigue libre";
+  const headline = plannedToday.length ? `${plannedToday.length} comida(s) ya colocadas hoy` : "Hoy sigue libre";
   const detail = review.variety.missingFamilies.length
-    ? `Conviene cubrir ${review.variety.missingFamilies.slice(0, 2).map(displayFamilyLabel).join(" · ")}`
+    ? `Conviene cubrir ${review.variety.missingFamilies.slice(0, 2).map(displayFamilyLabel).join(SEP)}`
     : "La variedad semanal va bien";
   return `
     <article class="summary-card summary-card-soft">
@@ -359,7 +346,7 @@ function plannerFocusCard(review, plannedToday) {
 }
 
 function plannedTodayPreview(plannedToday) {
-  if (!plannedToday.length) return emptyState("Hoy no tienes comidas previstas todavía.");
+  if (!plannedToday.length) return emptyState("Hoy no tienes comidas previstas todav\u00eda.");
   return plannedToday
     .slice()
     .sort((left, right) => String(left.slot || "").localeCompare(String(right.slot || "")))
@@ -379,7 +366,7 @@ function plannedTodayPreview(plannedToday) {
 
 function prepPreview(prep) {
   const items = Array.isArray(prep.batchItems) ? prep.batchItems.slice(0, 3) : [];
-  if (!items.length) return emptyState("Aún no hay prep semanal claro.");
+  if (!items.length) return emptyState("A\u00fan no hay prep semanal claro.");
   return items
     .map(
       item => `
@@ -392,6 +379,91 @@ function prepPreview(prep) {
       `
     )
     .join("");
+}
+
+function mealRibbon(mealsToday, coveredToday, plannedToday, waterToday) {
+  const pills = [
+    `${mealsToday.length} comida(s)`,
+    `${coveredToday.length} grupo(s)`,
+    `${plannedToday.length} prevista(s)`,
+    `${waterToday}/8 agua`
+  ];
+  return `<div class="premium-pill-row">${pills.map(item => `<span class="premium-pill">${item}</span>`).join("")}</div>`;
+}
+
+function compactMealLog(meals) {
+  if (!meals.length) return emptyState("Hoy todav\u00eda va en blanco.");
+  return `
+    <div class="mini-entry-list">
+      ${meals
+        .slice(-3)
+        .reverse()
+        .map(meal => {
+          const names = meal.items.map(item => item.name).join(", ");
+          const families = mealFamilies(meal).slice(0, 2).map(displayFamilyLabel).join(SEP);
+          return `<article class="mini-entry"><p class="entry-title">${meal.type}</p><p class="entry-meta">${names}${families ? `${SEP}${families}` : ""}</p></article>`;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function compactPlanPeek(items) {
+  if (!items.length) return emptyState("Sin huecos cerrados para hoy.");
+  return `
+    <div class="mini-entry-list">
+      ${items
+        .slice(0, 3)
+        .map(item => `<article class="mini-entry"><p class="entry-title">${item.slot}</p><p class="entry-meta">${item.name}</p></article>`)
+        .join("")}
+    </div>
+  `;
+}
+
+function compactShoppingStatus(pantryStatus) {
+  const need = Object.entries(pantryStatus || {})
+    .filter(([, value]) => value === "need")
+    .map(([item]) => item)
+    .slice(0, 4);
+  const bought = Object.entries(pantryStatus || {})
+    .filter(([, value]) => value === "bought")
+    .map(([item]) => item)
+    .slice(0, 4);
+  return `
+    <div class="mini-entry-list">
+      <article class="mini-entry">
+        <p class="entry-title">Por comprar</p>
+        <p class="entry-meta">${need.length ? need.join(SEP) : "Nada pendiente"}</p>
+      </article>
+      <article class="mini-entry">
+        <p class="entry-title">Cerrado</p>
+        <p class="entry-meta">${bought.length ? bought.join(SEP) : "Nada marcado a\u00fan"}</p>
+      </article>
+    </div>
+  `;
+}
+
+function pantryQuickState(pantryStatus) {
+  const have = Object.entries(pantryStatus || {})
+    .filter(([, value]) => value === "have")
+    .map(([item]) => item)
+    .slice(0, 5);
+  const need = Object.entries(pantryStatus || {})
+    .filter(([, value]) => value === "need")
+    .map(([item]) => item)
+    .slice(0, 5);
+  return `
+    <div class="mini-entry-list">
+      <article class="mini-entry">
+        <p class="entry-title">En casa</p>
+        <p class="entry-meta">${have.length ? have.join(SEP) : "Sin b\u00e1sicos marcados"}</p>
+      </article>
+      <article class="mini-entry">
+        <p class="entry-title">Falta</p>
+        <p class="entry-meta">${need.length ? need.join(SEP) : "Compra tranquila"}</p>
+      </article>
+    </div>
+  `;
 }
 
 export function renderNutritionFeature(state, options = {}) {
@@ -414,13 +486,12 @@ export function renderNutritionFeature(state, options = {}) {
 
   if (currentView === "log") {
     body = `
+      <div class="nutrition-secondary-grid nutrition-secondary-grid-tight">
+        ${sectionCard("Hoy", "\u00daltimos registros", compactMealLog(mealsToday), "section-card-glass section-card-nutrition-light")}
+        ${sectionCard("Plan", "Lo ya cerrado", compactPlanPeek(plannedToday), "section-card-glass section-card-nutrition-light")}
+      </div>
       <div class="nutrition-secondary-grid">
-        ${sectionCard(
-          "Atajos",
-          "Tus bases reales",
-          recurringMealsBlock(),
-          "section-card-glass section-card-nutrition-light"
-        )}
+        ${sectionCard("Atajos", "Tus bases reales", recurringMealsBlock(), "section-card-glass section-card-nutrition-light")}
         ${sectionCard(
           "Registrar",
           "Comida manual",
@@ -436,7 +507,7 @@ export function renderNutritionFeature(state, options = {}) {
                 <label><span>Grupo secundario</span><select name="secondaryFamily">${familyOptions()}</select></label>
               </div>
               <label><span>Ingredientes clave</span><input name="ingredientsText" list="pantry-ingredients" placeholder="Ej. arroz, pollo, zanahoria"></label>
-              <label><span>Postcomida</span><input name="reaction" placeholder="Ligera, pesada, hinchazón..."></label>
+              <label><span>Postcomida</span><input name="reaction" placeholder="Ligera, pesada, hinchaz\u00f3n..."></label>
               <button class="primary" type="submit">Guardar comida</button>
             </form>
           `,
@@ -451,6 +522,7 @@ export function renderNutritionFeature(state, options = {}) {
         "Plan",
         "Semana comida",
         `
+          ${mealRibbon(mealsToday, coveredToday, plannedToday, waterToday)}
           <section class="dashboard-summary compact-metrics feature-metrics-soft">
             ${statCard("Previstas", plannedMeals.length, "totales")}
             ${statCard("Hoy", plannedToday.length, "previstas")}
@@ -466,7 +538,7 @@ export function renderNutritionFeature(state, options = {}) {
         "section-card-hero section-card-nutrition"
       )}
       <details class="panel panel-toned disclosure-panel compact-disclosure">
-        <summary class="disclosure-summary"><div><p class="eyebrow">Nueva</p><h4>Añadir comida prevista</h4></div></summary>
+        <summary class="disclosure-summary"><div><p class="eyebrow">Nueva</p><h4>A\u00f1adir comida prevista</h4></div></summary>
         <div class="stack disclosure-body">
           <datalist id="pantry-ingredients">${pantryOptions()}</datalist>
           <form id="planner-form" class="stack">
@@ -483,7 +555,7 @@ export function renderNutritionFeature(state, options = {}) {
               <label><span>Nota</span><input name="notes" placeholder="Fuera, sobras, batch..."></label>
             </div>
             <details class="panel panel-toned disclosure-panel compact-disclosure">
-              <summary class="disclosure-summary"><div><p class="eyebrow">Libre</p><h4>Más detalle</h4></div></summary>
+              <summary class="disclosure-summary"><div><p class="eyebrow">Libre</p><h4>M\u00e1s detalle</h4></div></summary>
               <div class="stack disclosure-body">
                 <div class="field-grid">
                   <label><span>Grupo principal</span><select name="primaryFamily">${familyOptions()}</select></label>
@@ -496,7 +568,7 @@ export function renderNutritionFeature(state, options = {}) {
           </form>
         </div>
       </details>
-      ${sectionCard("Rotación", "Bases de la semana", `<section class="dashboard-summary compact-metrics template-grid">${baseTemplateCards({ limit: 4, action: "log" })}</section>`, "section-card-glass section-card-nutrition-light")}
+      ${sectionCard("Rotaci\u00f3n", "Bases de la semana", `<section class="dashboard-summary compact-metrics template-grid">${baseTemplateCards({ limit: 4 })}</section>`, "section-card-glass section-card-nutrition-light")}
       <details class="panel panel-toned disclosure-panel compact-disclosure">
         <summary class="disclosure-summary"><div><p class="eyebrow">Semana</p><h4>Ver plan completo</h4></div></summary>
         <div class="stack disclosure-body">${plannerItems(plannedMeals)}</div>
@@ -506,16 +578,18 @@ export function renderNutritionFeature(state, options = {}) {
     body = `
       ${sectionCard(
         "Compra",
-        "Lista útil",
+        "Lista \u00fatil",
         `
+          ${mealRibbon(mealsToday, coveredToday, plannedToday, waterToday)}
           ${pantrySummaryCards(pantryStatus)}
+          ${compactShoppingStatus(pantryStatus)}
           <section class="dashboard-summary compact-metrics pantry-shopping-grid">${shoppingGroupCards(groupedShoppingList)}</section>
         `,
         "section-card-hero section-card-nutrition"
       )}
       <div class="nutrition-secondary-grid">
-        ${sectionCard("Falta", "Lo que compras esta semana", `<div class="stack stack-tight">${pantryListByStatus(pantryStatus, "need", "Todavía no has marcado faltas.")}</div>`, "section-card-glass section-card-nutrition-light")}
-        ${sectionCard("Cerrado", "Lo que ya está resuelto", `<div class="stack stack-tight">${pantryListByStatus(pantryStatus, "bought", "Todavía no has cerrado compras.")}</div>`, "section-card-glass section-card-nutrition-light")}
+        ${sectionCard("Falta", "Lo que compras esta semana", `<div class="stack stack-tight">${pantryListByStatus(pantryStatus, "need", "Todav\u00eda no has marcado faltas.")}</div>`, "section-card-glass section-card-nutrition-light")}
+        ${sectionCard("Cerrado", "Lo que ya est\u00e1 resuelto", `<div class="stack stack-tight">${pantryListByStatus(pantryStatus, "bought", "Todav\u00eda no has cerrado compras.")}</div>`, "section-card-glass section-card-nutrition-light")}
       </div>
     `;
   } else if (currentView === "pantry") {
@@ -524,25 +598,17 @@ export function renderNutritionFeature(state, options = {}) {
         "Despensa",
         "Lo que tienes y lo que falta",
         `
+          ${mealRibbon(mealsToday, coveredToday, plannedToday, waterToday)}
           ${pantrySummaryCards(pantryStatus)}
-          <div class="stack stack-tight">
-            <div>
-              <p class="eyebrow">En casa</p>
-              <div class="family-chip-row">${pantryCorePreview(pantryStatus, "have", "Todavía no has marcado básicos en casa.")}</div>
-            </div>
-            <div>
-              <p class="eyebrow">Por comprar</p>
-              <div class="family-chip-row">${pantryCorePreview(pantryStatus, "need", "Todavía no has marcado faltas.")}</div>
-            </div>
-          </div>
+          ${pantryQuickState(pantryStatus)}
           <form id="pantry-item-form" class="inline-form inline-form-soft">
-            <label><span>Añadir a compra</span><input name="item" placeholder="Ej. avena, tomates, garbanzos"></label>
-            <button class="ghost compact" type="submit">Añadir</button>
+            <label><span>A\u00f1adir a compra</span><input name="item" placeholder="Ej. avena, tomates, garbanzos"></label>
+            <button class="ghost compact" type="submit">A\u00f1adir</button>
           </form>
           <div class="button-row button-row-start button-row-soft">
             <button class="ghost compact" type="button" data-action="clear-pantry-status">Limpiar marcas</button>
           </div>
-          <p class="muted">Toque único: tengo → falta → comprado → evitar.</p>
+          <p class="muted">Toque \u00fanico: tengo \u2192 falta \u2192 comprado \u2192 evitar.</p>
         `,
         "section-card-hero section-card-nutrition"
       )}
@@ -554,18 +620,18 @@ export function renderNutritionFeature(state, options = {}) {
         <summary class="disclosure-summary"><div><p class="eyebrow">Preferencias</p><h4>Favoritos y evitar</h4></div></summary>
         <div class="stack disclosure-body">
           <form id="nutrition-preferences-form" class="stack">
-            <label><span>Comidas favoritas</span><textarea name="favoriteMeals" rows="4" placeholder="Una por línea o separadas por coma">${favoriteMeals.join("\n")}</textarea></label>
-            <label><span>Ingredientes a evitar</span><textarea name="avoidIngredients" rows="4" placeholder="Uno por línea o separados por coma">${avoidIngredients.join("\n")}</textarea></label>
+            <label><span>Comidas favoritas</span><textarea name="favoriteMeals" rows="4" placeholder="Una por l\u00ednea o separadas por coma">${favoriteMeals.join("\n")}</textarea></label>
+            <label><span>Ingredientes a evitar</span><textarea name="avoidIngredients" rows="4" placeholder="Uno por l\u00ednea o separados por coma">${avoidIngredients.join("\n")}</textarea></label>
             <button class="primary" type="submit">Guardar preferencias</button>
           </form>
           <div class="nutrition-secondary-grid">
-            ${sectionCard("Favoritos", "Lo que sí quieres repetir", `<div class="stack stack-tight">${favoriteMealsPreview(favoriteMeals)}</div>`, "section-card-glass section-card-nutrition-light")}
+            ${sectionCard("Favoritos", "Lo que s\u00ed quieres repetir", `<div class="stack stack-tight">${favoriteMealsPreview(favoriteMeals)}</div>`, "section-card-glass section-card-nutrition-light")}
             ${sectionCard("Evitar", "Lo que te aleja", `<div class="stack stack-tight">${avoidIngredientsPreview(avoidIngredients)}</div>`, "section-card-glass section-card-nutrition-light")}
           </div>
         </div>
       </details>
       <details class="panel panel-toned disclosure-panel compact-disclosure">
-        <summary class="disclosure-summary"><div><p class="eyebrow">Lectura</p><h4>Tolerancia y repetición</h4></div></summary>
+        <summary class="disclosure-summary"><div><p class="eyebrow">Lectura</p><h4>Tolerancia y repetici\u00f3n</h4></div></summary>
         <div class="stack disclosure-body">${signalItems(state)}</div>
       </details>
     `;
@@ -596,16 +662,11 @@ export function renderNutritionFeature(state, options = {}) {
         "Hoy",
         "Tu comida real",
         `
-          <section class="dashboard-summary compact-metrics feature-metrics-soft">
-            ${statCard("Comidas", mealsToday.length, "registradas")}
-            ${statCard("Agua", `${waterToday}/8`, "vasos")}
-            ${statCard("Grupos", coveredToday.length, "cubiertos")}
-            ${statCard("Plan", plannedToday.length, "previstas")}
-          </section>
-          <article class="summary-card summary-card-soft">
+          ${mealRibbon(mealsToday, coveredToday, plannedToday, waterToday)}
+          <article class="summary-card summary-card-soft summary-card-premium">
             <p class="eyebrow">Siguiente</p>
             <p class="entry-title">${review.nextAction}</p>
-            <p class="entry-meta">${missingToday.length ? missingToday.map(displayFamilyLabel).join(" · ") : "Día ya bastante cubierto"}</p>
+            <p class="entry-meta">${missingToday.length ? missingToday.map(displayFamilyLabel).join(SEP) : "D\u00eda ya bastante cubierto"}</p>
           </article>
           ${familyChipRow(coveredToday)}
           <div class="button-row button-row-start button-row-soft">
@@ -617,15 +678,15 @@ export function renderNutritionFeature(state, options = {}) {
         "section-card-hero section-card-nutrition"
       )}
       <div class="nutrition-secondary-grid">
-        ${sectionCard("Bases", "Lo que más repites", recurringMealsBlock(), "section-card-glass section-card-nutrition-light")}
-        ${sectionCard("Hoy", "Últimas comidas", `<div class="stack stack-tight">${mealItems(mealsToday.slice(-2), "Todavía no hay últimas comidas que revisar.")}</div>`, "section-card-glass section-card-nutrition-light")}
+        ${sectionCard("Bases", "Lo que m\u00e1s repites", recurringMealsBlock(), "section-card-glass section-card-nutrition-light")}
+        ${sectionCard("Hoy", "\u00daltimas comidas", `<div class="stack stack-tight">${mealItems(mealsToday.slice(-2), "Todav\u00eda no hay \u00faltimas comidas que revisar.")}</div>`, "section-card-glass section-card-nutrition-light")}
       </div>
     `;
   }
 
   return `
-    <section id="nutrition-panel" class="panel stack app-feature-shell">
-      ${featureHeader("Nutrición", "Comer sin fricción", "", { emblem: "◔", emblemTone: "nutrition" })}
+    <section id="nutrition-panel" class="panel stack app-feature-shell" data-view="${currentView}">
+      ${featureHeader("Nutrici\u00f3n", "Comer sin fricci\u00f3n", "", { emblem: "\u25d4", emblemTone: "nutrition", artSrc: "./icons/scene-nutrition.svg" })}
       ${viewSwitcher("nutrition", currentView, [
         { id: "today", label: "Resumen" },
         { id: "log", label: "Registrar" },
