@@ -851,7 +851,7 @@ function requireNumberInRange(value, label, { min = -Infinity, max = Infinity } 
 }
 
 function optionalNumberInRange(value, label, bounds) {
-  const normalized = String(value ?? "").trim();
+  const normalized = String(value || "").trim();
   if (!normalized) return null;
   return requireNumberInRange(normalized, label, bounds);
 }
