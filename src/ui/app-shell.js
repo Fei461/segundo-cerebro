@@ -6,20 +6,20 @@ import { renderTrainingFeature } from "../features/training-view.js";
 import { renderWellbeingFeature } from "../features/wellbeing-view.js";
 import { renderLibraryFeature } from "../features/library-view.js";
 import { localDateKey } from "../domain/date.js";
-import { sectionCard } from "./feature-layout.js";
+import { featureHeader, sectionCard } from "./feature-layout.js";
 
 const APP_TABS = [
-  { id: "home", label: "Hoy", mobileLabel: "Hoy" },
-  { id: "planning", label: "Semana", mobileLabel: "Semana" },
-  { id: "nutrition", label: "Comida", mobileLabel: "Comida" },
-  { id: "training", label: "Entreno", mobileLabel: "Entreno" },
-  { id: "more", label: "Más", mobileLabel: "Más" }
+  { id: "home", label: "Hoy", mobileLabel: "Hoy", icon: "◌" },
+  { id: "planning", label: "Semana", mobileLabel: "Semana", icon: "▦" },
+  { id: "nutrition", label: "Comida", mobileLabel: "Comida", icon: "◔" },
+  { id: "training", label: "Entreno", mobileLabel: "Entreno", icon: "△" },
+  { id: "more", label: "Más", mobileLabel: "Más", icon: "✦" }
 ];
 
 const MORE_TABS = [
-  { id: "wellbeing", label: "Salud", note: "Síntomas, ciclo y medicación" },
-  { id: "recovery", label: "Sueño", note: "Noches, recuperación y cierre" },
-  { id: "library", label: "Biblioteca", note: "Lecturas, notas y reto anual" }
+  { id: "wellbeing", label: "Salud", note: "Síntomas, ciclo y medicación", icon: "✳" },
+  { id: "recovery", label: "Sueño", note: "Noches, recuperación y cierre", icon: "☾" },
+  { id: "library", label: "Biblioteca", note: "Lecturas, notas y reto anual", icon: "✦" }
 ];
 
 function normalizeShellTab(activeTab) {
@@ -45,7 +45,8 @@ function renderBottomNav(activeTab) {
             aria-pressed="${tab.id === normalized ? "true" : "false"}"
             aria-current="${tab.id === normalized ? "page" : "false"}"
           >
-            <span>${tab.mobileLabel || tab.label}</span>
+            <span class="bottom-nav-icon" aria-hidden="true">${tab.icon || "•"}</span>
+            <span class="bottom-nav-label">${tab.mobileLabel || tab.label}</span>
           </button>
         `
       ).join("")}
@@ -107,16 +108,26 @@ function renderMoreHub(viewModel) {
     0
   );
   const sleeps = Object.keys(viewModel.state.sleepEntries || {}).length;
+  const featured = {
+    title: "Capas suaves",
+    detail: "Sueño, salud y biblioteca viven aquí sin competir con Hoy.",
+    total: books.length + symptoms + sleeps
+  };
 
   return `
     <section class="panel stack app-feature-shell">
-      <header class="feature-header feature-header-shell">
-        <div class="feature-header-copy">
-          <p class="eyebrow">Más</p>
-          <h2>Capas secundarias</h2>
-          <p class="muted">Entrar donde toca sin recargar la navegación base.</p>
+      ${featureHeader("Más", "Capas suaves", "Todo lo valioso que no necesita vivir siempre abajo.", { emblem: "✦", emblemTone: "library", artSrc: "./icons/scene-library.svg" })}
+      <section class="more-hub-hero section-card section-card-hero">
+        <div class="more-hub-hero-copy">
+          <p class="eyebrow">Acceso curado</p>
+          <h3>${featured.title}</h3>
+          <p class="muted">${featured.detail}</p>
         </div>
-      </header>
+        <div class="more-hub-hero-badge">
+          <span class="more-hub-hero-count">${featured.total}</span>
+          <span class="entry-meta">registros</span>
+        </div>
+      </section>
       <div class="more-hub-grid">
         ${MORE_TABS.map(tab => {
           const count =
@@ -129,7 +140,8 @@ function renderMoreHub(viewModel) {
             tab.label,
             tab.note,
             `
-              <article class="summary-card summary-card-soft">
+              <article class="summary-card summary-card-soft summary-card-premium module-spotlight-card">
+                <p class="module-card-emoji" aria-hidden="true">${tab.icon}</p>
                 <p class="entry-title">${count}</p>
                 <p class="entry-meta">guardados</p>
               </article>
@@ -193,12 +205,12 @@ function renderMaintenanceFooter(activeTab) {
 
 function renderShellPills(activeTab, activeMeta, mealsToday, sessionsToday) {
   if (normalizeShellTab(activeTab) !== "home") {
-    return `<div class="shell-pill-row"><span class="shell-pill shell-pill-active">${activeMeta.label}</span></div>`;
+    return `<div class="shell-pill-row"><span class="shell-pill shell-pill-active"><span class="shell-pill-icon" aria-hidden="true">${activeMeta.icon || "•"}</span>${activeMeta.label}</span></div>`;
   }
 
   return `
     <div class="shell-pill-row">
-      <span class="shell-pill shell-pill-active">${activeMeta.label}</span>
+      <span class="shell-pill shell-pill-active"><span class="shell-pill-icon" aria-hidden="true">${activeMeta.icon || "•"}</span>${activeMeta.label}</span>
       <span class="shell-pill">${mealsToday} comida(s)</span>
       <span class="shell-pill">${sessionsToday} entreno(s)</span>
     </div>
@@ -216,6 +228,7 @@ export function renderApp(container, viewModel) {
     container.innerHTML = `
       <main class="screen centered">
         <section class="panel">
+          <div class="auth-brand-shell" aria-hidden="true"><img class="auth-brand-art" src="./icons/brand-mark.svg" alt=""></div>
           <p class="eyebrow">Base local</p>
           <h1>Preparando tu espacio</h1>
           <p class="muted">Cargando la app y tu estructura segura.</p>
@@ -229,6 +242,7 @@ export function renderApp(container, viewModel) {
     container.innerHTML = `
       <main class="screen centered">
         <section class="panel auth-panel">
+          <div class="auth-brand-shell" aria-hidden="true"><img class="auth-brand-art" src="./icons/brand-mark.svg" alt=""></div>
           <p class="eyebrow">Acceso local</p>
           <h1>Crear acceso</h1>
           <p class="muted">Tus datos quedan cifrados en este dispositivo.</p>
@@ -265,6 +279,7 @@ export function renderApp(container, viewModel) {
     container.innerHTML = `
       <main class="screen centered">
         <section class="panel auth-panel">
+          <div class="auth-brand-shell" aria-hidden="true"><img class="auth-brand-art" src="./icons/brand-mark.svg" alt=""></div>
           <p class="eyebrow">${hasVault ? "Espacio bloqueado" : "Acceso requerido"}</p>
           <h1>Desbloquear</h1>
           <p class="muted">${lockSummary(lockMinutes)}</p>
@@ -301,8 +316,13 @@ export function renderApp(container, viewModel) {
     <main class="screen app-screen theme-${activeTab}">
       <header class="topbar shell-topbar">
         <div class="shell-brand">
-          <p class="shell-title">${displayName}</p>
-          ${renderShellPills(activeTab, activeMeta, mealsToday, sessionsToday)}
+          <div class="shell-brand-mark" aria-hidden="true">
+            <img class="shell-brand-art" src="./icons/brand-mark.svg" alt="">
+          </div>
+          <div class="shell-brand-copy">
+            <p class="shell-title">${displayName}</p>
+            ${renderShellPills(activeTab, activeMeta, mealsToday, sessionsToday)}
+          </div>
         </div>
         <div class="topbar-actions">
           <button id="lock-button" class="ghost compact">Bloquear</button>

@@ -1,16 +1,23 @@
 export function featureHeader(eyebrow, title, subtitle = "", options = {}) {
   const emblem = options.emblem
-    ? `<span class="feature-emblem feature-emblem--${options.emblemTone || "default"}" aria-hidden="true">${options.emblem}</span>`
+    ? `
+      <div class="feature-emblem-wrap">
+        <span class="feature-emblem feature-emblem--${options.emblemTone || "default"}" aria-hidden="true">${options.emblem}</span>
+      </div>
+    `
+    : "";
+  const art = options.artSrc
+    ? `<div class="feature-hero-art-wrap" aria-hidden="true"><img class="feature-hero-art" src="${options.artSrc}" alt=""></div>`
     : "";
 
   return `
-    <header class="feature-header feature-header-shell">
+    <header class="feature-header feature-header-shell${emblem ? " feature-header-with-emblem" : ""}">
       <div class="feature-header-copy">
         <p class="eyebrow">${eyebrow}</p>
         <h2>${title}</h2>
         ${subtitle ? `<p class="muted">${subtitle}</p>` : ""}
       </div>
-      ${emblem}
+      ${art || emblem}
     </header>
   `;
 }
