@@ -105,11 +105,11 @@ export function normalizeStateShape(state) {
     goals: ensureArray(safe.goals),
     appMeta: {
       migratedFromLegacy: Boolean(appMeta.migratedFromLegacy),
-      lastImportAt: appMeta.lastImportAt ?? null,
-      lastBackupExportAt: appMeta.lastBackupExportAt ?? null,
-      lastPassphraseChangeAt: appMeta.lastPassphraseChangeAt ?? null,
+      lastImportAt: appMeta.lastImportAt ? ensureString(appMeta.lastImportAt, "") : null,
+      lastBackupExportAt: appMeta.lastBackupExportAt ? ensureString(appMeta.lastBackupExportAt, "") : null,
+      lastPassphraseChangeAt: appMeta.lastPassphraseChangeAt ? ensureString(appMeta.lastPassphraseChangeAt, "") : null,
       autoLockMinutes: Math.min(120, Math.max(0, ensureNumber(appMeta.autoLockMinutes, 5))),
-      lastUnlockedAt: appMeta.lastUnlockedAt ?? null
+      lastUnlockedAt: appMeta.lastUnlockedAt ? ensureString(appMeta.lastUnlockedAt, "") : null
     }
   };
 }

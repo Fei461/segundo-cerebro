@@ -688,10 +688,10 @@ export function getSuggestedWeeklyMealSlots({
           slot,
           name: selectedRecipe.name,
           recipeId: selectedRecipe.id,
-          calories: selectedRecipe.perServing?.calories ?? Math.round(selectedRecipe.totals.calories / selectedRecipe.servings),
-          protein: selectedRecipe.perServing?.protein ?? 0,
-          carbs: selectedRecipe.perServing?.carbs ?? 0,
-          fat: selectedRecipe.perServing?.fat ?? 0,
+          calories: selectedRecipe.perServing?.calories ? Math.round(selectedRecipe.totals.calories / selectedRecipe.servings) : 0,
+          protein: selectedRecipe.perServing?.protein ? Math.round(selectedRecipe.totals.protein / selectedRecipe.servings) : 0,
+          carbs: selectedRecipe.perServing?.carbs ? Math.round(selectedRecipe.totals.carbs / selectedRecipe.servings) : 0,
+          fat: selectedRecipe.perServing?.fat ? Math.round(selectedRecipe.totals.fat / selectedRecipe.servings) : 0,
           status: "planned",
           notes:
             needsSimplification

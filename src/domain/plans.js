@@ -68,11 +68,11 @@ export function buildLegacyMealPlan(plannedMeals = []) {
 export function legacyMealPlanToPlannedMeals(legacyMealPlan = {}) {
   return Object.entries(legacyMealPlan || {}).flatMap(([date, slots]) =>
     Object.entries(slots || {}).map(([slot, item]) => ({
-      id: item.id ?? `${date}-${slot}`,
+      id: item.id ? String(item.id) : `${date}-${slot}`,
       date,
       slot,
       name: normalizeText(item.name),
-      recipeId: item.recipeId ?? null,
+      recipeId: item.recipeId ? normalizeText(item.recipeId) : null,
       families: normalizeFamilies(item.families),
       ingredientsText: normalizeText(item.ingredientsText),
       calories: normalizeNumber(item.calories),
@@ -94,7 +94,7 @@ export function getPlannedMeals(state) {
         date: normalizeDate(meal.date),
         slot: normalizeText(meal.slot),
         name: normalizeText(meal.name),
-        recipeId: meal.recipeId ?? null,
+        recipeId: meal.recipeId ? normalizeText(meal.recipeId) : null,
         families: normalizeFamilies(meal.families),
         ingredientsText: normalizeText(meal.ingredientsText),
         calories: normalizeNumber(meal.calories),
@@ -178,7 +178,7 @@ export function removePlannedMeal(state, mealId) {
 
 export function findPlannedMealMatch(state, loggedMeal) {
   const loggedName = normalizeMatchText(loggedMeal?.items?.[0]?.name);
-  const loggedRecipeId = loggedMeal?.items?.[0]?.recipeId ?? null;
+  const loggedRecipeId = loggedMeal?.items?.[0]?.recipeId ? String(loggedMeal.items[0].recipeId) : null;
   const loggedType = normalizeMatchText(loggedMeal?.type);
 
   const candidates = getPlannedMeals(state).filter(meal => meal.date === loggedMeal?.date && meal.status !== "done");
