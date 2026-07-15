@@ -1,23 +1,32 @@
 export function featureHeader(eyebrow, title, subtitle = "", options = {}) {
-  const emblem = options.emblem
+  const art = options.artSrc
+    ? `<div class="feature-hero-art-wrap feature-hero-art-wrap--${options.emblemTone || "default"}" aria-hidden="true"><img class="feature-hero-art" src="${options.artSrc}" alt=""></div>`
+    : "";
+  const emblem = !art && options.emblem
     ? `
       <div class="feature-emblem-wrap">
         <span class="feature-emblem feature-emblem--${options.emblemTone || "default"}" aria-hidden="true">${options.emblem}</span>
       </div>
     `
     : "";
-  const art = options.artSrc
-    ? `<div class="feature-hero-art-wrap" aria-hidden="true"><img class="feature-hero-art" src="${options.artSrc}" alt=""></div>`
+
+  const pills = Array.isArray(options.pills) && options.pills.length
+    ? `
+      <div class="feature-header-pills">
+        ${options.pills.filter(Boolean).map(item => `<span class="feature-header-pill">${item}</span>`).join("")}
+      </div>
+    `
     : "";
 
   return `
-    <header class="feature-header feature-header-shell${emblem ? " feature-header-with-emblem" : ""}">
+    <header class="feature-header feature-header-shell${art ? " feature-header-with-art" : ""}${emblem ? " feature-header-with-emblem" : ""}">
+      ${art || emblem}
       <div class="feature-header-copy">
         <p class="eyebrow">${eyebrow}</p>
         <h2>${title}</h2>
         ${subtitle ? `<p class="muted">${subtitle}</p>` : ""}
+        ${pills}
       </div>
-      ${art || emblem}
     </header>
   `;
 }

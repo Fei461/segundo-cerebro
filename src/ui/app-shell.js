@@ -5,7 +5,6 @@ import { renderRecoveryFeature } from "../features/recovery-view.js";
 import { renderTrainingFeature } from "../features/training-view.js";
 import { renderWellbeingFeature } from "../features/wellbeing-view.js";
 import { renderLibraryFeature } from "../features/library-view.js";
-import { localDateKey } from "../domain/date.js";
 import { featureHeader, sectionCard } from "./feature-layout.js";
 
 const APP_TABS = [
@@ -17,18 +16,14 @@ const APP_TABS = [
 ];
 
 const MORE_TABS = [
-  { id: "wellbeing", label: "Salud", note: "Síntomas, ciclo y medicación", icon: "✳" },
-  { id: "recovery", label: "Sueño", note: "Noches, recuperación y cierre", icon: "☾" },
-  { id: "library", label: "Biblioteca", note: "Lecturas, notas y reto anual", icon: "✦" }
+  { id: "wellbeing", label: "Salud", note: "Ciclo y señales", icon: "✳", accent: "fase y soporte" },
+  { id: "recovery", label: "Sueño", note: "Descanso y ajuste", icon: "☾", accent: "noche y energía" },
+  { id: "library", label: "Biblioteca", note: "Lecturas y notas", icon: "✦", accent: "libros y memoria" }
 ];
 
 function normalizeShellTab(activeTab) {
   if (MORE_TABS.some(tab => tab.id === activeTab)) return "more";
   return activeTab;
-}
-
-function currentTabMeta(activeTab) {
-  return APP_TABS.find(tab => tab.id === normalizeShellTab(activeTab)) || APP_TABS[0];
 }
 
 function renderBottomNav(activeTab) {
@@ -109,19 +104,27 @@ function renderMoreHub(viewModel) {
   );
   const sleeps = Object.keys(viewModel.state.sleepEntries || {}).length;
   const featured = {
-    title: "Capas suaves",
-    detail: "Sueño, salud y biblioteca viven aquí sin competir con Hoy.",
+    title: "Más tranquilo",
+    detail: "Salud, sueño y biblioteca sin ocupar tu foco diario.",
     total: books.length + symptoms + sleeps
   };
+  const featuredChips = [
+    `${symptoms} salud`,
+    `${sleeps} sueño`,
+    `${books.length} libros`
+  ];
 
   return `
     <section class="panel stack app-feature-shell">
-      ${featureHeader("Más", "Capas suaves", "Todo lo valioso que no necesita vivir siempre abajo.", { emblem: "✦", emblemTone: "library", artSrc: "./icons/scene-library.svg" })}
-      <section class="more-hub-hero section-card section-card-hero">
+      ${featureHeader("Más", "Más tranquilo", "Lo importante que no necesita estar siempre delante.", { emblem: "✦", emblemTone: "library", artSrc: "./icons/scene-library.svg" })}
+      <section class="more-hub-hero section-card section-card-hero more-hub-hero-premium">
         <div class="more-hub-hero-copy">
           <p class="eyebrow">Acceso curado</p>
           <h3>${featured.title}</h3>
           <p class="muted">${featured.detail}</p>
+          <div class="premium-pill-row premium-pill-row-soft more-hub-chip-row">
+            ${featuredChips.map(item => `<span class="premium-pill premium-pill-soft">${item}</span>`).join("")}
+          </div>
         </div>
         <div class="more-hub-hero-badge">
           <span class="more-hub-hero-count">${featured.total}</span>
@@ -140,12 +143,12 @@ function renderMoreHub(viewModel) {
             tab.label,
             tab.note,
             `
-              <article class="summary-card summary-card-soft summary-card-premium module-spotlight-card">
+              <article class="summary-card summary-card-soft summary-card-premium module-spotlight-card more-hub-card">
                 <p class="module-card-emoji" aria-hidden="true">${tab.icon}</p>
                 <p class="entry-title">${count}</p>
-                <p class="entry-meta">guardados</p>
+                <p class="entry-meta">${tab.accent}</p>
               </article>
-              <button class="primary compact" type="button" data-action="open-tab" data-tab="${tab.id}">Abrir</button>
+              <button class="primary compact more-hub-card-button" type="button" data-action="open-tab" data-tab="${tab.id}">Entrar</button>
             `,
             tab.id === "wellbeing"
               ? "section-card-glass section-card-wellbeing-light"
@@ -203,25 +206,10 @@ function renderMaintenanceFooter(activeTab) {
   return renderVaultFooter();
 }
 
-function renderShellPills(activeTab, activeMeta, mealsToday, sessionsToday) {
-  if (normalizeShellTab(activeTab) !== "home") {
-    return `<div class="shell-pill-row"><span class="shell-pill shell-pill-active"><span class="shell-pill-icon" aria-hidden="true">${activeMeta.icon || "•"}</span>${activeMeta.label}</span></div>`;
-  }
-
-  return `
-    <div class="shell-pill-row">
-      <span class="shell-pill shell-pill-active"><span class="shell-pill-icon" aria-hidden="true">${activeMeta.icon || "•"}</span>${activeMeta.label}</span>
-      <span class="shell-pill">${mealsToday} comida(s)</span>
-      <span class="shell-pill">${sessionsToday} entreno(s)</span>
-    </div>
-  `;
-}
-
 export function renderApp(container, viewModel) {
   const { mode, state, status, hasVault, lockMinutes, vaultHealth } = viewModel;
-  const displayName = state?.profile?.displayName?.trim() || "Segundo Cerebro";
   const activeTab = viewModel.currentTab || "home";
-  const activeMeta = currentTabMeta(activeTab);
+  const statusTone = viewModel.statusTone || "info";
   document.body.dataset.tab = mode === "ready" ? activeTab : mode;
 
   if (mode === "loading") {
@@ -307,29 +295,9 @@ export function renderApp(container, viewModel) {
     `;
     return;
   }
-
-  const todayKey = localDateKey(new Date());
-  const mealsToday = state.nutrition.meals.filter(meal => meal.date === todayKey).length;
-  const sessionsToday = state.training.sessions.filter(session => session.date === todayKey).length;
-
   container.innerHTML = `
     <main class="screen app-screen theme-${activeTab}">
-      <header class="topbar shell-topbar">
-        <div class="shell-brand">
-          <div class="shell-brand-mark" aria-hidden="true">
-            <img class="shell-brand-art" src="./icons/brand-mark.svg" alt="">
-          </div>
-          <div class="shell-brand-copy">
-            <p class="shell-title">${displayName}</p>
-            ${renderShellPills(activeTab, activeMeta, mealsToday, sessionsToday)}
-          </div>
-        </div>
-        <div class="topbar-actions">
-          <button id="lock-button" class="ghost compact">Bloquear</button>
-        </div>
-      </header>
-
-      ${status ? `<p class="status app-status" role="status" aria-live="polite">${status}</p>` : ""}
+      ${status ? `<p class="status app-status app-status-${statusTone}" role="status" aria-live="polite"><span class="status-copy">${status}</span>${statusTone === "success" ? `<span class="status-sparkles" aria-hidden="true"><span>✦</span><span>•</span><span>✦</span></span>` : ""}</p>` : ""}
       ${renderSurface(viewModel)}
       ${renderMaintenanceFooter(activeTab)}
       ${renderBottomNav(activeTab)}
