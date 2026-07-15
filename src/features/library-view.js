@@ -81,6 +81,11 @@ export function renderLibraryFeature(state, options = {}) {
   const currentView = options.currentView || "overview";
   const books = sortedBooks(state);
   const challenge = challengeProgress(state.library?.challenge, books);
+  const headerPills = [
+    `${books.length} libro(s)`,
+    `${booksThisYear(books)} este año`,
+    `${challenge.done}/${challenge.target} reto`
+  ];
 
   let body = "";
 
@@ -92,22 +97,22 @@ export function renderLibraryFeature(state, options = {}) {
           "Añadir libro",
           `
             <form id="book-form" class="stack">
-              <div class="field-grid">
+              <div class="field-grid compact-two">
                 <label><span>Título</span><input name="title" placeholder="Ej. El infinito en un junco" required></label>
                 <label><span>Estado</span><select name="status"><option value="finished">Terminado</option><option value="reading">En lectura</option><option value="paused">En pausa</option><option value="wishlist">Pendiente</option><option value="dnf">Abandonado</option></select></label>
               </div>
-              <div class="field-grid">
+              <div class="field-grid compact-two">
                 <label><span>Terminé</span><input name="finishedAt" type="date"></label>
                 <label><span>Valoración</span><input name="rating" type="number" min="1" max="5" placeholder="1-5"></label>
               </div>
               <details class="panel panel-toned disclosure-panel compact-disclosure">
                 <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Más detalle</h4></div></summary>
                 <div class="stack disclosure-body">
-                  <div class="field-grid">
+                  <div class="field-grid compact-two">
                     <label><span>Autora o autor</span><input name="author" placeholder="Opcional"></label>
                     <label><span>Formato</span><select name="format"><option value="">Sin definir</option><option>Papel</option><option>Ebook</option><option>Audiolibro</option></select></label>
                   </div>
-                  <div class="field-grid">
+                  <div class="field-grid compact-two">
                     <label><span>ISBN</span><input name="isbn" placeholder="Manual por ahora"></label>
                     <label><span>Empecé</span><input name="startedAt" type="date"></label>
                   </div>
@@ -124,7 +129,7 @@ export function renderLibraryFeature(state, options = {}) {
           "Objetivo anual",
           `
             <form id="reading-challenge-form" class="stack">
-              <div class="field-grid">
+              <div class="field-grid compact-two">
                 <label><span>Año</span><input name="year" type="number" min="2000" max="2100" value="${challenge.year}" required></label>
                 <label><span>Objetivo</span><input name="target" type="number" min="1" max="365" value="${challenge.target}" required></label>
               </div>
@@ -183,7 +188,7 @@ export function renderLibraryFeature(state, options = {}) {
 
   return `
     <section id="library-panel" class="panel stack app-feature-shell">
-      ${featureHeader("Biblioteca", "Leer y recordar", "", { emblem: "✦", emblemTone: "library", artSrc: "./icons/scene-library.svg" })}
+      ${featureHeader("Biblioteca", "Libros y notas", "", { emblem: "✦", emblemTone: "library", artSrc: "./icons/scene-library.svg", pills: headerPills })}
       ${viewSwitcher("library", currentView, [
         { id: "overview", label: "Resumen" },
         { id: "add", label: "Añadir" },

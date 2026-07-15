@@ -7,7 +7,7 @@ import {
 } from "../domain/weekly.js";
 import { localDateKey } from "../domain/date.js";
 import { emptyState, featureHeader, sectionCard, viewSwitcher } from "../ui/feature-layout.js";
-import { VARIETY_FAMILY_RULES, varietyFamiliesFromText } from "../domain/personal-nutrition.js";
+import { PERSONAL_PANTRY, VARIETY_FAMILY_RULES, varietyFamiliesFromText } from "../domain/personal-nutrition.js";
 
 const FAMILY_LABELS = {
   "Cereal/tuberculo": "Cereal / tubérculo",
@@ -102,6 +102,33 @@ function familyOptions() {
   `;
 }
 
+function suggestedHomeIngredients() {
+  return PERSONAL_PANTRY.flatMap(group => group.items)
+    .filter(Boolean)
+    .slice(0, 10);
+}
+
+function ingredientPickerBlock({ title = "Ingredientes", suggestions = [] } = {}) {
+  return `
+    <div class="ingredient-picker-shell">
+      <div class="ingredient-picker-head">
+        <span>${title}</span>
+        <span class="entry-meta">Toca para añadir</span>
+      </div>
+      <input name="ingredientsText" type="hidden">
+      <div class="ingredient-chip-grid" data-ingredient-picker>
+        ${suggestions
+          .map(item => `<button class="ingredient-chip" type="button" data-ingredient="${item}">${item}</button>`)
+          .join("")}
+      </div>
+      <label class="ingredient-manual-field">
+        <span>Otro</span>
+        <input data-ingredient-manual placeholder="Añadir otro alimento">
+      </label>
+    </div>
+  `;
+}
+
 function quickMealCapture() {
   return `
     <form id="quick-meal-form" class="stack">
@@ -109,6 +136,7 @@ function quickMealCapture() {
         <label><span>Tipo</span><select name="type"><option>Desayuno</option><option selected>Comida</option><option>Cena</option><option>Snack</option></select></label>
         <label><span>Nombre</span><input name="name" placeholder="Ej. bowl, tortilla, yogur" required></label>
       </div>
+      ${ingredientPickerBlock({ title: "Alimentos", suggestions: suggestedHomeIngredients() })}
       <label><span>Grupo principal</span><select name="primaryFamily">${familyOptions()}</select></label>
       <details class="panel panel-toned disclosure-panel compact-disclosure">
         <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Más detalle</h4></div></summary>
@@ -117,7 +145,7 @@ function quickMealCapture() {
           <label><span>Postcomida</span><input name="reaction" placeholder="Opcional"></label>
         </div>
       </details>
-      <button class="primary" type="submit">Guardar comida rápida</button>
+      <button class="primary" type="submit">Guardar comida</button>
     </form>
   `;
 }
@@ -214,10 +242,10 @@ function latestSleepContext(state) {
 }
 
 function captureContext(currentCapture) {
-  if (currentCapture === "training") return "Guardar una sesión rápida sin salir de hoy.";
-  if (currentCapture === "checkin") return "Registrar un síntoma en menos de un minuto.";
-  if (currentCapture === "sleep") return "Apuntar la noche con horario y calidad.";
-  return "Registrar una comida por grupos de alimentos.";
+  if (currentCapture === "training") return "Sesión rápida.";
+  if (currentCapture === "checkin") return "Check-in corto.";
+  if (currentCapture === "sleep") return "Noche y horario.";
+  return "Comida en pocos toques.";
 }
 
 function renderCaptureBody(currentCapture, today) {
@@ -230,16 +258,30 @@ function renderCaptureBody(currentCapture, today) {
 function compactFocusTitle(dailyCommand) {
   const plannedCount = dailyCommand.mealProgress.total + dailyCommand.sessionProgress.total;
   if (dailyCommand.blockers.length > 0) return "Bajar fricción hoy";
-  if (plannedCount > 0) return "Ejecutar lo previsto";
+  if (plannedCount > 0) return "Seguir el plan";
   if (dailyCommand.loggedMealsToday.length > 0 || dailyCommand.executedSessionsToday.length > 0) return "Cerrar con calma";
-  return "Registrar lo mínimo útil";
+  return "Empezar fácil";
 }
 
 function compactFocusDetail(dailyCommand, weeklyPreparation) {
   const plannedCount = dailyCommand.mealProgress.total + dailyCommand.sessionProgress.total;
-  if (plannedCount > 0) return `${plannedCount} bloque(s) previstos · ritmo semanal ${weeklyPreparation.readinessScore}/100`;
-  if (dailyCommand.loggedMealsToday.length > 0 || dailyCommand.executedSessionsToday.length > 0) return "Ya hay señales de hoy. Solo toca mantener el hilo.";
-  return "Empieza por una comida, un check-in o una nota.";
+  if (plannedCount > 0) return `${plannedCount} bloque(s) previstos · ritmo ${weeklyPreparation.readinessScore}/100`;
+  if (dailyCommand.loggedMealsToday.length > 0 || dailyCommand.executedSessionsToday.length > 0) return "Ya hay movimiento hoy.";
+  return "Comida, síntoma o nota.";
+}
+
+function compactPriorityStat(dailyCommand) {
+  const plannedCount = dailyCommand.mealProgress.total + dailyCommand.sessionProgress.total;
+  if (dailyCommand.blockers.length > 0) {
+    return { value: "Quitar freno", detail: "hay algo bloqueando" };
+  }
+  if (plannedCount > 0) {
+    return { value: "Seguir plan", detail: `${plannedCount} bloque(s) previstos` };
+  }
+  if (dailyCommand.loggedMealsToday.length > 0 || dailyCommand.executedSessionsToday.length > 0) {
+    return { value: "Cerrar suave", detail: "ya hay movimiento" };
+  }
+  return { value: "Empezar fácil", detail: "sin presión extra" };
 }
 
 function reviewItems(items) {
@@ -267,15 +309,35 @@ function noteItems(notes) {
 }
 
 function nextActionCard(dailyCommand, autoSummary) {
-  const primary = dailyCommand.topPriority?.title || dailyCommand.focusAreas[0] || "Mantener el día simple";
-  const note = autoSummary.watchouts[0] || dailyCommand.blockers[0] || "Sin alertas prioritarias ahora mismo.";
+  const primary = dailyCommand.topPriority?.title || dailyCommand.focusAreas[0] || "Mantenerlo simple";
+  const note = autoSummary.watchouts[0] || dailyCommand.blockers[0] || "Sin alertas ahora.";
+  const queueCount = dailyCommand.blockers.length + dailyCommand.mealProgress.total + dailyCommand.sessionProgress.total;
+  const cues = [
+    dailyCommand.mealProgress.total > 0 ? `${dailyCommand.mealProgress.total} comida(s)` : "",
+    dailyCommand.sessionProgress.total > 0 ? `${dailyCommand.sessionProgress.total} entreno(s)` : "",
+    dailyCommand.blockers.length > 0 ? `${dailyCommand.blockers.length} freno(s)` : "sin frenos"
+  ].filter(Boolean);
   return `
-    <article class="summary-card summary-card-soft rail-card">
-      <p class="eyebrow">Siguiente</p>
-      <p class="entry-title">${primary}</p>
-      <p class="entry-note">${note}</p>
+    <article class="summary-card summary-card-soft rail-card home-glance-card home-next-card">
+      <div class="home-next-head">
+        <p class="eyebrow">Siguiente</p>
+        <span class="metric-orb">${queueCount || 1}</span>
+      </div>
+      <p class="entry-title">${compactPriorityCopy(primary)}</p>
+      <p class="entry-meta">${compactPriorityCopy(note, 5)}</p>
+      <div class="premium-pill-row premium-pill-row-soft">
+        ${cues.slice(0, 3).map(item => `<span class="premium-pill premium-pill-soft">${item}</span>`).join("")}
+      </div>
     </article>
   `;
+}
+
+function compactPriorityCopy(text, words = 4) {
+  return String(text || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, words)
+    .join(" ");
 }
 
 function supportShortcuts() {
@@ -328,7 +390,7 @@ function celebrationStrip(dailyCommand, weeklyPreparation, weeklyReviewSummary) 
   return `
     <section class="celebration-strip">
       <div class="celebration-strip-head">
-        <p class="eyebrow">Brillo</p>
+        <p class="eyebrow">Impulso</p>
         <p class="celebration-copy">${mood}</p>
       </div>
       <div class="celebration-chip-row">${chips}</div>
@@ -470,6 +532,12 @@ export function renderDashboardFeature(state, options = {}) {
   const lastBackup = formatDateTimeLabel(state.appMeta.lastBackupExportAt);
   const lastPassphraseChange = formatDateTimeLabel(state.appMeta.lastPassphraseChangeAt);
   const reading = readingSnapshot(state);
+  const compactPriority = compactPriorityStat(dailyCommand);
+  const headerPills = [
+    `${dailyCommand.loggedMealsToday.length} comida(s)`,
+    `${dailyCommand.executedSessionsToday.length} entreno(s)`,
+    `${dailyCommand.hydrationToday}/${dailyCommand.hydrationGoal} agua`
+  ];
 
   let body = "";
 
@@ -537,21 +605,23 @@ export function renderDashboardFeature(state, options = {}) {
     body = `
       ${sectionCard(
         "Ajustes",
-        "Tu base local",
+        "Tu base",
         `
-          <section class="dashboard-summary compact-metrics feature-metrics-soft">
-            ${statCard("Nombre", displayName || "Tu espacio", "visible")}
+          <section class="dashboard-summary compact-metrics feature-metrics-soft settings-metrics">
+            ${statCard("Espacio", displayName || "Tu espacio", "visible")}
             ${statCard("Bloqueo", lockLabel, "actual")}
           </section>
           <details class="panel panel-toned disclosure-panel compact-disclosure">
             <summary class="disclosure-summary"><div><p class="eyebrow">Perfil</p><h4>Editar base personal</h4></div></summary>
             <div class="stack disclosure-body">
               <form id="profile-form" class="stack inline-form-soft">
-                <div class="field-grid">
+                <div class="field-grid compact-two">
                   <label><span>Nombre visible</span><input name="displayName" placeholder="Cómo quieres verte aquí" value="${displayName}"></label>
                   <label><span>Autobloqueo (min)</span><input name="autoLockMinutes" type="number" min="0" max="120" value="${autoLockMinutes}" required></label>
                 </div>
-                <p class="muted">Usa 0 para bloquear solo manualmente. Si este contexto sigue abierto, la app intentará recordarte sin pedir la clave otra vez.</p>
+                <div class="button-row button-row-start button-row-soft">
+                  <button id="lock-button" class="ghost compact" type="button">Bloquear ahora</button>
+                </div>
                 <button class="primary" type="submit">Guardar ajustes</button>
               </form>
             </div>
@@ -559,22 +629,25 @@ export function renderDashboardFeature(state, options = {}) {
         `,
         "section-card-tinted section-card-home"
       )}
+      <div class="settings-stack">
       <details class="panel panel-toned disclosure-panel compact-disclosure">
-        <summary class="disclosure-summary"><div><p class="eyebrow">Seguridad</p><h4>Clave y copia</h4></div></summary>
+        <summary class="disclosure-summary"><div><p class="eyebrow">Seguridad</p><h4>Clave y backup</h4></div></summary>
         <div class="stack disclosure-body">
-          <section class="dashboard-summary compact-metrics feature-metrics-soft">
+          <section class="dashboard-summary compact-metrics feature-metrics-soft settings-metrics">
             ${statCard("Bloqueo", lockLabel, "actual")}
             ${statCard("Último acceso", lastUnlock, "sesión")}
             ${statCard("Última copia", lastBackup, "exportada")}
             ${statCard("Última importación", lastImport, "base")}
           </section>
-          <article class="entry"><div><p class="entry-title">${lastBackup === "Aún no" ? "Copia pendiente" : "Copia disponible"}</p><p class="entry-note">${lastBackup === "Aún no" ? "Conviene exportar una antes de cambiar de contexto o publicar una build nueva." : "Ya existe una copia cifrada exportada desde este contexto."}</p></div></article>
-          <article class="entry"><div><p class="entry-title">Cambio de clave</p><p class="entry-note">Último cambio: ${lastPassphraseChange}</p></div></article>
+          <div class="settings-list">
+            <article class="entry"><div><p class="entry-title">${lastBackup === "Aún no" ? "Copia pendiente" : "Copia lista"}</p><p class="entry-note">${lastBackup === "Aún no" ? "Haz una exportación antes de mover contexto." : "Ya existe una copia cifrada de este contexto."}</p></div></article>
+            <article class="entry"><div><p class="entry-title">Cambio de clave</p><p class="entry-note">Último cambio: ${lastPassphraseChange}</p></div></article>
+          </div>
           <details class="panel panel-toned disclosure-panel compact-disclosure">
             <summary class="disclosure-summary"><div><p class="eyebrow">Clave</p><h4>Cambiar clave local</h4></div></summary>
             <div class="stack disclosure-body">
               <form id="change-passphrase-form" class="stack inline-form-soft">
-                <div class="field-grid">
+                <div class="field-grid compact-two">
                   <label><span>Nueva clave local</span><input name="nextPassphrase" type="password" minlength="8" placeholder="Mínimo 8 caracteres" required></label>
                   <label><span>Confirmar</span><input name="nextPassphraseConfirm" type="password" minlength="8" placeholder="Repite la clave" required></label>
                 </div>
@@ -586,18 +659,18 @@ export function renderDashboardFeature(state, options = {}) {
             <summary class="disclosure-summary"><div><p class="eyebrow">Copia</p><h4>Exportar o importar</h4></div></summary>
             <div class="stack disclosure-body">
               <form id="backup-export-form" class="stack inline-form-soft">
-                <div class="field-grid">
+                <div class="field-grid compact-two">
                   <label><span>Clave del archivo</span><input name="backupPassphrase" type="password" minlength="8" placeholder="Clave del archivo" required></label>
                   <label><span>Confirmar</span><input name="backupPassphraseConfirm" type="password" minlength="8" placeholder="Repite la clave" required></label>
                 </div>
                 <button class="ghost compact" type="submit">Exportar copia cifrada</button>
               </form>
               <form id="backup-import-form" class="stack inline-form-soft">
-                <div class="field-grid">
+                <div class="field-grid compact-two">
                   <label><span>Clave del archivo</span><input name="backupImportPassphrase" type="password" minlength="8" placeholder="Clave del archivo" required></label>
                   <label class="file-button compact-file auth-file"><input id="import-file-settings" name="backupFile" type="file" accept=".json,application/json" required>Elegir archivo</label>
                 </div>
-                <p class="muted">La importación reemplaza el contenido actual de este contexto local.</p>
+                <p class="muted">La importación sustituye el contenido actual.</p>
                 <button class="ghost compact" type="submit">Importar copia</button>
               </form>
               <button id="reset-vault-button" class="ghost compact" type="button">Limpiar este contexto</button>
@@ -623,11 +696,11 @@ export function renderDashboardFeature(state, options = {}) {
             <section class="subpanel stack summary-card-soft">
               <p class="eyebrow">Objetivo</p>
               <form id="goal-form" class="stack">
-                <div class="field-grid">
+                <div class="field-grid compact-two">
                   <label><span>Título</span><input name="title" placeholder="Ej. Leer 12 libros" required></label>
                   <label><span>Área</span><input name="area" placeholder="Lectura, salud, trabajo..."></label>
                 </div>
-                <div class="field-grid">
+                <div class="field-grid compact-two">
                   <label><span>Meta</span><input name="target" placeholder="Ej. 12/2026 o 3 veces/semana"></label>
                   <label><span>Nota</span><input name="notes" placeholder="Qué significa cumplirlo"></label>
                 </div>
@@ -638,7 +711,7 @@ export function renderDashboardFeature(state, options = {}) {
             <section class="subpanel stack summary-card-soft">
               <p class="eyebrow">Hábito</p>
               <form id="habit-form" class="stack">
-                <div class="field-grid">
+                <div class="field-grid compact-two">
                   <label><span>Título</span><input name="title" placeholder="Ej. Caminar o leer" required></label>
                   <label><span>Frecuencia</span><input name="cadence" placeholder="Diario, 3/semana..."></label>
                 </div>
@@ -650,6 +723,7 @@ export function renderDashboardFeature(state, options = {}) {
           </div>
         </div>
       </details>
+      </div>
     `;
   } else {
     body = `
@@ -659,37 +733,42 @@ export function renderDashboardFeature(state, options = {}) {
           compactFocusTitle(dailyCommand),
           `
             <div class="home-hero-stack">
-              <p class="muted">${compactFocusDetail(dailyCommand, weeklyPreparation)}</p>
+              <div class="premium-pill-row premium-pill-row-soft">
+                <span class="premium-pill">${compactFocusDetail(dailyCommand, weeklyPreparation)}</span>
+                ${latestSleep ? `<span class="premium-pill">Sueño ${latestSleep}</span>` : ""}
+              </div>
               <section class="dashboard-summary compact-metrics feature-metrics-soft">
                 ${statCard("Ritmo", `${weeklyPreparation.readinessScore}/100`, readinessTone(weeklyPreparation.readinessScore))}
-                ${statCard("Comidas", dailyCommand.loggedMealsToday.length, "registradas")}
-                ${statCard("Agua", `${dailyCommand.hydrationToday}/${dailyCommand.hydrationGoal}`, "vasos")}
-                ${statCard("Entreno", dailyCommand.executedSessionsToday.length, "sesiones")}
+                ${statCard("Prioridad", compactPriority.value, compactPriority.detail)}
+                ${statCard("Semana", `${weeklyReviewSummary.completion}%`, "revisión")}
+                ${statCard("Lectura", Array.isArray(state.library?.books) ? state.library.books.length : 0, reading.title)}
               </section>
               ${celebrationStrip(dailyCommand, weeklyPreparation, weeklyReviewSummary)}
-              ${latestSleep ? `<p class="muted">Último sueño: ${latestSleep}</p>` : ""}
               <div class="button-row button-row-start button-row-soft">
-                <button class="ghost compact" type="button" data-action="open-module-view" data-tab="home" data-view="capture">Capturar</button>
+                <button class="primary compact" type="button" data-action="open-module-view" data-tab="home" data-view="capture">Capturar</button>
                 <button class="ghost compact" type="button" data-action="open-module-view" data-tab="nutrition" data-view="log">Comida</button>
                 <button class="ghost compact" type="button" data-action="open-module-view" data-tab="home" data-view="review">Cerrar hoy</button>
               </div>
             </div>
           `,
-          "section-card-hero section-card-home rail-card"
+          "section-card-hero section-card-home rail-card home-command-card"
         )}
         <div class="home-reading-grid">
           ${nextActionCard(dailyCommand, autoSummary)}
-          <article class="summary-card summary-card-soft rail-card">
-            <p class="eyebrow">Semana</p>
+          <article class="summary-card summary-card-soft rail-card home-story-card">
+            <div class="home-story-head">
+              <p class="eyebrow">Semana</p>
+              <span class="premium-pill premium-pill-soft">Lectura</span>
+            </div>
             <p class="entry-title">${weeklyPreparation.headline}</p>
-            <p class="entry-note">${autoSummary.reviewItems[0] || "Todo bastante estable por ahora."}</p>
+            <p class="entry-meta">${autoSummary.reviewItems[0] || "Todo bastante estable."}</p>
             <p class="entry-note">${reading.title}</p>
           </article>
         </div>
       </div>
       ${sectionCard(
-        "Captura rápida",
-        "Lo útil al instante",
+        "Atajos",
+        "Registrar rápido",
         `
           <div class="quick-actions-grid">
             ${quickAction("Agua", { type: "add-water" }, "quick-action-water")}
@@ -704,8 +783,8 @@ export function renderDashboardFeature(state, options = {}) {
       <details class="panel panel-toned compact-vault-bar disclosure-panel">
         <summary class="disclosure-summary">
           <div>
-            <p class="eyebrow">Más de hoy</p>
-            <h4>Cola, arrastres y revisión</h4>
+            <p class="eyebrow">Más</p>
+            <h4>Cola y revisión</h4>
           </div>
         </summary>
         <div class="stack disclosure-body">
@@ -733,7 +812,7 @@ export function renderDashboardFeature(state, options = {}) {
 
   return `
     <section id="home-panel" class="panel stack app-feature-shell">
-      ${featureHeader(todayHeadline(), "Tu día", "", { emblem: "◌", emblemTone: "home", artSrc: "./icons/scene-home.svg" })}
+      ${featureHeader(todayHeadline(), "Tu día", "", { emblem: "◌", emblemTone: "home", artSrc: "./icons/scene-home.svg", pills: headerPills })}
       ${viewSwitcher("home", currentView, [
         { id: "overview", label: "Resumen" },
         { id: "capture", label: "Capturar" },

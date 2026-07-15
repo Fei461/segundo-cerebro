@@ -83,6 +83,11 @@ function calibrationDayItems(calibration) {
 export function renderRecoveryFeature(state, options = {}) {
   const currentView = options.currentView || "overview";
   const calibration = getWeeklyCalibrationBoard(state);
+  const headerPills = [
+    `${averageHours(state.sleepEntries)} h`,
+    latestSleepSpan(state.sleepEntries),
+    `${recentSleepEntries(state.sleepEntries).length} noche(s)`
+  ];
 
   let body = "";
 
@@ -153,7 +158,7 @@ export function renderRecoveryFeature(state, options = {}) {
 
   return `
     <section id="recovery-panel" class="panel stack app-feature-shell">
-      ${featureHeader("Sueño", "Dormir y ajustar", "", { emblem: "☾", emblemTone: "recovery", artSrc: "./icons/scene-recovery.svg" })}
+      ${featureHeader("Sueño", "Descansa", "", { emblem: "☾", emblemTone: "recovery", artSrc: "./icons/scene-recovery.svg", pills: headerPills })}
       ${viewSwitcher("recovery", currentView, [
         { id: "overview", label: "Resumen" },
         { id: "sleep", label: "Registrar" },

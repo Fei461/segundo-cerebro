@@ -164,15 +164,6 @@ function timelinePreview(items) {
     .join("");
 }
 
-function planningRibbon(prep, reviewSummary, timeline) {
-  const pills = [
-    `${prep.readinessScore}/100 ritmo`,
-    `${reviewSummary.completion}% revisión`,
-    `${timeline.length} bloque(s)`
-  ];
-  return `<div class="premium-pill-row">${pills.map(item => `<span class="premium-pill">${item}</span>`).join("")}</div>`;
-}
-
 function compactSuggestionLead(items) {
   const first = items[0];
   if (!first) return emptyState("No hay huecos urgentes ahora mismo.");
@@ -186,6 +177,67 @@ function compactSuggestionLead(items) {
   `;
 }
 
+function compactWeekHeadline(text, words = 5) {
+  return String(text || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, words)
+    .join(" ");
+}
+
+function weeklyOverviewCopy(prep, reviewSummary, timeline, weeklySummaryData) {
+  const totalLoad =
+    weeklySummaryData.plannedMeals +
+    weeklySummaryData.plannedSessions +
+    weeklySummaryData.events +
+    weeklySummaryData.blocks;
+
+  if (!totalLoad) {
+    return {
+      title: "Semana en blanco",
+      detail: "Añade una comida, entreno o bloque."
+    };
+  }
+
+  if (prep.readinessScore >= 70) {
+    return {
+      title: "Semana en marcha",
+      detail: timeline.length ? "La agenda ya tiene movimiento." : "Mantén el ritmo simple."
+    };
+  }
+
+  if (reviewSummary.completion < 40) {
+    return {
+      title: "Semana por cerrar",
+      detail: "Reset y huecos primero."
+    };
+  }
+
+  return {
+    title: "Semana estable",
+    detail: "Sigue registrando sin ruido."
+  };
+}
+
+function weeklyOverviewSignals(prep, reviewSummary, timeline, weeklySummaryData) {
+  const items = [
+    { label: "Ritmo", value: `${prep.readinessScore}/100` },
+    { label: "Revisión", value: `${reviewSummary.completion}%` },
+    { label: "Agenda", value: `${timeline.length}` },
+    { label: "Comidas", value: `${weeklySummaryData.plannedMeals}` }
+  ];
+  return `
+    <div class="signal-tile-grid">
+      ${items.map(item => `
+        <article class="signal-tile">
+          <p class="eyebrow">${item.label}</p>
+          <p class="signal-tile-value">${item.value}</p>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
 export function renderPlanningFeature(state, options = {}) {
   const currentView = options.currentView || "overview";
   const prep = getWeeklyPreparationPack(state);
@@ -195,6 +247,12 @@ export function renderPlanningFeature(state, options = {}) {
   const reviewFlow = getWeeklyReviewFlow(state).slice(0, 4);
   const autoSummary = getWeeklyAutoSummary(state);
   const timeline = getOperationalTimeline(state);
+  const weeklyOverview = weeklyOverviewCopy(prep, reviewSummary, timeline, weeklySummaryData);
+  const headerPills = [
+    `${weeklySummaryData.plannedMeals} comida(s)`,
+    `${weeklySummaryData.plannedSessions} entreno(s)`,
+    `${weeklySummaryData.events} evento(s)`
+  ];
 
   let body = "";
 
@@ -204,10 +262,9 @@ export function renderPlanningFeature(state, options = {}) {
           "Agenda",
           "Movimientos de semana",
           `
-          ${planningRibbon(prep, reviewSummary, timeline)}
           <article class="summary-card summary-card-soft summary-card-premium">
-            <p class="entry-title">${state.calendar.events.length} evento(s) · ${state.schedule.blocks.length} bloque(s)</p>
-            <p class="entry-meta">${weeklySummaryData.plannedMeals} comida(s) y ${weeklySummaryData.plannedSessions} entreno(s) previstos.</p>
+            <p class="entry-title">${timeline.length ? "Semana en movimiento" : "Agenda en blanco"}</p>
+            <p class="entry-meta">${timeline[0]?.title || "Empieza por tu primer evento o bloque."}</p>
           </article>
           <details class="panel panel-toned disclosure-panel compact-disclosure">
             <summary class="disclosure-summary"><div><p class="eyebrow">Nuevo</p><h4>Evento</h4></div></summary>
@@ -254,9 +311,8 @@ export function renderPlanningFeature(state, options = {}) {
       <div class="planning-focus-grid">
         ${sectionCard(
           "Reset",
-          "Semana en orden",
+          "Reset semanal",
           `
-            ${planningRibbon(prep, reviewSummary, timeline)}
             <article class="summary-card summary-card-soft summary-card-premium">
               <p class="eyebrow">Orden sugerido</p>
               <p class="entry-title">${reviewFlow[0]?.title || "Preparar la semana"}</p>
@@ -275,7 +331,7 @@ export function renderPlanningFeature(state, options = {}) {
           "Lo que quieres cerrar",
           `
             <form id="weekly-form" class="stack">
-              <div class="field-grid">
+              <div class="field-grid compact-two">
                 <label><span>Tarea</span><input name="title" placeholder="Ej. compra base" required></label>
                 <label><span>Día reset</span><input name="resetDay" value="Domingo" required></label>
               </div>
@@ -302,10 +358,10 @@ export function renderPlanningFeature(state, options = {}) {
           "Semana",
           "Centro semanal",
         `
-          ${planningRibbon(prep, reviewSummary, timeline)}
+            ${weeklyOverviewSignals(prep, reviewSummary, timeline, weeklySummaryData)}
             <article class="summary-card summary-card-soft summary-card-premium">
-              <p class="entry-title">${autoSummary.headline}</p>
-              <p class="entry-meta">${prep.headline}</p>
+              <p class="entry-title">${weeklyOverview.title}</p>
+              <p class="entry-meta">${weeklyOverview.detail}</p>
             </article>
             ${weekStrip(state)}
           `,
@@ -333,7 +389,7 @@ export function renderPlanningFeature(state, options = {}) {
 
   return `
     <section id="planning-panel" class="panel stack app-feature-shell" data-view="${currentView}">
-      ${featureHeader("Semana", "Planificar sin ruido", "", { emblem: "▫", emblemTone: "planning", artSrc: "./icons/scene-planning.svg" })}
+      ${featureHeader("Semana", "Tu semana", "", { emblem: "▫", emblemTone: "planning", artSrc: "./icons/scene-planning.svg", pills: headerPills })}
       ${viewSwitcher("planning", currentView, [
         { id: "overview", label: "Resumen" },
         { id: "agenda", label: "Agenda" },

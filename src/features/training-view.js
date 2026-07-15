@@ -248,6 +248,11 @@ export function renderTrainingFeature(state, options = {}) {
     .filter(session => session.date >= todayKey())
     .sort((left, right) => `${left.date}-${left.type}`.localeCompare(`${right.date}-${right.type}`));
   const health = getWeeklyHealthInsights(state);
+  const headerPills = [
+    `${totals.count} sesión(es)`,
+    `${totals.minutes} min`,
+    `${plannedSessions.length} previstas`
+  ];
 
   let body = "";
 
@@ -260,27 +265,29 @@ export function renderTrainingFeature(state, options = {}) {
           `
             <datalist id="exercise-library">${exerciseOptions(state)}</datalist>
             <form id="training-form" class="stack">
-              <div class="field-grid">
+              <div class="field-grid compact-two">
                 <label><span>Fecha</span><input name="date" type="date" value="${todayKey()}" required></label>
                 <label><span>Tipo</span><select name="type" required>${typeOptions}</select></label>
               </div>
-              <div class="field-grid">
-                <label><span>Actividad</span><input name="activity" list="exercise-library" placeholder="Ej. sentadilla, crol o running" required></label>
+              <div class="field-grid compact-two">
+                <label><span>Actividad</span><input name="activity" list="exercise-library" placeholder="Sentadilla, crol..." required></label>
                 <label><span>Duración</span><input name="duration" type="number" min="1" value="60" required></label>
               </div>
               <details class="panel panel-toned disclosure-panel compact-disclosure">
                 <summary class="disclosure-summary"><div><p class="eyebrow">Opcional</p><h4>Estructura y métricas</h4></div></summary>
                 <div class="stack disclosure-body">
-                  <div class="field-grid">
+                  <div class="field-grid compact-two">
                     <label><span>Estructura</span><select name="structure"><option value="">Simple</option>${structureOptions}</select></label>
                     <label><span>Rutina</span><input name="routineName" placeholder="Ej. Pierna A o Agua técnica"></label>
                   </div>
                   <label><span>Bloques o ejercicios</span><textarea name="exercises" rows="4" placeholder="Un ejercicio por línea. También sirve para circuitos:&#10;3 rondas&#10;Crol 100m&#10;Pull buoy 50m"></textarea></label>
-                  <div class="field-grid four">
+                  <div class="field-grid compact-two">
                     <label><span>RPE</span><input name="rpe" type="number" min="1" max="10" placeholder="1-10"></label>
+                    <label><span>Energía</span><input name="preEnergy" type="number" min="1" max="5" placeholder="1-5"></label>
+                  </div>
+                  <div class="field-grid compact-two">
                     <label><span>Carga kg</span><input name="loadKg" type="number" min="0" placeholder="Opcional"></label>
                     <label><span>Distancia km</span><input name="distanceKm" type="number" step="0.1" min="0" placeholder="Opcional"></label>
-                    <label><span>Energía</span><input name="preEnergy" type="number" min="1" max="5" placeholder="1-5"></label>
                   </div>
                 </div>
               </details>
@@ -296,7 +303,7 @@ export function renderTrainingFeature(state, options = {}) {
     body = `
       ${sectionCard(
         "Próximas",
-        "Lo ya programado",
+        "Semana programada",
         `
           <section class="dashboard-summary compact-metrics feature-metrics-soft">
             ${statCard("Futuras", plannedSessions.length, "guardadas")}
@@ -318,7 +325,7 @@ export function renderTrainingFeature(state, options = {}) {
               <label><span>Tipo</span><select name="type" required>${typeOptions}</select></label>
             </div>
             <div class="field-grid">
-              <label><span>Actividad</span><input name="activity" list="exercise-library" placeholder="Ej. upper, movilidad o crol" required></label>
+              <label><span>Actividad</span><input name="activity" list="exercise-library" placeholder="Upper, movilidad..." required></label>
               <label><span>Duración</span><input name="duration" type="number" min="1" value="60" required></label>
             </div>
             <div class="field-grid">
@@ -397,7 +404,7 @@ export function renderTrainingFeature(state, options = {}) {
       <div class="training-focus-grid">
         ${sectionCard(
           "Resumen",
-          "Carga semanal",
+          "Semana de entreno",
           `
             <section class="dashboard-summary compact-metrics feature-metrics-soft">
               ${statCard("Sesiones", totals.count, `${totals.minutes} min`)}
@@ -456,7 +463,7 @@ export function renderTrainingFeature(state, options = {}) {
 
   return `
     <section id="training-panel" class="panel stack app-feature-shell">
-      ${featureHeader("Entreno", "Entrenar sin ruido", "", { emblem: "△", emblemTone: "training", artSrc: "./icons/scene-training.svg" })}
+      ${featureHeader("Entreno", "Muévete", "", { emblem: "△", emblemTone: "training", artSrc: "./icons/scene-training.svg", pills: headerPills })}
       ${viewSwitcher("training", currentView, [
         { id: "overview", label: "Resumen" },
         { id: "log", label: "Registrar" },

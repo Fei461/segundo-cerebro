@@ -112,6 +112,11 @@ export function renderWellbeingFeature(state, options = {}) {
   const digestionOptions = DIGESTION_STATES.map(item => `<option value="${item}">${item}</option>`).join("");
   const energyOptions = ENERGY_LEVELS.map(level => `<option value="${level}">${level}</option>`).join("");
   const moodOptions = MOOD_LEVELS.map(level => `<option value="${level}">${level}</option>`).join("");
+  const headerPills = [
+    periodToday ? "ciclo hoy" : "sin ciclo hoy",
+    `${symptomCount} síntoma(s)`,
+    health.currentPhaseLabel || "fase abierta"
+  ];
 
   let body = "";
 
@@ -185,7 +190,7 @@ export function renderWellbeingFeature(state, options = {}) {
       <div class="planning-focus-grid">
         ${sectionCard(
           "Ciclo",
-          "Lectura breve",
+          "Lectura rápida",
           `
             <section class="dashboard-summary compact-metrics feature-metrics-soft">
               ${statCard("Ciclo", state.cycle.periodDays.length, "días")}
@@ -207,7 +212,7 @@ export function renderWellbeingFeature(state, options = {}) {
         )}
         ${sectionCard(
           "Soporte",
-          "Lo que conviene mirar",
+          "Qué mirar ahora",
           `
             <div class="stack stack-tight">${supportPreview(suggestions)}</div>
             <div class="button-row button-row-start button-row-soft">
@@ -230,7 +235,7 @@ export function renderWellbeingFeature(state, options = {}) {
 
   return `
     <section id="wellbeing-panel" class="panel stack app-feature-shell">
-      ${featureHeader("Salud", "Ciclo y síntomas", "", { emblem: "✳", emblemTone: "wellbeing", artSrc: "./icons/scene-wellbeing.svg" })}
+      ${featureHeader("Salud", "Tu cuerpo", "", { emblem: "✳", emblemTone: "wellbeing", artSrc: "./icons/scene-wellbeing.svg", pills: headerPills })}
       ${viewSwitcher("wellbeing", currentView, [
         { id: "overview", label: "Resumen" },
         { id: "symptom", label: "Síntoma" },
