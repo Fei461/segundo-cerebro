@@ -1,33 +1,35 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="bg" x1="12%" y1="8%" x2="88%" y2="92%">
-      <stop offset="0%" stop-color="#d6f5f1"/>
-      <stop offset="55%" stop-color="#93dad8"/>
-      <stop offset="100%" stop-color="#61b7c1"/>
+    <linearGradient id="bg" x1="10%" y1="8%" x2="88%" y2="94%">
+      <stop offset="0%" stop-color="#fff8ef"/>
+      <stop offset="52%" stop-color="#f4e6d7"/>
+      <stop offset="100%" stop-color="#dfeee8"/>
     </linearGradient>
     <linearGradient id="glass" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fbfffe" stop-opacity="0.96"/>
-      <stop offset="100%" stop-color="#dff4f3" stop-opacity="0.9"/>
+      <stop offset="0%" stop-color="#fffdf9" stop-opacity="0.98"/>
+      <stop offset="100%" stop-color="#f7efe5" stop-opacity="0.92"/>
     </linearGradient>
-    <linearGradient id="ink" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#325a6a"/>
-      <stop offset="100%" stop-color="#1f4653"/>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#f3d8b6" stop-opacity="0.08"/>
     </linearGradient>
     <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fff4ce"/>
-      <stop offset="100%" stop-color="#f4cc84"/>
+      <stop offset="0%" stop-color="#ffe7a8"/>
+      <stop offset="100%" stop-color="#efbe5c"/>
     </linearGradient>
   </defs>
   <rect width="512" height="512" fill="url(#bg)"/>
-  <rect x="72" y="72" width="368" height="368" rx="112" fill="url(#glass)" opacity="0.96"/>
-  <path d="M151 197c0-18 14-32 32-32h29c16 0 30 8 39 20 9-12 23-20 39-20h29c18 0 32 14 32 32v116c0 18-14 32-32 32H183c-18 0-32-14-32-32z" fill="url(#ink)"/>
-  <path d="M256 185v141" stroke="#dff8f7" stroke-width="12" stroke-linecap="round"/>
-  <path d="M204 205h37" stroke="#dff8f7" stroke-width="10" stroke-linecap="round"/>
-  <path d="M271 205h37" stroke="#dff8f7" stroke-width="10" stroke-linecap="round"/>
-  <path d="M204 237h37" stroke="#dff8f7" stroke-width="10" stroke-linecap="round"/>
-  <path d="M271 237h37" stroke="#dff8f7" stroke-width="10" stroke-linecap="round"/>
-  <path d="M204 269h37" stroke="#dff8f7" stroke-width="10" stroke-linecap="round"/>
-  <path d="M271 269h37" stroke="#dff8f7" stroke-width="10" stroke-linecap="round"/>
-  <path d="M356 144l7 14 15 2-11 10 3 15-14-8-13 8 2-15-11-10 15-2z" fill="url(#gold)"/>
-  <path d="M145 129l4 8 9 1-6 6 1 9-8-4-8 4 2-9-7-6 9-1z" fill="#fff8e1" opacity="0.92"/>
+  <circle cx="108" cy="112" r="12" fill="#fff5d2"/>
+  <circle cx="146" cy="78" r="5" fill="#fff8e8"/>
+  <circle cx="404" cy="114" r="8" fill="#fff0c8"/>
+  <path d="M68 376c50-52 116-76 191-76 76 0 139 30 186 80v56H68z" fill="#dac5aa" opacity="0.45"/>
+  <rect x="84" y="80" width="344" height="344" rx="96" fill="url(#glass)" stroke="#dec8af" stroke-width="4"/>
+  <rect x="128" y="116" width="256" height="280" rx="72" fill="url(#glow)" stroke="#d9c0a3" stroke-width="4"/>
+  <path d="M184 190c0-32 26-58 58-58h27c24 0 46 10 62 25 16-16 38-25 62-25h14c31 0 57 25 57 56v8h-43v-4c0-9-7-17-17-17h-20c-22 0-40 18-40 40v97h-44v-97c0-22-18-40-40-40h-30c-9 0-17 8-17 17v4h-43z" fill="#3c2d21"/>
+  <rect x="168" y="224" width="182" height="110" rx="54" fill="#fffaf4" stroke="#d6b894" stroke-width="4"/>
+  <rect x="192" y="252" width="42" height="46" rx="21" fill="#bf7445"/>
+  <rect x="248" y="248" width="36" height="50" rx="18" fill="#7dbec4"/>
+  <path d="M295 300c0-24 20-44 44-44 18 0 35 11 43 29-10 22-29 35-54 35-12 0-23-3-33-10z" fill="#79995f"/>
+  <path d="M378 130l12 24 28 4-20 18 5 28-25-13-25 13 5-28-20-18 28-4z" fill="url(#gold)"/>
+  <path d="M150 144l7 15 18 2-13 12 3 18-15-8-15 8 3-18-13-12 18-2z" fill="#fff1c7"/>
 </svg>

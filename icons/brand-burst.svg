@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 120">
   <defs>
     <linearGradient id="spark" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fff6d5"/>
-      <stop offset="100%" stop-color="#f3c978"/>
+      <stop offset="0%" stop-color="#ffe8af"/>
+      <stop offset="100%" stop-color="#efbe5d"/>
     </linearGradient>
     <linearGradient id="mist" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.78"/>
-      <stop offset="100%" stop-color="#cdeeed" stop-opacity="0.12"/>
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.76"/>
+      <stop offset="100%" stop-color="#f1dcc0" stop-opacity="0.08"/>
     </linearGradient>
   </defs>
-  <path d="M22 82c25-19 56-29 88-29 31 0 60 8 88 25" fill="none" stroke="url(#mist)" stroke-width="14" stroke-linecap="round"/>
-  <path d="M69 28l5 12 13 1-10 8 3 13-11-6-11 6 2-13-9-8 13-1z" fill="url(#spark)"/>
-  <path d="M146 19l4 9 10 1-7 7 2 10-9-5-9 5 2-10-7-7 10-1z" fill="url(#spark)" opacity="0.92"/>
-  <circle cx="110" cy="82" r="7" fill="#ffffff" fill-opacity="0.7"/>
-  <circle cx="179" cy="61" r="4" fill="#fff0c3" fill-opacity="0.92"/>
-  <circle cx="37" cy="57" r="3" fill="#fff0c3" fill-opacity="0.8"/>
+  <path d="M24 80c22-18 51-28 83-28 34 0 63 9 90 26" fill="none" stroke="url(#mist)" stroke-width="16" stroke-linecap="round"/>
+  <path d="M72 32l6 12 13 2-10 8 3 13-12-7-11 7 2-13-10-8 13-2z" fill="url(#spark)"/>
+  <path d="M150 24l5 10 11 2-8 7 2 11-10-6-10 6 2-11-8-7 11-2z" fill="url(#spark)" opacity="0.96"/>
+  <circle cx="110" cy="84" r="7" fill="#ffffff" fill-opacity="0.72"/>
+  <circle cx="185" cy="60" r="4" fill="#fff2c8"/>
+  <circle cx="36" cy="58" r="3" fill="#fff2c8"/>
 </svg>
