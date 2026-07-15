@@ -1121,13 +1121,36 @@ async function applyWeeklyCalibrationPack() {
   await persistState(nextState, "Recalibración semanal aplicada.");
 }
 
+function inferStatusTone(message) {
+  const text = String(message || "").toLocaleLowerCase("es-ES");
+  if (!text) return "info";
+  const successHints = [
+    "guard",
+    "aplicad",
+    "actualiz",
+    "añad",
+    "cambi",
+    "hecho",
+    "complet",
+    "iniciado",
+    "import",
+    "export",
+    "desbloque"
+  ];
+  if (successHints.some(hint => text.includes(hint))) return "success";
+  if (text.includes("no ") || text.includes("error") || text.includes("fall")) return "warning";
+  return "info";
+}
+
 function setStatus(message) {
   if (statusTimer) window.clearTimeout(statusTimer);
   viewModel.status = message;
+  viewModel.statusTone = inferStatusTone(message);
   paint();
   if (message) {
     statusTimer = window.setTimeout(() => {
       viewModel.status = "";
+      viewModel.statusTone = "info";
       paint();
     }, 2200);
   }
@@ -1136,6 +1159,7 @@ function setStatus(message) {
 function clearStatus() {
   if (!viewModel.status) return;
   viewModel.status = "";
+  viewModel.statusTone = "info";
   paint();
 }
 
